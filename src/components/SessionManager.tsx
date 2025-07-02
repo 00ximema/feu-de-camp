@@ -61,6 +61,11 @@ const SessionManager = () => {
       title: "Session supprimée",
       description: `La session "${sessionName}" a été supprimée`
     });
+
+    // Rediriger vers la page d'accueil après suppression
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   const handleSwitchSession = (session: typeof currentSession) => {
