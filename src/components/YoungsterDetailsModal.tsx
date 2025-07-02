@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -33,6 +34,24 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
 }) => {
   if (!youngster) return null;
 
+  // Extraire les informations téléphoniques des remarques
+  const extractPhoneInfo = (remarques: string) => {
+    if (!remarques) return [];
+    
+    const phoneNumbers: string[] = [];
+    
+    // Chercher les numéros avec leurs types dans les remarques
+    const phoneMatches = remarques.match(/(Perso|Bureau|Portable|Individuel):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/g);
+    
+    if (phoneMatches) {
+      phoneMatches.forEach(match => {
+        phoneNumbers.push(match);
+      });
+    }
+    
+    return phoneNumbers;
+  };
+
   // Nettoyer les remarques en retirant les informations téléphoniques et les caractères indésirables
   const cleanRemarks = (remarques: string) => {
     if (!remarques) return '';
@@ -40,10 +59,12 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
     return remarques
       .replace(/Informations générales - /g, '') // Supprimer "Informations générales - "
       .replace(/\|/g, '') // Supprimer tous les "|"
+      .replace(/(Perso|Bureau|Portable|Individuel):\s*0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2})/g, '') // Supprimer les numéros de téléphone
       .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul
       .trim();
   };
 
+  const phoneNumbers = extractPhoneInfo(youngster.remarques || '');
   const cleanedRemarks = cleanRemarks(youngster.remarques || '');
 
   return (
@@ -80,8 +101,22 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                 </div>
               )}
               
-              {/* Téléphone principal uniquement */}
-              {youngster.telephone && (
+              {/* Tous les numéros de téléphone */}
+              {phoneNumbers.length > 0 && (
+                <div className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="text-sm">
+                    {phoneNumbers.map((phone, index) => (
+                      <div key={index} className="text-muted-foreground">
+                        {phone}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Si pas de numéros dans les remarques, afficher le téléphone principal */}
+              {phoneNumbers.length === 0 && youngster.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">{youngster.telephone}</span>
