@@ -88,25 +88,18 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             }
           }
           
-          // Colonne 2: Âge - Extraction améliorée
+          // Colonne 2: Âge - Extraction directe
           let age = 0;
           if (row[2]) {
             const ageValue = row[2];
             console.log('Valeur âge brute:', ageValue, 'Type:', typeof ageValue);
             
             if (typeof ageValue === 'number') {
-              // Si c'est déjà un nombre, l'utiliser directement
               age = Math.floor(ageValue);
-            } else {
-              // Si c'est du texte, extraire le nombre
-              const ageText = ageValue.toString();
-              console.log('Texte âge:', ageText);
-              
-              // Chercher un nombre au début de la chaîne ou après "ans"
-              const ageMatch = ageText.match(/(\d+)/);
-              if (ageMatch) {
-                age = parseInt(ageMatch[1]);
-                console.log('Âge extrait:', age);
+            } else if (typeof ageValue === 'string') {
+              const ageNum = parseInt(ageValue.toString());
+              if (!isNaN(ageNum)) {
+                age = ageNum;
               }
             }
           }
@@ -119,106 +112,30 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Récupérer TOUS les numéros avec leur type
-          const telephones = row[5]?.toString() || '';
-          console.log('Téléphones bruts:', telephones);
+          // Colonne 5: Téléphones - Format simple (un seul numéro)
+          const telephone = row[5]?.toString().replace(/\s/g, '') || '';
+          console.log('Téléphone extrait:', telephone);
           
-          // Extraire les numéros avec leur type spécifique
-          const phoneTypes = {
-            perso: '',
-            bureau: '',
-            portable: '',
-            individuel: ''
-          };
-          
-          // Parser les différents types de numéros
-          const lines = telephones.split('\n');
-          for (const line of lines) {
-            const cleanLine = line.trim();
-            
-            // Perso.
-            if (cleanLine.toLowerCase().includes('perso')) {
-              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
-              if (phoneMatch) {
-                phoneTypes.perso = phoneMatch[0].replace(/[\s\.\-]/g, '');
-              }
-            }
-            
-            // Bur (Bureau)
-            else if (cleanLine.toLowerCase().includes('bur')) {
-              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
-              if (phoneMatch) {
-                phoneTypes.bureau = phoneMatch[0].replace(/[\s\.\-]/g, '');
-              }
-            }
-            
-            // Port. (Portable)
-            else if (cleanLine.toLowerCase().includes('port')) {
-              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
-              if (phoneMatch) {
-                phoneTypes.portable = phoneMatch[0].replace(/[\s\.\-]/g, '');
-              }
-            }
-            
-            // Ind. (Individuel)
-            else if (cleanLine.toLowerCase().includes('ind')) {
-              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
-              if (phoneMatch) {
-                phoneTypes.individuel = phoneMatch[0].replace(/[\s\.\-]/g, '');
-              }
-            }
-          }
-          
-          // Téléphone principal = portable en priorité, sinon le premier trouvé
-          let telephone = phoneTypes.portable || phoneTypes.perso || phoneTypes.bureau || phoneTypes.individuel;
-          
-          console.log('Numéros extraits par type:', phoneTypes);
-          console.log('Téléphone principal:', telephone);
-          
-          // Construire la liste complète des informations téléphoniques pour les informations générales
-          const phoneInfoArray: string[] = [];
-          if (phoneTypes.perso) phoneInfoArray.push(`Perso: ${phoneTypes.perso}`);
-          if (phoneTypes.bureau) phoneInfoArray.push(`Bureau: ${phoneTypes.bureau}`);
-          if (phoneTypes.portable) phoneInfoArray.push(`Portable: ${phoneTypes.portable}`);
-          if (phoneTypes.individuel) phoneInfoArray.push(`Individuel: ${phoneTypes.individuel}`);
-          
-          const phoneInfo = phoneInfoArray.join(' | ');
-          
-          // Colonne 6: Adresse complète
+          // Colonne 6: Adresse complète - Parser correctement
           const adresseComplete = row[6]?.toString() || '';
           console.log('Adresse complète:', adresseComplete);
           
-          // Parser l'adresse pour extraire rue, code postal et ville
           let adresse = '';
           let ville = '';
           let codePostal = '';
           
           if (adresseComplete) {
-            // Séparer par les sauts de ligne si présents
-            const adresseLines = adresseComplete.split('\n');
-            if (adresseLines.length >= 2) {
-              adresse = adresseLines[0].trim();
-              const secondLine = adresseLines[1].trim();
-              
-              // Chercher le code postal (5 chiffres) dans la deuxième ligne
-              const codePostalMatch = secondLine.match(/(\d{5})/);
-              if (codePostalMatch) {
-                codePostal = codePostalMatch[1];
-                ville = secondLine.replace(codePostal, '').trim();
-              } else {
-                ville = secondLine;
-              }
+            // Chercher le code postal (5 chiffres) dans l'adresse
+            const codePostalMatch = adresseComplete.match(/(\d{5})/);
+            if (codePostalMatch) {
+              codePostal = codePostalMatch[1];
+              // Diviser l'adresse au niveau du code postal
+              const parts = adresseComplete.split(codePostal);
+              adresse = parts[0]?.trim().replace(/,$/, '') || ''; // Retirer la virgule finale si présente
+              ville = parts[1]?.trim() || '';
             } else {
-              // Si une seule ligne, chercher le code postal
-              const codePostalMatch = adresseComplete.match(/(\d{5})/);
-              if (codePostalMatch) {
-                codePostal = codePostalMatch[1];
-                const parts = adresseComplete.split(codePostal);
-                adresse = parts[0]?.trim() || '';
-                ville = parts[1]?.trim() || '';
-              } else {
-                adresse = adresseComplete;
-              }
+              // Si pas de code postal trouvé, prendre toute l'adresse
+              adresse = adresseComplete;
             }
           }
           
@@ -232,12 +149,6 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           
           // Colonne 9: Email
           const email = row[9]?.toString() || '';
-          
-          // Construire les remarques avec toutes les informations téléphoniques
-          let remarques = observations;
-          if (phoneInfo) {
-            remarques = `${observations}${observations ? ' | ' : ''}Informations générales - ${phoneInfo}`;
-          }
           
           const youngster: Youngster = {
             id: Date.now().toString() + i,
@@ -253,10 +164,10 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             codePostal,
             telephone,
             email,
-            remarques
+            remarques: observations
           };
           
-          console.log('Jeune créé avec âge:', youngster.age);
+          console.log('Jeune créé:', youngster);
           youngsters.push(youngster);
         }
         
