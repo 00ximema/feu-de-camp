@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,9 +7,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { UserCheck, Plus, Upload, FileText, Calendar, Phone, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import { useSession } from "@/hooks/useSession";
 
 interface Animateur {
   id: number;
+  sessionId?: string;
   nom: string;
   prenom: string;
   age: number;
@@ -35,6 +37,8 @@ const Equipe = () => {
   const [selectedAnimateur, setSelectedAnimateur] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
   const { toast } = useToast();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
   const [form, setForm] = useState({
     nom: "",
@@ -47,24 +51,33 @@ const Equipe = () => {
     notes: ""
   });
 
-  // Charger les animateurs depuis localStorage au démarrage
+  // Charger les animateurs depuis la base de données
   useEffect(() => {
-    const savedAnimateurs = localStorage.getItem('equipe-animateurs');
-    if (savedAnimateurs) {
-      setAnimateurs(JSON.parse(savedAnimateurs));
-    }
-  }, []);
+    const loadAnimateurs = async () => {
+      if (!isInitialized) return;
+      
+      try {
+        const dbAnimateurs = await db.getAll('animateurs', currentSession?.id);
+        setAnimateurs(dbAnimateurs);
+      } catch (error) {
+        console.error('Erreur lors du chargement des animateurs:', error);
+        // Fallback vers localStorage si erreur
+        const savedAnimateurs = localStorage.getItem('equipe-animateurs');
+        if (savedAnimateurs) {
+          setAnimateurs(JSON.parse(savedAnimateurs));
+        }
+      }
+    };
 
-  // Sauvegarder les animateurs dans localStorage à chaque changement
-  useEffect(() => {
-    if (animateurs.length > 0) {
-      localStorage.setItem('equipe-animateurs', JSON.stringify(animateurs));
-    }
-  }, [animateurs]);
+    loadAnimateurs();
+  }, [isInitialized, db, currentSession]);
 
-  const addAnimateur = () => {
+  const addAnimateur = async () => {
+    if (!isInitialized) return;
+    
     const newAnimateur: Animateur = {
       id: Date.now(),
+      sessionId: currentSession?.id,
       nom: form.nom,
       prenom: form.prenom,
       age: parseInt(form.age),
@@ -76,48 +89,72 @@ const Equipe = () => {
       notes: form.notes
     };
 
-    setAnimateurs(prev => [...prev, newAnimateur]);
-    setForm({
-      nom: "",
-      prenom: "",
-      age: "",
-      telephone: "",
-      email: "",
-      role: "",
-      formations: "",
-      notes: ""
-    });
-    setShowForm(false);
-    
-    toast({
-      title: "Animateur ajouté",
-      description: `${form.prenom} ${form.nom} a été ajouté à l'équipe et est disponible pour le planning`
-    });
+    try {
+      await db.save('animateurs', newAnimateur);
+      const updatedAnimateurs = [...animateurs, newAnimateur];
+      setAnimateurs(updatedAnimateurs);
+      
+      setForm({
+        nom: "",
+        prenom: "",
+        age: "",
+        telephone: "",
+        email: "",
+        role: "",
+        formations: "",
+        notes: ""
+      });
+      setShowForm(false);
+      
+      toast({
+        title: "Animateur ajouté",
+        description: `${form.prenom} ${form.nom} a été ajouté à l'équipe et enregistré en base de données`
+      });
+      
+      console.log('Animateur enregistré en base de données');
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de l\'animateur:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer l'animateur",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (files && selectedAnimateur) {
-      Array.from(files).forEach(file => {
-        const newDoc: Document = {
-          id: Date.now() + Math.random(),
-          nom: file.name,
-          type: file.type,
-          dateUpload: new Date().toLocaleDateString('fr-FR'),
-          url: URL.createObjectURL(file)
-        };
+    if (files && selectedAnimateur && isInitialized) {
+      const updatedAnimateurs = [...animateurs];
+      const animateurIndex = updatedAnimateurs.findIndex(a => a.id === selectedAnimateur);
+      
+      if (animateurIndex !== -1) {
+        Array.from(files).forEach(file => {
+          const newDoc: Document = {
+            id: Date.now() + Math.random(),
+            nom: file.name,
+            type: file.type,
+            dateUpload: new Date().toLocaleDateString('fr-FR'),
+            url: URL.createObjectURL(file)
+          };
 
-        setAnimateurs(prev => prev.map(anim => 
-          anim.id === selectedAnimateur 
-            ? { ...anim, documents: [...anim.documents, newDoc] }
-            : anim
-        ));
-      });
+          updatedAnimateurs[animateurIndex].documents.push(newDoc);
+        });
 
-      toast({
-        title: "Documents uploadés",
-        description: `${files.length} document(s) ajouté(s) avec succès`
-      });
+        try {
+          await db.save('animateurs', updatedAnimateurs[animateurIndex]);
+          setAnimateurs(updatedAnimateurs);
+
+          toast({
+            title: "Documents uploadés",
+            description: `${files.length} document(s) ajouté(s) et enregistré(s) en base de données`
+          });
+          
+          console.log('Documents enregistrés en base de données');
+        } catch (error) {
+          console.error('Erreur lors de l\'enregistrement des documents:', error);
+        }
+      }
     }
   };
 
@@ -150,9 +187,10 @@ const Equipe = () => {
                     <CardTitle>Équipe d'animation</CardTitle>
                     <CardDescription>
                       {animateurs.length} animateur(s) dans l'équipe
+                      {!isInitialized && <span className="text-orange-500 ml-2">(Base de données en cours d'initialisation...)</span>}
                     </CardDescription>
                   </div>
-                  <Button onClick={() => setShowForm(true)} disabled={showForm}>
+                  <Button onClick={() => setShowForm(true)} disabled={showForm || !isInitialized}>
                     <Plus className="h-4 w-4 mr-2" />
                     Nouvel animateur
                   </Button>
@@ -323,6 +361,7 @@ const Equipe = () => {
                         multiple
                         onChange={handleFileUpload}
                         className="mt-1"
+                        disabled={!isInitialized}
                       />
                       <p className="text-xs text-gray-500 mt-1">
                         Diplômes, certificats, pièces d'identité...
