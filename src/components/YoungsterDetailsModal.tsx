@@ -1,3 +1,4 @@
+
 import React from 'react';
 import {
   Dialog,
@@ -243,6 +244,22 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                     </Badge>
                   ))}
                 </div>
+              </div>
+            </>
+          )}
+
+          {/* Notes */}
+          {youngster.notes && (
+            <>
+              <Separator />
+              <div>
+                <h3 className="font-semibold mb-3 flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                  Notes
+                </h3>
+                <p className="text-sm text-muted-foreground whitespace-pre-wrap">
+                  {youngster.notes}
+                </p>
               </div>
             </>
           )}

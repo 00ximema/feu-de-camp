@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Users, Upload, Search, UserPlus, AlertCircle, FileText } from "lucide-react";
@@ -9,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import YoungsterCard from "@/components/YoungsterCard";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
-import { parseExcelFile } from "@/utils/excelParser";
+import { parseExcel } from "@/utils/excelParser";
 import { Youngster } from "@/types/youngster";
 import { useJeunes } from "@/hooks/useJeunes";
 
@@ -107,7 +109,7 @@ const Jeunes = () => {
     if (!file) return;
 
     try {
-      const youngsters = await parseExcelFile(file);
+      const youngsters = await parseExcel(file);
       const result = await addMultipleJeunes(youngsters);
       
       if (result.length > 0) {
@@ -212,8 +214,7 @@ const Jeunes = () => {
                       <YoungsterCard
                         key={youngster.id}
                         youngster={youngster}
-                        onEdit={(youngster) => setSelectedYoungster(youngster)}
-                        onDelete={(id) => handleDeleteYoungster(id)}
+                        onClick={() => setSelectedYoungster(youngster)}
                       />
                     ))}
                   </div>
@@ -395,7 +396,6 @@ const Jeunes = () => {
             youngster={selectedYoungster}
             isOpen={!!selectedYoungster}
             onClose={() => setSelectedYoungster(null)}
-            onUpdate={handleUpdateYoungster}
           />
         )}
       </main>

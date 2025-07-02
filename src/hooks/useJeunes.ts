@@ -33,7 +33,13 @@ export const useJeunes = () => {
     const newJeune: Youngster = {
       ...jeune,
       id: Date.now().toString(),
-      sessionId: currentSession?.id
+      sessionId: currentSession?.id,
+      telephone: jeune.telephone || '',
+      email: jeune.email || '',
+      adresse: jeune.adresse || '',
+      allergies: jeune.allergies || [],
+      medicaments: jeune.medicaments || [],
+      notes: jeune.notes || ''
     };
 
     try {
@@ -55,7 +61,13 @@ export const useJeunes = () => {
     const jeunesWithIds: Youngster[] = nouvellesJeunes.map((jeune, index) => ({
       ...jeune,
       id: (Date.now() + index).toString(),
-      sessionId: currentSession?.id
+      sessionId: currentSession?.id,
+      telephone: jeune.telephone || '',
+      email: jeune.email || '',
+      adresse: jeune.adresse || '',
+      allergies: jeune.allergies || [],
+      medicaments: jeune.medicaments || [],
+      notes: jeune.notes || ''
     }));
 
     try {

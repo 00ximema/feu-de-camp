@@ -1,6 +1,7 @@
 
 export interface Youngster {
   id: string;
+  sessionId?: string;
   nom: string;
   prenom: string;
   age: number;
@@ -25,5 +26,6 @@ export interface Youngster {
   problemesSante?: string[];
   contactUrgence?: string;
   remarques?: string;
+  notes?: string;
   dateInscription?: string;
 }

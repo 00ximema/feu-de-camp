@@ -2,17 +2,22 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Youngster } from "@/types/youngster";
-import { User, Calendar, MapPin } from "lucide-react";
+import { User, Calendar, MapPin, Edit, Trash2 } from "lucide-react";
 
 interface YoungsterCardProps {
   youngster: Youngster;
   onClick?: () => void;
+  onEdit?: (youngster: Youngster) => void;
+  onDelete?: (id: string) => void;
 }
 
 const YoungsterCard: React.FC<YoungsterCardProps> = ({ 
   youngster, 
-  onClick 
+  onClick,
+  onEdit,
+  onDelete
 }) => {
   return (
     <Card 
@@ -56,6 +61,35 @@ const YoungsterCard: React.FC<YoungsterCardProps> = ({
                   {regimeItem}
                 </Badge>
               ))}
+            </div>
+          )}
+
+          {(onEdit || onDelete) && (
+            <div className="flex gap-2 pt-2">
+              {onEdit && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(youngster);
+                  }}
+                >
+                  <Edit className="h-3 w-3" />
+                </Button>
+              )}
+              {onDelete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(youngster.id);
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              )}
             </div>
           )}
         </div>
