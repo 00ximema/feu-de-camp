@@ -1,4 +1,3 @@
-
 import React from 'react';
 import {
   Dialog,
@@ -34,25 +33,17 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
 }) => {
   if (!youngster) return null;
 
-  // Extraire les informations téléphoniques des remarques
-  const extractPhoneInfo = (remarques: string) => {
-    if (!remarques) return null;
-    
-    const phoneInfoMatch = remarques.match(/Informations générales - (.+?)(?:\||$)/);
-    if (phoneInfoMatch) {
-      return phoneInfoMatch[1].trim();
-    }
-    return null;
-  };
-
-  // Nettoyer les remarques en retirant les informations téléphoniques
+  // Nettoyer les remarques en retirant les informations téléphoniques et les caractères indésirables
   const cleanRemarks = (remarques: string) => {
     if (!remarques) return '';
     
-    return remarques.replace(/\s*\|\s*Informations générales - .+?(?=\||$)/, '').trim();
+    return remarques
+      .replace(/Informations générales - /g, '') // Supprimer "Informations générales - "
+      .replace(/\|/g, '') // Supprimer tous les "|"
+      .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul
+      .trim();
   };
 
-  const phoneInfo = extractPhoneInfo(youngster.remarques || '');
   const cleanedRemarks = cleanRemarks(youngster.remarques || '');
 
   return (
@@ -89,22 +80,11 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                 </div>
               )}
               
-              {/* Téléphone principal */}
+              {/* Téléphone principal uniquement */}
               {youngster.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">Principal: {youngster.telephone}</span>
-                </div>
-              )}
-
-              {/* Tous les numéros de téléphone */}
-              {phoneInfo && (
-                <div className="flex items-start gap-2">
-                  <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm">
-                    <div className="font-medium mb-1">Tous les numéros :</div>
-                    <div className="text-muted-foreground">{phoneInfo}</div>
-                  </div>
+                  <span className="text-sm">{youngster.telephone}</span>
                 </div>
               )}
               
