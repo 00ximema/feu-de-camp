@@ -54,37 +54,49 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
     ? youngster.age 
     : calculateAge(youngster.dateNaissance || '');
 
-  // Extraire les informations téléphoniques des remarques
-  const extractPhoneInfo = (remarques: string) => {
+  // Extraire TOUS les numéros de téléphone des remarques
+  const extractAllPhoneNumbers = (remarques: string) => {
     if (!remarques) return [];
     
     const phoneNumbers: string[] = [];
+    console.log('Extraction téléphones depuis remarques:', remarques);
     
-    // Chercher les numéros avec leurs types dans les remarques
-    const phoneMatches = remarques.match(/(Perso|Bureau|Portable|Individuel):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/g);
-    
-    if (phoneMatches) {
-      phoneMatches.forEach(match => {
+    // Pattern pour capturer "Téléphone: XX XX XX XX XX"
+    const simplePhoneMatches = remarques.match(/Téléphone:\s*(\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2})/g);
+    if (simplePhoneMatches) {
+      console.log('Numéros simples trouvés:', simplePhoneMatches);
+      simplePhoneMatches.forEach(match => {
         phoneNumbers.push(match);
       });
     }
     
+    // Pattern pour capturer "Type: XX XX XX XX XX"
+    const typedPhoneMatches = remarques.match(/(Perso|Bureau|Portable|Individuel):\s*(\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2})/g);
+    if (typedPhoneMatches) {
+      console.log('Numéros avec type trouvés:', typedPhoneMatches);
+      typedPhoneMatches.forEach(match => {
+        phoneNumbers.push(match);
+      });
+    }
+    
+    console.log('Tous les numéros extraits:', phoneNumbers);
     return phoneNumbers;
   };
 
-  // Nettoyer les remarques en retirant les informations téléphoniques et les caractères indésirables
+  // Nettoyer les remarques en retirant les informations téléphoniques
   const cleanRemarks = (remarques: string) => {
     if (!remarques) return '';
     
     return remarques
       .replace(/Informations générales - /g, '') // Supprimer "Informations générales - "
       .replace(/\|/g, '') // Supprimer tous les "|"
-      .replace(/(Perso|Bureau|Portable|Individuel):\s*0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2})/g, '') // Supprimer les numéros de téléphone
+      .replace(/Téléphone:\s*\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2}/g, '') // Supprimer les numéros simples
+      .replace(/(Perso|Bureau|Portable|Individuel):\s*\d{2}\s\d{2}\s\d{2}\s\d{2}\s\d{2}/g, '') // Supprimer les numéros avec type
       .replace(/\s+/g, ' ') // Remplacer les espaces multiples par un seul
       .trim();
   };
 
-  const phoneNumbers = extractPhoneInfo(youngster.remarques || '');
+  const allPhoneNumbers = extractAllPhoneNumbers(youngster.remarques || '');
   const cleanedRemarks = cleanRemarks(youngster.remarques || '');
 
   return (
@@ -124,12 +136,12 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                 </div>
               )}
               
-              {/* Tous les numéros de téléphone */}
-              {phoneNumbers.length > 0 && (
+              {/* TOUS les numéros de téléphone extraits des remarques */}
+              {allPhoneNumbers.length > 0 && (
                 <div className="flex items-start gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
-                  <div className="text-sm">
-                    {phoneNumbers.map((phone, index) => (
+                  <div className="text-sm space-y-1">
+                    {allPhoneNumbers.map((phone, index) => (
                       <div key={index} className="text-muted-foreground">
                         {phone}
                       </div>
@@ -139,7 +151,7 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
               )}
               
               {/* Si pas de numéros dans les remarques, afficher le téléphone principal */}
-              {phoneNumbers.length === 0 && youngster.telephone && (
+              {allPhoneNumbers.length === 0 && youngster.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
                   <span className="text-sm">{youngster.telephone}</span>
