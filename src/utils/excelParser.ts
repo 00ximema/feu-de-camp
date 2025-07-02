@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { Youngster } from "@/types/youngster";
 
@@ -51,7 +50,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           const nom = nomPrenomParts[0] || '';
           const prenom = nomPrenomParts.slice(1).join(' ') || '';
           
-          // Colonne 1: Date de Naissance - Corriger MM/JJ vers JJ/MM
+          // Colonne 1: Date de Naissance - Conversion correcte MM/JJ/YYYY vers JJ/MM
           let dateNaissance = '';
           if (row[1]) {
             const dateValue = row[1];
@@ -62,11 +61,25 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
               dateNaissance = excelDate.toLocaleDateString('fr-FR');
             } else {
               let dateString = dateValue.toString();
-              // Inverser MM/JJ/YYYY vers JJ/MM/YYYY
-              const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+              console.log('Date string original:', dateString);
+              
+              // Gérer le format MM/JJ/YY ou MM/JJ/YYYY
+              const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
               if (dateMatch) {
-                const [, mm, jj, yyyy] = dateMatch;
-                dateNaissance = `${jj}/${mm}/${yyyy}`;
+                let [, mm, jj, yy] = dateMatch;
+                
+                // Convertir l'année sur 2 chiffres en 4 chiffres si nécessaire
+                if (yy.length === 2) {
+                  const currentYear = new Date().getFullYear();
+                  const currentCentury = Math.floor(currentYear / 100) * 100;
+                  const year2digit = parseInt(yy);
+                  // Si l'année à 2 chiffres est > 50, c'est probablement 19xx, sinon 20xx
+                  yy = year2digit > 50 ? (1900 + year2digit).toString() : (currentCentury + year2digit).toString();
+                }
+                
+                // Inverser MM/JJ vers JJ/MM
+                dateNaissance = `${jj.padStart(2, '0')}/${mm.padStart(2, '0')}/${yy}`;
+                console.log('Date convertie:', dateNaissance);
               } else {
                 dateNaissance = dateString;
               }
@@ -140,12 +153,14 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           console.log('Numéros extraits par type:', phoneTypes);
           console.log('Téléphone principal:', telephone);
           
-          // Construire la liste complète des informations téléphoniques
-          const phoneInfo: string[] = [];
-          if (phoneTypes.perso) phoneInfo.push(`Perso: ${phoneTypes.perso}`);
-          if (phoneTypes.bureau) phoneInfo.push(`Bureau: ${phoneTypes.bureau}`);
-          if (phoneTypes.portable) phoneInfo.push(`Portable: ${phoneTypes.portable}`);
-          if (phoneTypes.individuel) phoneInfo.push(`Individuel: ${phoneTypes.individuel}`);
+          // Construire la liste complète des informations téléphoniques pour les informations générales
+          const phoneInfoArray: string[] = [];
+          if (phoneTypes.perso) phoneInfoArray.push(`Perso: ${phoneTypes.perso}`);
+          if (phoneTypes.bureau) phoneInfoArray.push(`Bureau: ${phoneTypes.bureau}`);
+          if (phoneTypes.portable) phoneInfoArray.push(`Portable: ${phoneTypes.portable}`);
+          if (phoneTypes.individuel) phoneInfoArray.push(`Individuel: ${phoneTypes.individuel}`);
+          
+          const phoneInfo = phoneInfoArray.join(' | ');
           
           // Colonne 6: Adresse complète
           const adresseComplete = row[6]?.toString() || '';
@@ -198,8 +213,8 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           
           // Construire les remarques avec toutes les informations téléphoniques
           let remarques = observations;
-          if (phoneInfo.length > 0) {
-            remarques = `${observations}${observations ? ' | ' : ''}Téléphones: ${phoneInfo.join(', ')}`;
+          if (phoneInfo) {
+            remarques = `${observations}${observations ? ' | ' : ''}Informations générales - ${phoneInfo}`;
           }
           
           const youngster: Youngster = {
