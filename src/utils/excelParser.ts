@@ -21,67 +21,83 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           range: 6 // Commencer à la ligne 7 (index 6)
         });
         
+        console.log('Données Excel brutes:', jsonData);
+        
         const youngsters: Youngster[] = [];
         
-        // Traiter chaque ligne
-        for (let i = 1; i < jsonData.length; i++) { // Commencer à 1 pour éviter l'en-tête
+        // Traiter chaque ligne à partir de la ligne 2 (index 1) pour éviter l'en-tête
+        for (let i = 1; i < jsonData.length; i++) {
           const row = jsonData[i] as any[];
+          
+          console.log(`Ligne ${i}:`, row);
           
           // Arrêter si on trouve "Nombre de filles :"
           if (row[0] && row[0].toString().includes("Nombre de filles")) {
+            console.log('Arrêt détecté à la ligne:', row[0]);
             break;
           }
           
           // Vérifier si la ligne contient des données valides
-          if (!row[0] || !row[1]) {
+          if (!row[0] || row[0].toString().trim() === '') {
+            console.log('Ligne vide ignorée:', i);
             continue;
           }
           
-          // Extraire le nom et prénom
-          const nomPrenom = row[0]?.toString().split(' ');
-          const nom = nomPrenom[0] || '';
-          const prenom = nomPrenom.slice(1).join(' ') || '';
+          // Colonne 0: Nom/Prénom
+          const nomPrenom = row[0]?.toString().trim() || '';
+          const nomPrenomParts = nomPrenom.split(' ');
+          const nom = nomPrenomParts[0] || '';
+          const prenom = nomPrenomParts.slice(1).join(' ') || '';
           
-          // Extraire l'âge depuis la colonne âge (ex: "17 ans 6 mois 19 jours")
+          // Colonne 1: Date de Naissance
+          const dateNaissance = row[1]?.toString() || '';
+          
+          // Colonne 2: Âge (ex: "17 ans 6 mois 19 jours")
           const ageText = row[2]?.toString() || '';
           const ageMatch = ageText.match(/(\d+)\s*ans?/);
           const age = ageMatch ? parseInt(ageMatch[1]) : 0;
           
-          // Extraire le genre
-          const genre = row[3]?.toString() || '';
+          // Colonne 3: M/F
+          const genre = row[3]?.toString().trim() || '';
           
-          // Extraire le responsable
+          // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Extraire les téléphones (peut contenir plusieurs numéros)
+          // Colonne 5: Téléphones (peut contenir plusieurs lignes)
           const telephones = row[5]?.toString() || '';
-          // Extraire le premier numéro de téléphone portable (commence par 06 ou 07)
-          const phoneMatch = telephones.match(/0[67][\s\.\-]?(?:\d{2}[\s\.\-]?){4}/);
-          const telephone = phoneMatch ? phoneMatch[0].replace(/[\s\.\-]/g, '') : '';
+          // Extraire le numéro portable (06 ou 07)
+          const phoneMatch = telephones.match(/(?:Port\.|Ind\.)?[\s]*0[67][\s\.\-]?(?:\d{2}[\s\.\-]?){4}/);
+          const telephone = phoneMatch ? phoneMatch[0].replace(/^(?:Port\.|Ind\.)?\s*/, '').replace(/[\s\.\-]/g, '') : '';
           
-          // Extraire l'adresse
-          const adresse = row[6]?.toString() || '';
+          // Colonne 6: Adresse complète
+          const adresseComplete = row[6]?.toString() || '';
           
-          // Extraire les observations
-          const observations = row[7]?.toString() || '';
-          
-          // Extraire le transport
-          const transport = row[8]?.toString() || '';
-          
-          // Extraire l'email
-          const email = row[9]?.toString() || '';
-          
-          // Extraire la ville et code postal de l'adresse
-          const adresseMatch = adresse.match(/^(.+?)\s+(\d{5})\s+(.+)$/);
+          // Parser l'adresse pour extraire rue, code postal et ville
+          let adresse = '';
           let ville = '';
           let codePostal = '';
-          let adresseRue = adresse;
           
-          if (adresseMatch) {
-            adresseRue = adresseMatch[1];
-            codePostal = adresseMatch[2];
-            ville = adresseMatch[3];
+          if (adresseComplete) {
+            // Chercher le code postal (5 chiffres)
+            const codePostalMatch = adresseComplete.match(/(\d{5})/);
+            if (codePostalMatch) {
+              codePostal = codePostalMatch[1];
+              const parts = adresseComplete.split(codePostal);
+              adresse = parts[0]?.trim() || '';
+              ville = parts[1]?.trim() || '';
+            } else {
+              adresse = adresseComplete;
+            }
           }
+          
+          // Colonne 7: Observations
+          const observations = row[7]?.toString() || '';
+          
+          // Colonne 8: Transport
+          const transport = row[8]?.toString() || '';
+          
+          // Colonne 9: Email
+          const email = row[9]?.toString() || '';
           
           const youngster: Youngster = {
             id: Date.now().toString() + i,
@@ -91,8 +107,8 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             genre: genre === 'M' ? 'M' : 'F',
             responsable,
             transport,
-            dateNaissance: row[1]?.toString() || '',
-            adresse: adresseRue,
+            dateNaissance,
+            adresse,
             ville,
             codePostal,
             telephone,
@@ -100,10 +116,11 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             remarques: observations
           };
           
+          console.log('Jeune créé:', youngster);
           youngsters.push(youngster);
         }
         
-        console.log('Jeunes parsés:', youngsters);
+        console.log('Total jeunes parsés:', youngsters.length);
         resolve(youngsters);
         
       } catch (error) {
