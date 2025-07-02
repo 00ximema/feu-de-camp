@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from "@/components/ui/button";
 import { 
@@ -21,14 +20,17 @@ import { Label } from "@/components/ui/label";
 import { ChevronDown, Plus, Trash2, Calendar } from 'lucide-react';
 import { useSession } from '@/hooks/useSession';
 import { useToast } from '@/hooks/use-toast';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const SessionManager = () => {
   const { sessions, currentSession, createSession, deleteSession, switchSession } = useSession();
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newSessionName, setNewSessionName] = useState('');
 
-  const handleCreateSession = () => {
+  const handleCreateSession = async () => {
     if (!newSessionName.trim()) {
       toast({
         title: "Erreur",
@@ -38,7 +40,7 @@ const SessionManager = () => {
       return;
     }
 
-    createSession(newSessionName.trim());
+    await createSession(newSessionName.trim());
     setNewSessionName('');
     setIsCreateDialogOpen(false);
     
@@ -46,6 +48,11 @@ const SessionManager = () => {
       title: "Session créée",
       description: `La session "${newSessionName}" a été créée avec succès`
     });
+
+    // Rediriger vers la page d'accueil si on n'y est pas déjà
+    if (location.pathname !== '/') {
+      navigate('/');
+    }
   };
 
   const handleDeleteSession = (sessionId: string, sessionName: string) => {
