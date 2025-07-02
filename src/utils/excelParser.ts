@@ -1,4 +1,3 @@
-
 import * as XLSX from 'xlsx';
 import { Youngster } from "@/types/youngster";
 
@@ -106,55 +105,102 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Extraction et formatage
+          // Colonne 5: Téléphones - DEBUG et extraction améliorée
           let telephone = '';
           let remarquesWithPhones = '';
           
           if (row[5]) {
             const phoneData = row[5].toString();
-            console.log('Données téléphone brutes:', phoneData);
+            console.log('=== DEBUG TÉLÉPHONE ===');
+            console.log('Données téléphone brutes (colonne 5):', phoneData);
+            console.log('Type:', typeof phoneData);
+            console.log('Longueur:', phoneData.length);
             
-            // Chercher tous les numéros avec leurs types
-            const phoneRegex = /(Perso|Bureau|Portable|Individuel|Port):\s*([0-9]{10}|[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2})/g;
-            const phoneMatches = [...phoneData.matchAll(phoneRegex)];
+            // Essayer plusieurs patterns de numéros de téléphone
+            const patterns = [
+              // Pattern principal avec types
+              /(Perso|Bureau|Portable|Individuel|Port):\s*([0-9]{10}|[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2})/g,
+              // Pattern simple sans espaces ni points
+              /([0-9]{10})/g,
+              // Pattern avec points
+              /([0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2})/g,
+              // Pattern avec espaces
+              /([0-9]{2}\s[0-9]{2}\s[0-9]{2}\s[0-9]{2}\s[0-9]{2})/g
+            ];
+            
+            let foundNumbers = false;
+            
+            // Essayer le pattern principal avec types
+            const phoneMatches = [...phoneData.matchAll(patterns[0])];
+            console.log('Matches avec types:', phoneMatches);
             
             if (phoneMatches.length > 0) {
+              foundNumbers = true;
               const formattedPhones: string[] = [];
               
               phoneMatches.forEach(match => {
                 let type = match[1];
-                // Convertir "Port" en "Portable"
                 if (type === 'Port') type = 'Portable';
                 
-                let number = match[2].replace(/\./g, ''); // Enlever les points
+                let number = match[2].replace(/\./g, '');
                 
-                // Prendre le premier numéro pour le champ principal
                 if (!telephone) {
                   telephone = number;
                 }
                 
-                // Formater le numéro avec des espaces : 06 45 78 12 33
                 if (number.length === 10) {
                   const formattedNumber = number.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
                   formattedPhones.push(`${type}: ${formattedNumber}`);
                 }
               });
               
-              // Joindre tous les numéros formatés avec des séparateurs propres
               remarquesWithPhones = formattedPhones.join(' | ');
-            } else {
-              // Fallback : chercher un numéro simple sans type
-              const simplePhoneMatch = phoneData.match(/([0-9]{10})/);
-              if (simplePhoneMatch) {
-                telephone = simplePhoneMatch[1];
-                const formattedNumber = telephone.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
-                remarquesWithPhones = `Téléphone: ${formattedNumber}`;
+            }
+            
+            // Si pas trouvé avec types, essayer les autres patterns
+            if (!foundNumbers) {
+              console.log('Pas de numéros avec types, essai des autres patterns...');
+              
+              for (let patternIndex = 1; patternIndex < patterns.length; patternIndex++) {
+                const matches = [...phoneData.matchAll(patterns[patternIndex])];
+                console.log(`Pattern ${patternIndex} matches:`, matches);
+                
+                if (matches.length > 0) {
+                  foundNumbers = true;
+                  const numbers: string[] = [];
+                  
+                  matches.forEach(match => {
+                    let number = match[1].replace(/[\.\s]/g, ''); // Enlever points et espaces
+                    
+                    if (number.length === 10) {
+                      if (!telephone) {
+                        telephone = number;
+                      }
+                      const formattedNumber = number.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+                      numbers.push(`Téléphone: ${formattedNumber}`);
+                    }
+                  });
+                  
+                  if (numbers.length > 0) {
+                    remarquesWithPhones = numbers.join(' | ');
+                    break;
+                  }
+                }
               }
             }
+            
+            // Si toujours rien trouvé, garder la donnée brute pour analyse
+            if (!foundNumbers) {
+              console.log('Aucun numéro détecté, données brutes conservées');
+              remarquesWithPhones = `Téléphone brut: ${phoneData}`;
+            }
+            
+            console.log('Téléphone principal extrait:', telephone);
+            console.log('Remarques téléphone formatées:', remarquesWithPhones);
+            console.log('=== FIN DEBUG TÉLÉPHONE ===');
+          } else {
+            console.log('Pas de données téléphone en colonne 5');
           }
-          
-          console.log('Téléphone extrait:', telephone);
-          console.log('Remarques téléphone formatées:', remarquesWithPhones);
           
           // Colonne 6: Adresse complète
           let adresse = '';
