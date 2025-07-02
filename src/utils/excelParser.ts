@@ -1,4 +1,5 @@
 
+
 import * as XLSX from 'xlsx';
 import { Youngster } from "@/types/youngster";
 
@@ -275,3 +276,4 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
     reader.readAsBinaryString(file);
   });
 };
+
