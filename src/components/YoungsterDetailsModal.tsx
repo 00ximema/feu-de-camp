@@ -34,6 +34,27 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
 }) => {
   if (!youngster) return null;
 
+  // Extraire les informations téléphoniques des remarques
+  const extractPhoneInfo = (remarques: string) => {
+    if (!remarques) return null;
+    
+    const phoneInfoMatch = remarques.match(/Informations générales - (.+?)(?:\||$)/);
+    if (phoneInfoMatch) {
+      return phoneInfoMatch[1].trim();
+    }
+    return null;
+  };
+
+  // Nettoyer les remarques en retirant les informations téléphoniques
+  const cleanRemarks = (remarques: string) => {
+    if (!remarques) return '';
+    
+    return remarques.replace(/\s*\|\s*Informations générales - .+?(?=\||$)/, '').trim();
+  };
+
+  const phoneInfo = extractPhoneInfo(youngster.remarques || '');
+  const cleanedRemarks = cleanRemarks(youngster.remarques || '');
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -48,7 +69,7 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
           {/* Informations générales */}
           <div>
             <h3 className="font-semibold mb-3">Informations générales</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">{youngster.age} ans</span>
@@ -68,10 +89,22 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                 </div>
               )}
               
+              {/* Téléphone principal */}
               {youngster.telephone && (
                 <div className="flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm">{youngster.telephone}</span>
+                  <span className="text-sm">Principal: {youngster.telephone}</span>
+                </div>
+              )}
+
+              {/* Tous les numéros de téléphone */}
+              {phoneInfo && (
+                <div className="flex items-start gap-2">
+                  <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                  <div className="text-sm">
+                    <div className="font-medium mb-1">Tous les numéros :</div>
+                    <div className="text-muted-foreground">{phoneInfo}</div>
+                  </div>
                 </div>
               )}
               
@@ -164,8 +197,8 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
             </>
           )}
 
-          {/* Remarques */}
-          {youngster.remarques && (
+          {/* Remarques - seulement si il y a des remarques après nettoyage */}
+          {cleanedRemarks && (
             <>
               <Separator />
               <div>
@@ -174,7 +207,7 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                   Remarques
                 </h3>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">
-                  {youngster.remarques}
+                  {cleanedRemarks}
                 </p>
               </div>
             </>
