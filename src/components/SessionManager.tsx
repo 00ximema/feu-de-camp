@@ -49,10 +49,8 @@ const SessionManager = () => {
       description: `La session "${newSessionName}" a été créée avec succès`
     });
 
-    // Rediriger vers la page d'accueil si on n'y est pas déjà
-    if (location.pathname !== '/') {
-      navigate('/');
-    }
+    // Forcer le rechargement de la page pour afficher les modules
+    window.location.reload();
   };
 
   const handleDeleteSession = (sessionId: string, sessionName: string) => {
@@ -62,10 +60,8 @@ const SessionManager = () => {
       description: `La session "${sessionName}" a été supprimée`
     });
 
-    // Rediriger vers la page d'accueil après suppression
-    if (location.pathname !== '/') {
-      navigate('/');
-    }
+    // Forcer le rechargement de la page
+    window.location.reload();
   };
 
   const handleSwitchSession = (session: typeof currentSession) => {
@@ -76,10 +72,8 @@ const SessionManager = () => {
         description: `Vous êtes maintenant sur la session "${session.name}"`
       });
 
-      // Rediriger vers la page d'accueil après changement de session
-      if (location.pathname !== '/') {
-        navigate('/');
-      }
+      // Forcer le rechargement de la page pour afficher les modules
+      window.location.reload();
     }
   };
 
