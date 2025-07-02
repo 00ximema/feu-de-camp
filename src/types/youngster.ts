@@ -6,6 +6,7 @@ export interface Youngster {
   age: number;
   dateNaissance?: string;
   adresse?: string;
+  ville?: string;
   telephone?: string;
   email?: string;
   etablissementScolaire?: string;
@@ -16,7 +17,9 @@ export interface Youngster {
   telephoneParent2?: string;
   allergies?: string[];
   medicaments?: string[];
+  regime?: string[];
   problemesSante?: string[];
   contactUrgence?: string;
+  remarques?: string;
   dateInscription?: string;
 }
