@@ -75,6 +75,11 @@ const SessionManager = () => {
         title: "Session changée",
         description: `Vous êtes maintenant sur la session "${session.name}"`
       });
+
+      // Rediriger vers la page d'accueil après changement de session
+      if (location.pathname !== '/') {
+        navigate('/');
+      }
     }
   };
 
