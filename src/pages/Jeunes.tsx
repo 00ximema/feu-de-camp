@@ -1,533 +1,413 @@
-
-import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Users, Plus, Search, FileText, Phone, Mail, MapPin, Calendar, AlertTriangle, Utensils } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Upload, User, AlertTriangle, Plus, FileText, ArrowLeft, Calendar, Clock, Eye } from "lucide-react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Youngster } from "@/types/youngster";
+import { useToast } from "@/hooks/use-toast";
+import { parseExcel } from "@/utils/excelParser";
+import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
+import { useEvents } from "@/hooks/useEvents";
 
 const Jeunes = () => {
-  const [jeunes, setJeunes] = useState<Youngster[]>([]);
-  const [selectedJeune, setSelectedJeune] = useState<string | null>(null);
-  const [showForm, setShowForm] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [youngsters, setYoungsters] = useState<Youngster[]>([]);
+  const [selectedYoungster, setSelectedYoungster] = useState<string | null>(null);
+  const [showAlert, setShowAlert] = useState(false);
+  const [selectedYoungsterForModal, setSelectedYoungsterForModal] = useState<Youngster | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [eventType, setEventType] = useState<string>('');
+  const [eventDescription, setEventDescription] = useState<string>('');
   const { toast } = useToast();
+  const { events, addEvent } = useEvents();
 
-  const [form, setForm] = useState({
-    nom: "",
-    prenom: "",
-    age: "",
-    dateNaissance: "",
-    adresse: "",
-    ville: "",
-    telephone: "",
-    email: "",
-    contactUrgence: "",
-    allergies: [] as string[],
-    medicaments: [] as string[],
-    regime: [] as string[],
-    remarques: ""
-  });
-
-  // Charger les jeunes depuis localStorage au démarrage
-  useEffect(() => {
-    const savedJeunes = localStorage.getItem('centre-jeunes');
-    if (savedJeunes) {
-      setJeunes(JSON.parse(savedJeunes));
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    console.log('Fichier sélectionné:', file);
+    
+    if (file) {
+      console.log('Type de fichier:', file.type);
+      console.log('Taille du fichier:', file.size);
+      
+      try {
+        // Vérifier l'extension du fichier
+        const fileName = file.name.toLowerCase();
+        
+        if (!fileName.endsWith('.xls') && !fileName.endsWith('.xlsx')) {
+          throw new Error('Format de fichier non supporté. Utilisez uniquement .xlsx ou .xls');
+        }
+        
+        // Parser Excel uniquement
+        const parsedYoungsters = await parseExcel(file);
+        
+        console.log('Jeunes parsés:', parsedYoungsters);
+        setYoungsters(parsedYoungsters);
+        
+        // Sauvegarder dans localStorage pour la page Administratif
+        localStorage.setItem('imported-youngsters', JSON.stringify(parsedYoungsters));
+        
+        toast({
+          title: "Import réussi",
+          description: `${parsedYoungsters.length} jeunes ont été importés avec succès.`,
+        });
+      } catch (error) {
+        console.error("Erreur lors du parsing:", error);
+        toast({
+          title: "Erreur d'import",
+          description: error instanceof Error ? error.message : "Impossible de lire le fichier. Vérifiez le format.",
+          variant: "destructive",
+        });
+      }
     }
-  }, []);
+  };
 
-  // Sauvegarder les jeunes dans localStorage à chaque changement
-  useEffect(() => {
-    if (jeunes.length > 0) {
-      localStorage.setItem('centre-jeunes', JSON.stringify(jeunes));
+  const handleMedicalEvent = (eventType: string) => {
+    setEventType(eventType);
+    if (eventType === "consultation_medecin") {
+      setShowAlert(true);
     }
-  }, [jeunes]);
+  };
 
-  const addJeune = () => {
-    const newJeune: Youngster = {
-      id: Date.now().toString(),
-      nom: form.nom,
-      prenom: form.prenom,
-      age: parseInt(form.age),
-      dateNaissance: form.dateNaissance,
-      adresse: form.adresse,
-      ville: form.ville,
-      telephone: form.telephone,
-      email: form.email,
-      contactUrgence: form.contactUrgence,
-      allergies: form.allergies,
-      medicaments: form.medicaments,
-      regime: form.regime,
-      remarques: form.remarques,
-      dateInscription: new Date().toISOString().split('T')[0]
-    };
+  const handleSaveEvent = () => {
+    if (!selectedYoungster || !eventType || !eventDescription.trim()) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    setJeunes(prev => [...prev, newJeune]);
-    
-    // Réinitialiser le formulaire
-    setForm({
-      nom: "",
-      prenom: "",
-      age: "",
-      dateNaissance: "",
-      adresse: "",
-      ville: "",
-      telephone: "",
-      email: "",
-      contactUrgence: "",
-      allergies: [],
-      medicaments: [],
-      regime: [],
-      remarques: ""
-    });
-    
-    setShowForm(false);
-    
+    const youngster = youngsters.find(y => y.id === selectedYoungster);
+    if (!youngster) return;
+
+    const event = addEvent(
+      selectedYoungster,
+      `${youngster.prenom} ${youngster.nom}`,
+      eventType,
+      eventDescription
+    );
+
     toast({
-      title: "Jeune ajouté",
-      description: `${form.prenom} ${form.nom} a été ajouté avec succès`
+      title: "Événement enregistré",
+      description: `Événement "${eventType}" enregistré pour ${youngster.prenom} ${youngster.nom}`,
     });
+
+    // Réinitialiser le formulaire
+    setSelectedYoungster(null);
+    setEventType('');
+    setEventDescription('');
+    setShowAlert(false);
   };
 
-  const handleArrayInput = (field: 'allergies' | 'medicaments' | 'regime', value: string) => {
-    const items = value.split(',').map(item => item.trim()).filter(item => item);
-    setForm(prev => ({ ...prev, [field]: items }));
+  const handleYoungsterClick = (youngster: Youngster) => {
+    setSelectedYoungsterForModal(youngster);
+    setIsModalOpen(true);
   };
 
-  const filteredJeunes = jeunes.filter(jeune =>
-    `${jeune.prenom} ${jeune.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    jeune.age.toString().includes(searchTerm)
-  );
-
-  const selectedJeuneData = jeunes.find(j => j.id === selectedJeune);
-
-  const getAgeColor = (age: number) => {
-    if (age <= 6) return 'bg-purple-100 text-purple-800';
-    if (age <= 12) return 'bg-blue-100 text-blue-800';
-    if (age <= 17) return 'bg-green-100 text-green-800';
-    return 'bg-gray-100 text-gray-800';
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedYoungsterForModal(null);
   };
 
-  const getAgeCategory = (age: number) => {
-    if (age <= 6) return 'Petite enfance';
-    if (age <= 12) return 'Enfance';
-    if (age <= 17) return 'Adolescence';
-    return 'Jeune adulte';
+  const getEventTypeLabel = (type: string) => {
+    const labels: { [key: string]: string } = {
+      'blessure': 'Blessure',
+      'consultation_medecin': 'Consultation médecin',
+      'malaise': 'Malaise',
+      'allergie': 'Réaction allergique',
+      'autre': 'Autre'
+    };
+    return labels[type] || type;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      {/* Header */}
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Users className="h-6 w-6 text-blue-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Gestion des jeunes</h1>
+              <User className="h-8 w-8 text-blue-600" />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Gestion des jeunes</h1>
+                <p className="text-gray-600">Import Excel et suivi des événements</p>
+              </div>
             </div>
             <Link to="/">
-              <Button variant="outline">Retour accueil</Button>
+              <Button variant="outline" className="flex items-center space-x-2">
+                <ArrowLeft className="h-4 w-4" />
+                <span>Retour</span>
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
+      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Statistiques rapides */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-blue-600" />
-                <span className="text-2xl font-bold">{jeunes.length}</span>
-              </div>
-              <p className="text-sm text-gray-600">Total inscrits</p>
-            </CardContent>
-          </Card>
-          
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Calendar className="h-5 w-5 text-purple-600" />
-                <span className="text-2xl font-bold">{jeunes.filter(j => j.age <= 6).length}</span>
-              </div>
-              <p className="text-sm text-gray-600">Petite enfance</p>
-            </CardContent>
-          </Card>
+        {/* Alert for medical consultation */}
+        {showAlert && (
+          <Alert className="mb-6 border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription className="text-orange-800">
+              <strong>Consultation médicale :</strong> Il faut contacter les parents + l'organisateur immédiatement.
+            </AlertDescription>
+          </Alert>
+        )}
 
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* File Upload */}
           <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Users className="h-5 w-5 text-green-600" />
-                <span className="text-2xl font-bold">{jeunes.filter(j => j.age > 6 && j.age <= 12).length}</span>
-              </div>
-              <p className="text-sm text-gray-600">Enfance</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-orange-600" />
-                <span className="text-2xl font-bold">
-                  {jeunes.filter(j => (j.allergies && j.allergies.length > 0) || (j.medicaments && j.medicaments.length > 0)).length}
-                </span>
-              </div>
-              <p className="text-sm text-gray-600">Avec besoins spéciaux</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Liste des jeunes */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Liste des jeunes</CardTitle>
-                    <CardDescription>
-                      {filteredJeunes.length} jeune(s) affiché(s)
-                    </CardDescription>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Upload className="h-5 w-5" />
+                <span>Import Excel</span>
+              </CardTitle>
+              <CardDescription>
+                Importer la liste des jeunes depuis un fichier Excel (.xlsx ou .xls)
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
+                  <div className="mt-4">
+                    <Label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="text-sm font-medium text-gray-900">Cliquer pour uploader</span>
+                      <span className="text-sm text-gray-500"> ou glisser-déposer</span>
+                    </Label>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      accept=".xlsx,.xls"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
                   </div>
-                  <Button onClick={() => setShowForm(true)} disabled={showForm}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouveau jeune
-                  </Button>
+                  <p className="text-xs text-gray-500 mt-2">Fichiers Excel (.xlsx, .xls) jusqu'à 10MB</p>
+                </div>
+                
+                {youngsters.length > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <Upload className="h-5 w-5 text-green-600" />
+                        <span className="text-green-800 font-medium">
+                          {youngsters.length} jeunes importés
+                        </span>
+                      </div>
+                      <span className="text-sm text-green-600">
+                        {events.length} événements enregistrés
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Event Management */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Saisir un événement</span>
+              </CardTitle>
+              <CardDescription>
+                Enregistrer les événements médicaux et incidents
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="youngster-select">Sélectionner un jeune</Label>
+                  <Select value={selectedYoungster || undefined} onValueChange={setSelectedYoungster}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Choisir un jeune" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {youngsters.map((youngster) => (
+                        <SelectItem key={youngster.id} value={youngster.id}>
+                          {youngster.prenom} {youngster.nom}
+                        </SelectItem>
+                      ))}
+                      {youngsters.length === 0 && (
+                        <SelectItem value="none" disabled>
+                          Aucun jeune importé
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {/* Barre de recherche */}
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input
-                    className="pl-10"
-                    placeholder="Rechercher par nom ou âge..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+                <div>
+                  <Label htmlFor="event-type">Type d'événement</Label>
+                  <Select value={eventType} onValueChange={handleMedicalEvent}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="blessure">Blessure</SelectItem>
+                      <SelectItem value="consultation_medecin">Consultation médecin</SelectItem>
+                      <SelectItem value="malaise">Malaise</SelectItem>
+                      <SelectItem value="allergie">Réaction allergique</SelectItem>
+                      <SelectItem value="autre">Autre</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="event-description">Description</Label>
+                  <textarea
+                    id="event-description"
+                    value={eventDescription}
+                    onChange={(e) => setEventDescription(e.target.value)}
+                    className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Décrire l'événement en détail..."
                   />
                 </div>
-              </CardHeader>
-              <CardContent>
-                {showForm && (
-                  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                    <h3 className="font-medium mb-4">Nouveau jeune</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nom</Label>
-                        <Input
-                          value={form.nom}
-                          onChange={(e) => setForm(prev => ({ ...prev, nom: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Prénom</Label>
-                        <Input
-                          value={form.prenom}
-                          onChange={(e) => setForm(prev => ({ ...prev, prenom: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Âge</Label>
-                        <Input
-                          type="number"
-                          value={form.age}
-                          onChange={(e) => setForm(prev => ({ ...prev, age: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Date de naissance</Label>
-                        <Input
-                          type="date"
-                          value={form.dateNaissance}
-                          onChange={(e) => setForm(prev => ({ ...prev, dateNaissance: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Adresse</Label>
-                        <Input
-                          value={form.adresse}
-                          onChange={(e) => setForm(prev => ({ ...prev, adresse: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Ville</Label>
-                        <Input
-                          value={form.ville}
-                          onChange={(e) => setForm(prev => ({ ...prev, ville: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Téléphone</Label>
-                        <Input
-                          value={form.telephone}
-                          onChange={(e) => setForm(prev => ({ ...prev, telephone: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={form.email}
-                          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <Label>Contact d'urgence</Label>
-                      <Input
-                        value={form.contactUrgence}
-                        onChange={(e) => setForm(prev => ({ ...prev, contactUrgence: e.target.value }))}
-                        placeholder="Nom et téléphone du contact d'urgence"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 mt-4">
-                      <div>
-                        <Label>Allergies (séparées par des virgules)</Label>
-                        <Input
-                          value={form.allergies.join(', ')}
-                          onChange={(e) => handleArrayInput('allergies', e.target.value)}
-                          placeholder="Arachides, Lactose..."
-                        />
-                      </div>
-                      <div>
-                        <Label>Médicaments (séparés par des virgules)</Label>
-                        <Input
-                          value={form.medicaments.join(', ')}
-                          onChange={(e) => handleArrayInput('medicaments', e.target.value)}
-                          placeholder="Ventoline, Insuline..."
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <Label>Régime alimentaire (séparé par des virgules)</Label>
-                      <Input
-                        value={form.regime.join(', ')}
-                        onChange={(e) => handleArrayInput('regime', e.target.value)}
-                        placeholder="Végétarien, Sans gluten, Halal..."
-                      />
-                    </div>
-                    <div className="mt-4">
-                      <Label>Remarques</Label>
-                      <Textarea
-                        value={form.remarques}
-                        onChange={(e) => setForm(prev => ({ ...prev, remarques: e.target.value }))}
-                        placeholder="Informations complémentaires..."
-                      />
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button onClick={addJeune}>Ajouter</Button>
-                      <Button variant="outline" onClick={() => setShowForm(false)}>Annuler</Button>
-                    </div>
-                  </div>
-                )}
 
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {filteredJeunes.map((jeune) => (
-                    <div
-                      key={jeune.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedJeune === jeune.id 
-                          ? 'border-blue-500 bg-blue-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedJeune(jeune.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-lg">
-                            {jeune.prenom} {jeune.nom}
-                          </div>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <span className={`px-2 py-1 text-xs rounded ${getAgeColor(jeune.age)}`}>
-                              {jeune.age} ans • {getAgeCategory(jeune.age)}
-                            </span>
-                            {jeune.ville && (
-                              <div className="flex items-center space-x-1 text-sm text-gray-500">
-                                <MapPin className="h-3 w-3" />
-                                <span>{jeune.ville}</span>
-                              </div>
-                            )}
-                          </div>
-                          <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                            {jeune.allergies && jeune.allergies.length > 0 && (
-                              <div className="flex items-center space-x-1 text-orange-600">
-                                <AlertTriangle className="h-3 w-3" />
-                                <span>Allergies: {jeune.allergies.join(', ')}</span>
-                              </div>
-                            )}
-                            {jeune.medicaments && jeune.medicaments.length > 0 && (
-                              <div className="flex items-center space-x-1 text-red-600">
-                                <AlertTriangle className="h-3 w-3" />
-                                <span>Médicaments: {jeune.medicaments.join(', ')}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          {jeune.regime && jeune.regime.length > 0 && (
-                            <div className="flex items-center space-x-1 text-sm text-blue-600">
-                              <Utensils className="h-3 w-3" />
-                              <span>Régime: {jeune.regime.join(', ')}</span>
-                            </div>
-                          )}
-                          {jeune.dateInscription && (
-                            <div className="text-xs text-gray-500 mt-1">
-                              Inscrit le {new Date(jeune.dateInscription).toLocaleDateString('fr-FR')}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-
-                  {filteredJeunes.length === 0 && (
-                    <div className="text-center py-12 text-gray-500">
-                      <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Aucun jeune trouvé</p>
-                      {searchTerm ? (
-                        <p className="text-sm">Essayez de modifier votre recherche</p>
-                      ) : (
-                        <p className="text-sm">Commencez par ajouter des jeunes</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Fiche détaillée */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
-                  <span>Fiche détaillée</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedJeuneData ? (
-                  <div className="space-y-4">
-                    <div className="p-3 bg-blue-50 rounded-lg">
-                      <div className="font-medium text-lg">
-                        {selectedJeuneData.prenom} {selectedJeuneData.nom}
-                      </div>
-                      <div className="text-blue-600">
-                        {selectedJeuneData.age} ans • {getAgeCategory(selectedJeuneData.age)}
-                      </div>
-                    </div>
-
-                    {selectedJeuneData.dateNaissance && (
-                      <div>
-                        <h4 className="font-medium mb-1">Date de naissance</h4>
-                        <p className="text-sm text-gray-600">
-                          {new Date(selectedJeuneData.dateNaissance).toLocaleDateString('fr-FR')}
-                        </p>
-                      </div>
-                    )}
-
-                    {(selectedJeuneData.adresse || selectedJeuneData.ville) && (
-                      <div>
-                        <h4 className="font-medium mb-1">Adresse</h4>
-                        <div className="text-sm text-gray-600">
-                          {selectedJeuneData.adresse && <div>{selectedJeuneData.adresse}</div>}
-                          {selectedJeuneData.ville && <div>{selectedJeuneData.ville}</div>}
-                        </div>
-                      </div>
-                    )}
-
-                    {(selectedJeuneData.telephone || selectedJeuneData.email) && (
-                      <div>
-                        <h4 className="font-medium mb-1">Contact</h4>
-                        <div className="space-y-1">
-                          {selectedJeuneData.telephone && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <Phone className="h-3 w-3" />
-                              <span>{selectedJeuneData.telephone}</span>
-                            </div>
-                          )}
-                          {selectedJeuneData.email && (
-                            <div className="flex items-center space-x-2 text-sm text-gray-600">
-                              <Mail className="h-3 w-3" />
-                              <span>{selectedJeuneData.email}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.contactUrgence && (
-                      <div>
-                        <h4 className="font-medium mb-1">Contact d'urgence</h4>
-                        <p className="text-sm text-gray-600">{selectedJeuneData.contactUrgence}</p>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.allergies && selectedJeuneData.allergies.length > 0 && (
-                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <div className="flex items-center space-x-2 text-orange-800 mb-1">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span className="font-medium">Allergies</span>
-                        </div>
-                        <div className="text-sm text-orange-700">
-                          {selectedJeuneData.allergies.join(', ')}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.medicaments && selectedJeuneData.medicaments.length > 0 && (
-                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-                        <div className="flex items-center space-x-2 text-red-800 mb-1">
-                          <AlertTriangle className="h-4 w-4" />
-                          <span className="font-medium">Médicaments</span>
-                        </div>
-                        <div className="text-sm text-red-700">
-                          {selectedJeuneData.medicaments.join(', ')}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.regime && selectedJeuneData.regime.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-1 flex items-center space-x-2">
-                          <Utensils className="h-4 w-4" />
-                          <span>Régime alimentaire</span>
-                        </h4>
-                        <div className="text-sm text-gray-600">
-                          {selectedJeuneData.regime.join(', ')}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.remarques && (
-                      <div>
-                        <h4 className="font-medium mb-1">Remarques</h4>
-                        <div className="p-3 bg-gray-50 rounded text-sm">
-                          {selectedJeuneData.remarques}
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedJeuneData.dateInscription && (
-                      <div className="text-xs text-gray-500 pt-2 border-t">
-                        Inscrit le {new Date(selectedJeuneData.dateInscription).toLocaleDateString('fr-FR')}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <Users className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Sélectionnez un jeune pour voir sa fiche</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
+                <Button 
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  disabled={!selectedYoungster || !eventType || !eventDescription.trim()}
+                  onClick={handleSaveEvent}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Enregistrer l'événement
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+
+        {/* Journal des événements */}
+        {events.length > 0 && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <FileText className="h-5 w-5" />
+                <span>Journal des événements ({events.length})</span>
+              </CardTitle>
+              <CardDescription>
+                Historique de tous les événements enregistrés
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                {events.map((event) => (
+                  <div key={event.id} className="border border-gray-200 rounded-lg p-4 bg-white">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 mb-2">
+                          <span className="font-medium text-gray-900">{event.youngsterName}</span>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            event.type === 'consultation_medecin' ? 'bg-red-100 text-red-800' :
+                            event.type === 'blessure' ? 'bg-orange-100 text-orange-800' :
+                            event.type === 'malaise' ? 'bg-yellow-100 text-yellow-800' :
+                            event.type === 'allergie' ? 'bg-purple-100 text-purple-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {getEventTypeLabel(event.type)}
+                          </span>
+                        </div>
+                        <p className="text-gray-700 text-sm mb-3">{event.description}</p>
+                        <div className="flex items-center space-x-4 text-xs text-gray-500">
+                          <div className="flex items-center space-x-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>{event.date}</span>
+                          </div>
+                          <div className="flex items-center space-x-1">
+                            <Clock className="h-3 w-3" />
+                            <span>{new Date(event.timestamp).toLocaleTimeString('fr-FR')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Youngsters Table */}
+        <Card className="mt-8">
+          <CardHeader>
+            <CardTitle>Liste des jeunes ({youngsters.length})</CardTitle>
+            <CardDescription>
+              Jeunes actuellement enregistrés dans le système - Cliquez sur l'icône œil pour voir tous les détails
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {youngsters.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <User className="mx-auto h-12 w-12 text-gray-300 mb-4" />
+                <p>Aucun jeune enregistré</p>
+                <p className="text-sm">Importez un fichier Excel pour commencer</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Prénom</TableHead>
+                      <TableHead>Âge</TableHead>
+                      <TableHead>Genre</TableHead>
+                      <TableHead>Responsable</TableHead>
+                      <TableHead>Téléphone</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Transport</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {youngsters.map((youngster) => (
+                      <TableRow key={youngster.id} className="hover:bg-gray-50">
+                        <TableCell className="font-medium">{youngster.nom}</TableCell>
+                        <TableCell>{youngster.prenom}</TableCell>
+                        <TableCell>{youngster.age}</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            youngster.genre === 'M' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
+                          }`}>
+                            {youngster.genre === 'M' ? 'Garçon' : 'Fille'}
+                          </span>
+                        </TableCell>
+                        <TableCell>{youngster.responsable}</TableCell>
+                        <TableCell>{youngster.telephone}</TableCell>
+                        <TableCell className="truncate max-w-[150px]">{youngster.email}</TableCell>
+                        <TableCell>{youngster.transport}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleYoungsterClick(youngster)}
+                            className="h-8 w-8 p-0"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Modal for youngster details */}
+        <YoungsterDetailsModal
+          youngster={selectedYoungsterForModal}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+        />
       </main>
     </div>
   );
