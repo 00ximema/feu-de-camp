@@ -28,19 +28,36 @@ interface DatabaseSchema {
     notes: string;
   };
   
-  // Jeunes
+  // Jeunes - Updated to match Youngster interface
   jeunes: {
     id: string;
     sessionId?: string;
     nom: string;
     prenom: string;
     age: number;
-    telephone: string;
-    email: string;
-    adresse: string;
-    allergies: string[];
-    medicaments: string[];
-    notes: string;
+    genre?: string;
+    responsable?: string;
+    transport?: string;
+    dateNaissance?: string;
+    adresse?: string;
+    ville?: string;
+    codePostal?: string;
+    telephone?: string;
+    email?: string;
+    etablissementScolaire?: string;
+    niveauScolaire?: string;
+    nomParent1?: string;
+    telephoneParent1?: string;
+    nomParent2?: string;
+    telephoneParent2?: string;
+    allergies?: string[];
+    medicaments?: string[];
+    regime?: string[];
+    problemesSante?: string[];
+    contactUrgence?: string;
+    remarques?: string;
+    notes?: string;
+    dateInscription?: string;
   };
   
   // Événements
