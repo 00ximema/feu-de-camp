@@ -106,7 +106,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Extraction et formatage amélioré
+          // Colonne 5: Téléphones - Extraction et formatage
           let telephone = '';
           let remarquesWithPhones = '';
           
@@ -123,7 +123,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
               
               phoneMatches.forEach(match => {
                 let type = match[1];
-                // Convertir "Port" en "Portable" pour l'affichage
+                // Convertir "Port" en "Portable"
                 if (type === 'Port') type = 'Portable';
                 
                 let number = match[2].replace(/\./g, ''); // Enlever les points
@@ -143,7 +143,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
               // Joindre tous les numéros formatés avec des séparateurs propres
               remarquesWithPhones = formattedPhones.join(' | ');
             } else {
-              // Fallback : chercher un numéro simple
+              // Fallback : chercher un numéro simple sans type
               const simplePhoneMatch = phoneData.match(/([0-9]{10})/);
               if (simplePhoneMatch) {
                 telephone = simplePhoneMatch[1];
@@ -156,7 +156,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           console.log('Téléphone extrait:', telephone);
           console.log('Remarques téléphone formatées:', remarquesWithPhones);
           
-          // Colonne 6: Adresse complète - Récupération complète
+          // Colonne 6: Adresse complète
           let adresse = '';
           let ville = '';
           let codePostal = '';
@@ -165,10 +165,10 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             const adresseComplete = row[6].toString().trim();
             console.log('Adresse complète brute:', adresseComplete);
             
-            // Garder l'adresse complète dans le champ adresse
+            // Garder l'adresse complète
             adresse = adresseComplete;
             
-            // Essayer d'extraire le code postal (5 chiffres) pour les champs séparés
+            // Essayer d'extraire le code postal et la ville pour les champs séparés
             const codePostalMatch = adresseComplete.match(/\b(\d{5})\b/);
             if (codePostalMatch) {
               codePostal = codePostalMatch[1];
