@@ -84,33 +84,68 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Récupérer TOUS les numéros
+          // Colonne 5: Téléphones - Récupérer TOUS les numéros avec leur type
           const telephones = row[5]?.toString() || '';
           console.log('Téléphones bruts:', telephones);
           
-          // Extraire TOUS les numéros de téléphone
-          const allPhones: string[] = [];
-          const phoneRegex = /0[1-9](?:[\s\.\-]?\d{2}){4}/g;
-          let phoneMatch;
+          // Extraire les numéros avec leur type spécifique
+          const phoneTypes = {
+            perso: '',
+            bureau: '',
+            portable: '',
+            individuel: ''
+          };
           
-          while ((phoneMatch = phoneRegex.exec(telephones)) !== null) {
-            const cleanPhone = phoneMatch[0].replace(/[\s\.\-]/g, '');
-            if (!allPhones.includes(cleanPhone)) {
-              allPhones.push(cleanPhone);
+          // Parser les différents types de numéros
+          const lines = telephones.split('\n');
+          for (const line of lines) {
+            const cleanLine = line.trim();
+            
+            // Perso.
+            if (cleanLine.toLowerCase().includes('perso')) {
+              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
+              if (phoneMatch) {
+                phoneTypes.perso = phoneMatch[0].replace(/[\s\.\-]/g, '');
+              }
+            }
+            
+            // Bur (Bureau)
+            else if (cleanLine.toLowerCase().includes('bur')) {
+              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
+              if (phoneMatch) {
+                phoneTypes.bureau = phoneMatch[0].replace(/[\s\.\-]/g, '');
+              }
+            }
+            
+            // Port. (Portable)
+            else if (cleanLine.toLowerCase().includes('port')) {
+              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
+              if (phoneMatch) {
+                phoneTypes.portable = phoneMatch[0].replace(/[\s\.\-]/g, '');
+              }
+            }
+            
+            // Ind. (Individuel)
+            else if (cleanLine.toLowerCase().includes('ind')) {
+              const phoneMatch = cleanLine.match(/0[1-9](?:[\s\.\-]?\d{2}){4}/);
+              if (phoneMatch) {
+                phoneTypes.individuel = phoneMatch[0].replace(/[\s\.\-]/g, '');
+              }
             }
           }
           
-          // Prendre le premier numéro portable (06/07) comme principal, sinon le premier numéro
-          let telephone = '';
-          const mobilePhone = allPhones.find(phone => phone.startsWith('06') || phone.startsWith('07'));
-          if (mobilePhone) {
-            telephone = mobilePhone;
-          } else if (allPhones.length > 0) {
-            telephone = allPhones[0];
-          }
+          // Téléphone principal = portable en priorité, sinon le premier trouvé
+          let telephone = phoneTypes.portable || phoneTypes.perso || phoneTypes.bureau || phoneTypes.individuel;
           
-          console.log('Téléphones extraits:', allPhones);
+          console.log('Numéros extraits par type:', phoneTypes);
           console.log('Téléphone principal:', telephone);
+          
+          // Construire la liste complète des informations téléphoniques
+          const phoneInfo: string[] = [];
+          if (phoneTypes.perso) phoneInfo.push(`Perso: ${phoneTypes.perso}`);
+          if (phoneTypes.bureau) phoneInfo.push(`Bureau: ${phoneTypes.bureau}`);
+          if (phoneTypes.portable) phoneInfo.push(`Portable: ${phoneTypes.portable}`);
+          if (phoneTypes.individuel) phoneInfo.push(`Individuel: ${phoneTypes.individuel}`);
           
           // Colonne 6: Adresse complète
           const adresseComplete = row[6]?.toString() || '';
@@ -161,6 +196,12 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 9: Email
           const email = row[9]?.toString() || '';
           
+          // Construire les remarques avec toutes les informations téléphoniques
+          let remarques = observations;
+          if (phoneInfo.length > 0) {
+            remarques = `${observations}${observations ? ' | ' : ''}Téléphones: ${phoneInfo.join(', ')}`;
+          }
+          
           const youngster: Youngster = {
             id: Date.now().toString() + i,
             nom,
@@ -175,11 +216,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             codePostal,
             telephone,
             email,
-            remarques: observations,
-            // Ajouter tous les numéros de téléphone dans les remarques pour référence
-            ...(allPhones.length > 1 && {
-              remarques: `${observations}${observations ? ' | ' : ''}Téléphones: ${allPhones.join(', ')}`
-            })
+            remarques
           };
           
           console.log('Jeune créé:', youngster);
