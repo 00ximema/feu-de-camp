@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import {
   Dialog,
@@ -82,6 +83,7 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
           <div>
             <h3 className="font-semibold mb-3">Informations générales</h3>
             <div className="grid grid-cols-1 gap-4">
+              {/* Affichage de l'âge */}
               <div className="flex items-center gap-2">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm">{youngster.age} ans</span>
@@ -244,3 +246,4 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
 };
 
 export default YoungsterDetailsModal;
+
