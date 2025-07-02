@@ -1,9 +1,14 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SessionManager from "@/components/SessionManager";
+import { useSession } from "@/hooks/useSession";
+import { useJeunes } from "@/hooks/useJeunes";
+import { useEvents } from "@/hooks/useEvents";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 
 interface Animateur {
   id: number;
@@ -13,6 +18,7 @@ interface Animateur {
 }
 
 interface Planning {
+  id: string;
   date: string;
   animateurs: {
     id: number;
@@ -22,39 +28,33 @@ interface Planning {
   }[];
 }
 
-interface Event {
-  id: string;
-  youngesterId: string;
-  youngsterName: string;
-  type: string;
-  description: string;
-  date: string;
-}
-
 const Index = () => {
+  const { currentSession } = useSession();
+  const { jeunes } = useJeunes();
+  const { events } = useEvents();
+  const { isInitialized, db } = useLocalDatabase();
   const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
   const [plannings, setPlannings] = useState<Planning[]>([]);
-  const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
-    // Charger les animateurs
-    const savedAnimateurs = localStorage.getItem('equipe-animateurs');
-    if (savedAnimateurs) {
-      setAnimateurs(JSON.parse(savedAnimateurs));
-    }
+    const loadData = async () => {
+      if (!isInitialized || !currentSession) return;
+      
+      try {
+        // Charger les animateurs de la session courante
+        const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
+        setAnimateurs(dbAnimateurs);
 
-    // Charger les plannings
-    const savedPlannings = localStorage.getItem('plannings');
-    if (savedPlannings) {
-      setPlannings(JSON.parse(savedPlannings));
-    }
+        // Charger les plannings de la session courante
+        const dbPlannings = await db.getAll('plannings', currentSession.id);
+        setPlannings(dbPlannings);
+      } catch (error) {
+        console.error('Erreur lors du chargement des données:', error);
+      }
+    };
 
-    // Charger les événements
-    const savedEvents = localStorage.getItem('youngster-events');
-    if (savedEvents) {
-      setEvents(JSON.parse(savedEvents));
-    }
-  }, []);
+    loadData();
+  }, [isInitialized, db, currentSession]);
 
   const today = new Date().toISOString().split('T')[0];
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -131,6 +131,60 @@ const Index = () => {
     }
   ];
 
+  // Si aucune session n'est sélectionnée, afficher un message d'invite
+  if (!currentSession) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-4">
+                <img 
+                  src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                  alt="Logo Fondation Maison de la Gendarmerie" 
+                  className="h-16 w-auto"
+                />
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
+                  <p className="text-gray-600">Système de gestion de colonie de vacances</p>
+                </div>
+              </div>
+              
+              {/* Session Manager */}
+              <SessionManager />
+            </div>
+          </div>
+        </header>
+
+        {/* Message d'invite pour créer une session */}
+        <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+          <div className="text-center">
+            <div className="mx-auto h-24 w-24 text-gray-400 mb-6">
+              <Calendar className="h-24 w-24" />
+            </div>
+            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+              Créez votre première session pour commencer
+            </h2>
+            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+              Pour utiliser l'application de gestion CVJ MG, vous devez d'abord créer une session de séjour. 
+              Une session correspond à une période de colonie (été, vacances de Pâques, etc.).
+            </p>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-md mx-auto">
+              <h3 className="font-medium text-blue-900 mb-2">Pour commencer :</h3>
+              <ol className="text-left text-blue-800 space-y-1">
+                <li>1. Cliquez sur le sélecteur de session en haut à droite</li>
+                <li>2. Sélectionnez "Créer une nouvelle session"</li>
+                <li>3. Donnez un nom à votre session</li>
+                <li>4. Commencez à utiliser l'application !</li>
+              </ol>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
       {/* Header */}
@@ -158,7 +212,9 @@ const Index = () => {
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">Tableau de bord</h2>
+          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+            Tableau de bord - {currentSession.name}
+          </h2>
           <p className="text-gray-600">Accédez à tous les modules de gestion de votre colonie</p>
         </div>
 
@@ -196,7 +252,7 @@ const Index = () => {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Aperçu rapide</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
-              <div className="text-2xl font-bold text-blue-600">0</div>
+              <div className="text-2xl font-bold text-blue-600">{jeunes.length}</div>
               <div className="text-sm text-gray-600">Jeunes inscrits</div>
             </div>
             <div className="text-center">
