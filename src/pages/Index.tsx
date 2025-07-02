@@ -138,7 +138,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center space-x-4">
             <img 
-              src="/lovable-uploads/7c90a0bc-b913-4540-a716-4231ebbd4a96.png" 
+              src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
               alt="Logo Fondation Maison de la Gendarmerie" 
               className="h-16 w-auto"
             />
