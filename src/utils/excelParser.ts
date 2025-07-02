@@ -51,7 +51,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           const nom = nomPrenomParts[0] || '';
           const prenom = nomPrenomParts.slice(1).join(' ') || '';
           
-          // Colonne 1: Date de Naissance - Gérer les dates Excel correctement
+          // Colonne 1: Date de Naissance - Corriger MM/JJ vers JJ/MM
           let dateNaissance = '';
           if (row[1]) {
             const dateValue = row[1];
@@ -61,7 +61,15 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
               const excelDate = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
               dateNaissance = excelDate.toLocaleDateString('fr-FR');
             } else {
-              dateNaissance = dateValue.toString();
+              let dateString = dateValue.toString();
+              // Inverser MM/JJ/YYYY vers JJ/MM/YYYY
+              const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+              if (dateMatch) {
+                const [, mm, jj, yyyy] = dateMatch;
+                dateNaissance = `${jj}/${mm}/${yyyy}`;
+              } else {
+                dateNaissance = dateString;
+              }
             }
           }
           
@@ -76,33 +84,33 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones (peut contenir plusieurs lignes)
+          // Colonne 5: Téléphones - Récupérer TOUS les numéros
           const telephones = row[5]?.toString() || '';
           console.log('Téléphones bruts:', telephones);
           
-          // Extraire le numéro portable (06 ou 07) - chercher pattern plus flexible
+          // Extraire TOUS les numéros de téléphone
+          const allPhones: string[] = [];
+          const phoneRegex = /0[1-9](?:[\s\.\-]?\d{2}){4}/g;
+          let phoneMatch;
+          
+          while ((phoneMatch = phoneRegex.exec(telephones)) !== null) {
+            const cleanPhone = phoneMatch[0].replace(/[\s\.\-]/g, '');
+            if (!allPhones.includes(cleanPhone)) {
+              allPhones.push(cleanPhone);
+            }
+          }
+          
+          // Prendre le premier numéro portable (06/07) comme principal, sinon le premier numéro
           let telephone = '';
-          const phoneLines = telephones.split('\n');
-          for (const line of phoneLines) {
-            // Chercher une ligne qui contient "Port." ou qui commence par 06/07
-            if (line.includes('Port.') || /^0[67]/.test(line.trim())) {
-              const phoneMatch = line.match(/0[67][\s\.\-]?(?:\d{2}[\s\.\-]?){4}/);
-              if (phoneMatch) {
-                telephone = phoneMatch[0].replace(/[\s\.\-]/g, '');
-                break;
-              }
-            }
+          const mobilePhone = allPhones.find(phone => phone.startsWith('06') || phone.startsWith('07'));
+          if (mobilePhone) {
+            telephone = mobilePhone;
+          } else if (allPhones.length > 0) {
+            telephone = allPhones[0];
           }
           
-          // Si pas trouvé avec "Port.", chercher n'importe quel 06/07
-          if (!telephone) {
-            const allPhoneMatch = telephones.match(/0[67][\s\.\-]?(?:\d{2}[\s\.\-]?){4}/);
-            if (allPhoneMatch) {
-              telephone = allPhoneMatch[0].replace(/[\s\.\-]/g, '');
-            }
-          }
-          
-          console.log('Téléphone extrait:', telephone);
+          console.log('Téléphones extraits:', allPhones);
+          console.log('Téléphone principal:', telephone);
           
           // Colonne 6: Adresse complète
           const adresseComplete = row[6]?.toString() || '';
@@ -167,7 +175,11 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             codePostal,
             telephone,
             email,
-            remarques: observations
+            remarques: observations,
+            // Ajouter tous les numéros de téléphone dans les remarques pour référence
+            ...(allPhones.length > 1 && {
+              remarques: `${observations}${observations ? ' | ' : ''}Téléphones: ${allPhones.join(', ')}`
+            })
           };
           
           console.log('Jeune créé:', youngster);
