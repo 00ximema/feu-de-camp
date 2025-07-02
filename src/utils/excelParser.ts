@@ -106,7 +106,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Extraire et formater proprement
+          // Colonne 5: Téléphones - Extraction et formatage amélioré
           let telephone = '';
           let remarquesWithPhones = '';
           
@@ -114,41 +114,41 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             const phoneData = row[5].toString();
             console.log('Données téléphone brutes:', phoneData);
             
-            // Chercher tous les numéros avec leurs types et les formater proprement
-            const phoneMatches = phoneData.match(/(Perso|Bureau|Portable|Individuel|Port):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/g);
+            // Chercher tous les numéros avec leurs types
+            const phoneRegex = /(Perso|Bureau|Portable|Individuel|Port):\s*([0-9]{10}|[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2}\.[0-9]{2})/g;
+            const phoneMatches = [...phoneData.matchAll(phoneRegex)];
             
-            if (phoneMatches && phoneMatches.length > 0) {
+            if (phoneMatches.length > 0) {
               const formattedPhones: string[] = [];
               
               phoneMatches.forEach(match => {
-                const phoneMatch = match.match(/(Perso|Bureau|Portable|Individuel|Port):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/);
-                if (phoneMatch) {
-                  let type = phoneMatch[1];
-                  // Convertir "Port" en "Portable" pour l'affichage
-                  if (type === 'Port') type = 'Portable';
-                  
-                  const number = phoneMatch[2].replace(/\./g, '');
-                  
-                  // Prendre le premier numéro pour le champ principal
-                  if (!telephone) {
-                    telephone = number;
-                  }
-                  
-                  // Formater pour l'affichage : Type: 06 45 78 12 33
+                let type = match[1];
+                // Convertir "Port" en "Portable" pour l'affichage
+                if (type === 'Port') type = 'Portable';
+                
+                let number = match[2].replace(/\./g, ''); // Enlever les points
+                
+                // Prendre le premier numéro pour le champ principal
+                if (!telephone) {
+                  telephone = number;
+                }
+                
+                // Formater le numéro avec des espaces : 06 45 78 12 33
+                if (number.length === 10) {
                   const formattedNumber = number.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
                   formattedPhones.push(`${type}: ${formattedNumber}`);
                 }
               });
               
-              // Joindre tous les numéros formatés
+              // Joindre tous les numéros formatés avec des séparateurs propres
               remarquesWithPhones = formattedPhones.join(' | ');
             } else {
-              // Si pas de format spécial, chercher juste un numéro simple
-              const simplePhone = phoneData.match(/0[1-9]\d{8}/);
-              if (simplePhone) {
-                telephone = simplePhone[0];
-              } else {
-                telephone = phoneData.replace(/\s/g, '');
+              // Fallback : chercher un numéro simple
+              const simplePhoneMatch = phoneData.match(/([0-9]{10})/);
+              if (simplePhoneMatch) {
+                telephone = simplePhoneMatch[1];
+                const formattedNumber = telephone.replace(/(\d{2})(\d{2})(\d{2})(\d{2})(\d{2})/, '$1 $2 $3 $4 $5');
+                remarquesWithPhones = `Téléphone: ${formattedNumber}`;
               }
             }
           }
@@ -156,7 +156,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           console.log('Téléphone extrait:', telephone);
           console.log('Remarques téléphone formatées:', remarquesWithPhones);
           
-          // Colonne 6: Adresse complète - Extraction améliorée
+          // Colonne 6: Adresse complète - Récupération complète
           let adresse = '';
           let ville = '';
           let codePostal = '';
@@ -165,29 +165,19 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             const adresseComplete = row[6].toString().trim();
             console.log('Adresse complète brute:', adresseComplete);
             
-            // Chercher le code postal (5 chiffres) dans l'adresse
-            const codePostalMatch = adresseComplete.match(/\b(\d{5})\b/);
+            // Garder l'adresse complète dans le champ adresse
+            adresse = adresseComplete;
             
+            // Essayer d'extraire le code postal (5 chiffres) pour les champs séparés
+            const codePostalMatch = adresseComplete.match(/\b(\d{5})\b/);
             if (codePostalMatch) {
               codePostal = codePostalMatch[1];
+              
+              // Extraire la ville (ce qui suit le code postal)
               const codePostalIndex = adresseComplete.indexOf(codePostal);
-              
-              // Tout ce qui est avant le code postal = adresse
-              const beforePostal = adresseComplete.substring(0, codePostalIndex).trim();
-              adresse = beforePostal.replace(/[,\s]+$/, ''); // Nettoyer les virgules/espaces en fin
-              
-              // Tout ce qui est après le code postal = ville
-              const afterPostal = adresseComplete.substring(codePostalIndex + 5).trim();
-              ville = afterPostal.replace(/^[,\s]+/, ''); // Nettoyer les virgules/espaces en début
-            } else {
-              // Si pas de code postal trouvé, essayer de diviser par la dernière virgule
-              const lastCommaIndex = adresseComplete.lastIndexOf(',');
-              if (lastCommaIndex > 0) {
-                adresse = adresseComplete.substring(0, lastCommaIndex).trim();
-                ville = adresseComplete.substring(lastCommaIndex + 1).trim();
-              } else {
-                // Sinon, tout va dans l'adresse
-                adresse = adresseComplete;
+              if (codePostalIndex !== -1) {
+                const afterPostal = adresseComplete.substring(codePostalIndex + 5).trim();
+                ville = afterPostal.replace(/^[,\s]+/, ''); // Nettoyer les virgules/espaces en début
               }
             }
           }
