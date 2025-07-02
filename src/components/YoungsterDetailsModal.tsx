@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import {
   Dialog,
@@ -34,6 +32,27 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
   onClose
 }) => {
   if (!youngster) return null;
+
+  // Fonction pour calculer l'âge à partir de la date de naissance
+  const calculateAge = (dateNaissance: string) => {
+    if (!dateNaissance) return null;
+    
+    const today = new Date();
+    const birthDate = new Date(dateNaissance);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+  // Déterminer l'âge à afficher
+  const displayAge = youngster.age && youngster.age > 0 
+    ? youngster.age 
+    : calculateAge(youngster.dateNaissance || '');
 
   // Extraire les informations téléphoniques des remarques
   const extractPhoneInfo = (remarques: string) => {
@@ -84,10 +103,12 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
             <h3 className="font-semibold mb-3">Informations générales</h3>
             <div className="grid grid-cols-1 gap-4">
               {/* Affichage de l'âge */}
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">{youngster.age} ans</span>
-              </div>
+              {displayAge && (
+                <div className="flex items-center gap-2">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm">{displayAge} ans</span>
+                </div>
+              )}
               
               {youngster.dateNaissance && (
                 <div className="flex items-center gap-2">
@@ -246,4 +267,3 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
 };
 
 export default YoungsterDetailsModal;
-
