@@ -13,28 +13,35 @@ import Infirmerie from "./pages/Infirmerie";
 import Jeunes from "./pages/Jeunes";
 import Planning from "./pages/Planning";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/administratif" element={<Administratif />} />
-          <Route path="/comptabilite" element={<Comptabilite />} />
-          <Route path="/equipe" element={<Equipe />} />
-          <Route path="/infirmerie" element={<Infirmerie />} />
-          <Route path="/jeunes" element={<Jeunes />} />
-          <Route path="/planning" element={<Planning />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/administratif" element={<Administratif />} />
+            <Route path="/comptabilite" element={<Comptabilite />} />
+            <Route path="/equipe" element={<Equipe />} />
+            <Route path="/infirmerie" element={<Infirmerie />} />
+            <Route path="/jeunes" element={<Jeunes />} />
+            <Route path="/planning" element={<Planning />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
