@@ -4,143 +4,121 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Users, Upload, FileSpreadsheet, Search, Filter, Plus } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Users, Plus, Search, FileText, Phone, Mail, MapPin, Calendar, AlertTriangle, Utensils } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { Youngster } from "@/types/youngster";
 
 const Jeunes = () => {
-  const [youngsters, setYoungsters] = useState<Youngster[]>([]);
-  const [filteredYoungsters, setFilteredYoungsters] = useState<Youngster[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYoungster, setSelectedYoungster] = useState<string | null>(null);
+  const [jeunes, setJeunes] = useState<Youngster[]>([]);
+  const [selectedJeune, setSelectedJeune] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const { toast } = useToast();
 
   const [form, setForm] = useState({
     nom: "",
     prenom: "",
     age: "",
+    dateNaissance: "",
+    adresse: "",
     ville: "",
     telephone: "",
     email: "",
-    allergies: "",
-    medicaments: "",
-    regime: ""
+    contactUrgence: "",
+    allergies: [] as string[],
+    medicaments: [] as string[],
+    regime: [] as string[],
+    remarques: ""
   });
 
+  // Charger les jeunes depuis localStorage au démarrage
   useEffect(() => {
-    const savedYoungsters = localStorage.getItem('imported-youngsters');
-    if (savedYoungsters) {
-      try {
-        const parsedYoungsters = JSON.parse(savedYoungsters);
-        setYoungsters(parsedYoungsters);
-        setFilteredYoungsters(parsedYoungsters);
-      } catch (error) {
-        console.error('Erreur lors du chargement des jeunes:', error);
-      }
+    const savedJeunes = localStorage.getItem('centre-jeunes');
+    if (savedJeunes) {
+      setJeunes(JSON.parse(savedJeunes));
     }
   }, []);
 
+  // Sauvegarder les jeunes dans localStorage à chaque changement
   useEffect(() => {
-    const filtered = youngsters.filter(youngster =>
-      `${youngster.prenom} ${youngster.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      youngster.ville.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-    setFilteredYoungsters(filtered);
-  }, [searchTerm, youngsters]);
-
-  const handleExcelImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          // Simulation de lecture Excel
-          const mockData: Youngster[] = [
-            {
-              id: "1",
-              nom: "Martin",
-              prenom: "Lucas",
-              age: 12,
-              ville: "Lyon",
-              telephone: "06.12.34.56.78",
-              email: "lucas.martin@email.com",
-              allergies: ["Arachides"],
-              medicaments: [],
-              regime: "Normal",
-              dateInscription: new Date().toISOString().split('T')[0]
-            },
-            {
-              id: "2", 
-              nom: "Dubois",
-              prenom: "Emma",
-              age: 10,
-              ville: "Villeurbanne",
-              telephone: "06.87.65.43.21",
-              email: "emma.dubois@email.com",
-              allergies: [],
-              medicaments: ["Ventoline"],
-              regime: "Végétarien",
-              dateInscription: new Date().toISOString().split('T')[0]
-            }
-          ];
-
-          setYoungsters(mockData);
-          setFilteredYoungsters(mockData);
-          localStorage.setItem('imported-youngsters', JSON.stringify(mockData));
-          
-          toast({
-            title: "Import réussi",
-            description: `${mockData.length} jeunes importés depuis Excel`
-          });
-        };
-        reader.readAsText(file);
-      });
+    if (jeunes.length > 0) {
+      localStorage.setItem('centre-jeunes', JSON.stringify(jeunes));
     }
-  };
+  }, [jeunes]);
 
-  const addYoungster = () => {
-    const newYoungster: Youngster = {
+  const addJeune = () => {
+    const newJeune: Youngster = {
       id: Date.now().toString(),
       nom: form.nom,
       prenom: form.prenom,
       age: parseInt(form.age),
+      dateNaissance: form.dateNaissance,
+      adresse: form.adresse,
       ville: form.ville,
       telephone: form.telephone,
       email: form.email,
-      allergies: form.allergies.split(',').map(a => a.trim()).filter(a => a),
-      medicaments: form.medicaments.split(',').map(m => m.trim()).filter(m => m),
-      regime: form.regime || "Normal",
+      contactUrgence: form.contactUrgence,
+      allergies: form.allergies,
+      medicaments: form.medicaments,
+      regime: form.regime,
+      remarques: form.remarques,
       dateInscription: new Date().toISOString().split('T')[0]
     };
 
-    const updatedYoungsters = [...youngsters, newYoungster];
-    setYoungsters(updatedYoungsters);
-    setFilteredYoungsters(updatedYoungsters);
-    localStorage.setItem('imported-youngsters', JSON.stringify(updatedYoungsters));
-
+    setJeunes(prev => [...prev, newJeune]);
+    
+    // Réinitialiser le formulaire
     setForm({
       nom: "",
       prenom: "",
       age: "",
+      dateNaissance: "",
+      adresse: "",
       ville: "",
       telephone: "",
       email: "",
-      allergies: "",
-      medicaments: "",
-      regime: ""
+      contactUrgence: "",
+      allergies: [],
+      medicaments: [],
+      regime: [],
+      remarques: ""
     });
+    
     setShowForm(false);
-
+    
     toast({
       title: "Jeune ajouté",
-      description: `${form.prenom} ${form.nom} a été ajouté à la liste`
+      description: `${form.prenom} ${form.nom} a été ajouté avec succès`
     });
   };
 
-  const selectedYoungsterData = youngsters.find(y => y.id === selectedYoungster);
+  const handleArrayInput = (field: 'allergies' | 'medicaments' | 'regime', value: string) => {
+    const items = value.split(',').map(item => item.trim()).filter(item => item);
+    setForm(prev => ({ ...prev, [field]: items }));
+  };
+
+  const filteredJeunes = jeunes.filter(jeune =>
+    `${jeune.prenom} ${jeune.nom}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    jeune.age.toString().includes(searchTerm)
+  );
+
+  const selectedJeuneData = jeunes.find(j => j.id === selectedJeune);
+
+  const getAgeColor = (age: number) => {
+    if (age <= 6) return 'bg-purple-100 text-purple-800';
+    if (age <= 12) return 'bg-blue-100 text-blue-800';
+    if (age <= 17) return 'bg-green-100 text-green-800';
+    return 'bg-gray-100 text-gray-800';
+  };
+
+  const getAgeCategory = (age: number) => {
+    if (age <= 6) return 'Petite enfance';
+    if (age <= 12) return 'Enfance';
+    if (age <= 17) return 'Adolescence';
+    return 'Jeune adulte';
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -159,52 +137,79 @@ const Jeunes = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Barre d'outils */}
-        <Card className="mb-6">
-          <CardContent className="pt-6">
-            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-              <div className="flex-1 max-w-md">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-                  <Input
-                    placeholder="Rechercher un jeune..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10"
-                  />
-                </div>
+        {/* Statistiques rapides */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-blue-600" />
+                <span className="text-2xl font-bold">{jeunes.length}</span>
               </div>
-              <div className="flex gap-2">
-                <Button onClick={() => setShowForm(true)} disabled={showForm}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Ajouter un jeune
-                </Button>
-                <div className="relative">
-                  <Input
-                    type="file"
-                    accept=".xlsx,.xls,.csv"
-                    onChange={handleExcelImport}
-                    className="opacity-0 absolute inset-0 w-full h-full cursor-pointer"
-                  />
-                  <Button variant="outline">
-                    <Upload className="h-4 w-4 mr-2" />
-                    Importer Excel
-                  </Button>
-                </div>
+              <p className="text-sm text-gray-600">Total inscrits</p>
+            </CardContent>
+          </Card>
+          
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-5 w-5 text-purple-600" />
+                <span className="text-2xl font-bold">{jeunes.filter(j => j.age <= 6).length}</span>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+              <p className="text-sm text-gray-600">Petite enfance</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <Users className="h-5 w-5 text-green-600" />
+                <span className="text-2xl font-bold">{jeunes.filter(j => j.age > 6 && j.age <= 12).length}</span>
+              </div>
+              <p className="text-sm text-gray-600">Enfance</p>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center space-x-2">
+                <AlertTriangle className="h-5 w-5 text-orange-600" />
+                <span className="text-2xl font-bold">
+                  {jeunes.filter(j => (j.allergies && j.allergies.length > 0) || (j.medicaments && j.medicaments.length > 0)).length}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600">Avec besoins spéciaux</p>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Liste des jeunes */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Liste des jeunes ({filteredYoungsters.length})</CardTitle>
-                <CardDescription>
-                  Participants inscrits au centre de loisirs
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Liste des jeunes</CardTitle>
+                    <CardDescription>
+                      {filteredJeunes.length} jeune(s) affiché(s)
+                    </CardDescription>
+                  </div>
+                  <Button onClick={() => setShowForm(true)} disabled={showForm}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouveau jeune
+                  </Button>
+                </div>
+
+                {/* Barre de recherche */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input
+                    className="pl-10"
+                    placeholder="Rechercher par nom ou âge..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
               </CardHeader>
               <CardContent>
                 {showForm && (
@@ -234,6 +239,21 @@ const Jeunes = () => {
                         />
                       </div>
                       <div>
+                        <Label>Date de naissance</Label>
+                        <Input
+                          type="date"
+                          value={form.dateNaissance}
+                          onChange={(e) => setForm(prev => ({ ...prev, dateNaissance: e.target.value }))}
+                        />
+                      </div>
+                      <div>
+                        <Label>Adresse</Label>
+                        <Input
+                          value={form.adresse}
+                          onChange={(e) => setForm(prev => ({ ...prev, adresse: e.target.value }))}
+                        />
+                      </div>
+                      <div>
                         <Label>Ville</Label>
                         <Input
                           value={form.ville}
@@ -256,95 +276,123 @@ const Jeunes = () => {
                         />
                       </div>
                     </div>
-                    <div className="mt-4 space-y-4">
+                    <div className="mt-4">
+                      <Label>Contact d'urgence</Label>
+                      <Input
+                        value={form.contactUrgence}
+                        onChange={(e) => setForm(prev => ({ ...prev, contactUrgence: e.target.value }))}
+                        placeholder="Nom et téléphone du contact d'urgence"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 mt-4">
                       <div>
                         <Label>Allergies (séparées par des virgules)</Label>
                         <Input
-                          value={form.allergies}
-                          onChange={(e) => setForm(prev => ({ ...prev, allergies: e.target.value }))}
+                          value={form.allergies.join(', ')}
+                          onChange={(e) => handleArrayInput('allergies', e.target.value)}
                           placeholder="Arachides, Lactose..."
                         />
                       </div>
                       <div>
                         <Label>Médicaments (séparés par des virgules)</Label>
                         <Input
-                          value={form.medicaments}
-                          onChange={(e) => setForm(prev => ({ ...prev, medicaments: e.target.value }))}
-                          placeholder="Ventoline, Ritaline..."
-                        />
-                      </div>
-                      <div>
-                        <Label>Régime alimentaire</Label>
-                        <Input
-                          value={form.regime}
-                          onChange={(e) => setForm(prev => ({ ...prev, regime: e.target.value }))}
-                          placeholder="Normal, Végétarien, Halal..."
+                          value={form.medicaments.join(', ')}
+                          onChange={(e) => handleArrayInput('medicaments', e.target.value)}
+                          placeholder="Ventoline, Insuline..."
                         />
                       </div>
                     </div>
+                    <div className="mt-4">
+                      <Label>Régime alimentaire (séparé par des virgules)</Label>
+                      <Input
+                        value={form.regime.join(', ')}
+                        onChange={(e) => handleArrayInput('regime', e.target.value)}
+                        placeholder="Végétarien, Sans gluten, Halal..."
+                      />
+                    </div>
+                    <div className="mt-4">
+                      <Label>Remarques</Label>
+                      <Textarea
+                        value={form.remarques}
+                        onChange={(e) => setForm(prev => ({ ...prev, remarques: e.target.value }))}
+                        placeholder="Informations complémentaires..."
+                      />
+                    </div>
                     <div className="flex space-x-2 mt-4">
-                      <Button onClick={addYoungster}>Ajouter</Button>
+                      <Button onClick={addJeune}>Ajouter</Button>
                       <Button variant="outline" onClick={() => setShowForm(false)}>Annuler</Button>
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {filteredYoungsters.map((youngster) => (
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {filteredJeunes.map((jeune) => (
                     <div
-                      key={youngster.id}
+                      key={jeune.id}
                       className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedYoungster === youngster.id 
+                        selectedJeune === jeune.id 
                           ? 'border-blue-500 bg-blue-50' 
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
-                      onClick={() => setSelectedYoungster(youngster.id)}
+                      onClick={() => setSelectedJeune(jeune.id)}
                     >
                       <div className="flex items-center justify-between">
                         <div>
                           <div className="font-medium text-lg">
-                            {youngster.prenom} {youngster.nom}
+                            {jeune.prenom} {jeune.nom}
                           </div>
-                          <div className="text-gray-600">
-                            {youngster.age} ans • {youngster.ville}
+                          <div className="flex items-center space-x-2 mt-1">
+                            <span className={`px-2 py-1 text-xs rounded ${getAgeColor(jeune.age)}`}>
+                              {jeune.age} ans • {getAgeCategory(jeune.age)}
+                            </span>
+                            {jeune.ville && (
+                              <div className="flex items-center space-x-1 text-sm text-gray-500">
+                                <MapPin className="h-3 w-3" />
+                                <span>{jeune.ville}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {youngster.allergies.length > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                Allergies: {youngster.allergies.join(', ')}
-                              </Badge>
+                          <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                            {jeune.allergies && jeune.allergies.length > 0 && (
+                              <div className="flex items-center space-x-1 text-orange-600">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span>Allergies: {jeune.allergies.join(', ')}</span>
+                              </div>
                             )}
-                            {youngster.medicaments.length > 0 && (
-                              <Badge variant="secondary" className="text-xs">
-                                Médicaments: {youngster.medicaments.join(', ')}
-                              </Badge>
-                            )}
-                            {youngster.regime !== "Normal" && (
-                              <Badge variant="outline" className="text-xs">
-                                {youngster.regime}
-                              </Badge>
+                            {jeune.medicaments && jeune.medicaments.length > 0 && (
+                              <div className="flex items-center space-x-1 text-red-600">
+                                <AlertTriangle className="h-3 w-3" />
+                                <span>Médicaments: {jeune.medicaments.join(', ')}</span>
+                              </div>
                             )}
                           </div>
                         </div>
-                        <div className="text-right text-sm text-gray-500">
-                          Inscrit le {new Date(youngster.dateInscription).toLocaleDateString('fr-FR')}
+                        <div className="text-right">
+                          {jeune.regime && jeune.regime.length > 0 && (
+                            <div className="flex items-center space-x-1 text-sm text-blue-600">
+                              <Utensils className="h-3 w-3" />
+                              <span>Régime: {jeune.regime.join(', ')}</span>
+                            </div>
+                          )}
+                          {jeune.dateInscription && (
+                            <div className="text-xs text-gray-500 mt-1">
+                              Inscrit le {new Date(jeune.dateInscription).toLocaleDateString('fr-FR')}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   ))}
 
-                  {filteredYoungsters.length === 0 && youngsters.length === 0 && (
+                  {filteredJeunes.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
                       <Users className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Aucun jeune inscrit</p>
-                      <p className="text-sm">Importez un fichier Excel ou ajoutez manuellement</p>
-                    </div>
-                  )}
-
-                  {filteredYoungsters.length === 0 && youngsters.length > 0 && (
-                    <div className="text-center py-12 text-gray-500">
-                      <Search className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Aucun résultat pour "{searchTerm}"</p>
+                      <p>Aucun jeune trouvé</p>
+                      {searchTerm ? (
+                        <p className="text-sm">Essayez de modifier votre recherche</p>
+                      ) : (
+                        <p className="text-sm">Commencez par ajouter des jeunes</p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -357,61 +405,118 @@ const Jeunes = () => {
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <FileSpreadsheet className="h-5 w-5" />
-                  <span>Fiche du jeune</span>
+                  <FileText className="h-5 w-5" />
+                  <span>Fiche détaillée</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedYoungsterData ? (
+                {selectedJeuneData ? (
                   <div className="space-y-4">
                     <div className="p-3 bg-blue-50 rounded-lg">
                       <div className="font-medium text-lg">
-                        {selectedYoungsterData.prenom} {selectedYoungsterData.nom}
+                        {selectedJeuneData.prenom} {selectedJeuneData.nom}
                       </div>
-                      <div className="text-gray-600">
-                        {selectedYoungsterData.age} ans • {selectedYoungsterData.ville}
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="font-medium mb-2">Contact</h4>
-                      <div className="text-sm space-y-1">
-                        <div>📞 {selectedYoungsterData.telephone}</div>
-                        <div>📧 {selectedYoungsterData.email}</div>
+                      <div className="text-blue-600">
+                        {selectedJeuneData.age} ans • {getAgeCategory(selectedJeuneData.age)}
                       </div>
                     </div>
 
-                    {(selectedYoungsterData.allergies.length > 0 || selectedYoungsterData.medicaments.length > 0) && (
+                    {selectedJeuneData.dateNaissance && (
                       <div>
-                        <h4 className="font-medium mb-2 text-red-600">⚠️ Informations médicales</h4>
-                        {selectedYoungsterData.allergies.length > 0 && (
-                          <div className="mb-2">
-                            <div className="text-sm font-medium">Allergies :</div>
-                            <div className="text-sm text-red-600">{selectedYoungsterData.allergies.join(', ')}</div>
-                          </div>
-                        )}
-                        {selectedYoungsterData.medicaments.length > 0 && (
-                          <div>
-                            <div className="text-sm font-medium">Médicaments :</div>
-                            <div className="text-sm text-blue-600">{selectedYoungsterData.medicaments.join(', ')}</div>
-                          </div>
-                        )}
+                        <h4 className="font-medium mb-1">Date de naissance</h4>
+                        <p className="text-sm text-gray-600">
+                          {new Date(selectedJeuneData.dateNaissance).toLocaleDateString('fr-FR')}
+                        </p>
                       </div>
                     )}
 
-                    <div>
-                      <h4 className="font-medium mb-2">Régime alimentaire</h4>
-                      <div className="text-sm">
-                        {selectedYoungsterData.regime || "Normal"}
+                    {(selectedJeuneData.adresse || selectedJeuneData.ville) && (
+                      <div>
+                        <h4 className="font-medium mb-1">Adresse</h4>
+                        <div className="text-sm text-gray-600">
+                          {selectedJeuneData.adresse && <div>{selectedJeuneData.adresse}</div>}
+                          {selectedJeuneData.ville && <div>{selectedJeuneData.ville}</div>}
+                        </div>
                       </div>
-                    </div>
+                    )}
 
-                    <div>
-                      <h4 className="font-medium mb-2">Inscription</h4>
-                      <div className="text-sm text-gray-600">
-                        {new Date(selectedYoungsterData.dateInscription).toLocaleDateString('fr-FR')}
+                    {(selectedJeuneData.telephone || selectedJeuneData.email) && (
+                      <div>
+                        <h4 className="font-medium mb-1">Contact</h4>
+                        <div className="space-y-1">
+                          {selectedJeuneData.telephone && (
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <Phone className="h-3 w-3" />
+                              <span>{selectedJeuneData.telephone}</span>
+                            </div>
+                          )}
+                          {selectedJeuneData.email && (
+                            <div className="flex items-center space-x-2 text-sm text-gray-600">
+                              <Mail className="h-3 w-3" />
+                              <span>{selectedJeuneData.email}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
+                    )}
+
+                    {selectedJeuneData.contactUrgence && (
+                      <div>
+                        <h4 className="font-medium mb-1">Contact d'urgence</h4>
+                        <p className="text-sm text-gray-600">{selectedJeuneData.contactUrgence}</p>
+                      </div>
+                    )}
+
+                    {selectedJeuneData.allergies && selectedJeuneData.allergies.length > 0 && (
+                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+                        <div className="flex items-center space-x-2 text-orange-800 mb-1">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span className="font-medium">Allergies</span>
+                        </div>
+                        <div className="text-sm text-orange-700">
+                          {selectedJeuneData.allergies.join(', ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJeuneData.medicaments && selectedJeuneData.medicaments.length > 0 && (
+                      <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                        <div className="flex items-center space-x-2 text-red-800 mb-1">
+                          <AlertTriangle className="h-4 w-4" />
+                          <span className="font-medium">Médicaments</span>
+                        </div>
+                        <div className="text-sm text-red-700">
+                          {selectedJeuneData.medicaments.join(', ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJeuneData.regime && selectedJeuneData.regime.length > 0 && (
+                      <div>
+                        <h4 className="font-medium mb-1 flex items-center space-x-2">
+                          <Utensils className="h-4 w-4" />
+                          <span>Régime alimentaire</span>
+                        </h4>
+                        <div className="text-sm text-gray-600">
+                          {selectedJeuneData.regime.join(', ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJeuneData.remarques && (
+                      <div>
+                        <h4 className="font-medium mb-1">Remarques</h4>
+                        <div className="p-3 bg-gray-50 rounded text-sm">
+                          {selectedJeuneData.remarques}
+                        </div>
+                      </div>
+                    )}
+
+                    {selectedJeuneData.dateInscription && (
+                      <div className="text-xs text-gray-500 pt-2 border-t">
+                        Inscrit le {new Date(selectedJeuneData.dateInscription).toLocaleDateString('fr-FR')}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center text-gray-500 py-8">

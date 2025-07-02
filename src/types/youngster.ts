@@ -6,10 +6,13 @@ export interface Youngster {
   age: number;
   dateNaissance?: string;
   adresse?: string;
+  ville?: string;
   telephone?: string;
   email?: string;
   contactUrgence?: string;
-  allergies?: string;
-  medicaments?: string;
+  allergies?: string[];
+  medicaments?: string[];
   remarques?: string;
+  regime?: string[];
+  dateInscription?: string;
 }
