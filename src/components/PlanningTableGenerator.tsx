@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Trash2, Users } from "lucide-react";
+import { Calendar, Plus, Trash2, Users, Save } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import { useSession } from "@/hooks/useSession";
 
 interface Animateur {
   id: number;
@@ -49,6 +50,7 @@ const PlanningTableGenerator = () => {
   const [showTable, setShowTable] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ date: string; timeSlot: string } | null>(null);
   const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
+  const [planningId, setPlanningId] = useState<string | null>(null);
   const [newEvent, setNewEvent] = useState({ 
     name: '', 
     description: '', 
@@ -58,6 +60,7 @@ const PlanningTableGenerator = () => {
   });
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
   const timeSlots = [
     'Matin',
@@ -94,21 +97,16 @@ const PlanningTableGenerator = () => {
       if (!isInitialized) return;
       
       try {
-        const dbAnimateurs = await db.getAll('animateurs');
+        const dbAnimateurs = await db.getAll('animateurs', currentSession?.id);
         setAnimateurs(dbAnimateurs);
         console.log('Animateurs chargés depuis la base de données:', dbAnimateurs);
       } catch (error) {
         console.error('Erreur lors du chargement des animateurs:', error);
-        // Fallback vers localStorage
-        const savedAnimateurs = localStorage.getItem('equipe-animateurs');
-        if (savedAnimateurs) {
-          setAnimateurs(JSON.parse(savedAnimateurs));
-        }
       }
     };
 
     loadAnimateurs();
-  }, [isInitialized, db]);
+  }, [isInitialized, db, currentSession]);
 
   const generateDates = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -146,11 +144,42 @@ const PlanningTableGenerator = () => {
 
     setPlanningData(cells);
     setShowTable(true);
+    setPlanningId(`planning_${Date.now()}`);
     
     toast({
       title: "Planning généré",
       description: `Planning "${config.name}" créé avec succès`
     });
+  };
+
+  const savePlanning = async () => {
+    if (!isInitialized || !currentSession || !planningId) return;
+
+    try {
+      const planningToSave = {
+        id: planningId,
+        sessionId: currentSession.id,
+        name: config.name,
+        startDate: config.startDate,
+        endDate: config.endDate,
+        data: planningData,
+        createdAt: new Date().toISOString()
+      };
+
+      await db.save('plannings', planningToSave);
+      
+      toast({
+        title: "Planning sauvegardé",
+        description: "Le planning a été enregistré avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de sauvegarder le planning",
+        variant: "destructive"
+      });
+    }
   };
 
   const getDayName = (dateStr: string) => {
@@ -278,8 +307,16 @@ const PlanningTableGenerator = () => {
       {showTable && (
         <Card>
           <CardHeader>
-            <CardTitle>Planning Tableau - {config.name}</CardTitle>
-            <CardDescription>Cliquez sur les cases pour ajouter des événements</CardDescription>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Planning Tableau - {config.name}</CardTitle>
+                <CardDescription>Cliquez sur les cases pour ajouter des événements</CardDescription>
+              </div>
+              <Button onClick={savePlanning} className="bg-green-600 hover:bg-green-700">
+                <Save className="h-4 w-4 mr-2" />
+                Sauvegarder
+              </Button>
+            </div>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">

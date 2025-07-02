@@ -72,17 +72,46 @@ interface DatabaseSchema {
     timestamp: string;
   };
   
-  // Plannings
+  // Plannings - Enhanced structure
   plannings: {
     id: string;
     sessionId?: string;
-    date: string;
-    animateurs: {
-      id: number;
-      heureDebut: string;
-      heureFin: string;
-      typeService: string;
-    }[];
+    name: string;
+    startDate: string;
+    endDate: string;
+    data: Array<{
+      date: string;
+      timeSlot: string;
+      event?: {
+        id: string;
+        name: string;
+        description?: string;
+        color: string;
+        type: 'activity' | 'duty' | 'leave' | 'recovery';
+        assignedMember?: {
+          id: number;
+          nom: string;
+          prenom: string;
+          role: string;
+        };
+      };
+    }>;
+    createdAt: string;
+  };
+
+  // Traitements médicaux
+  traitements: {
+    id: string;
+    sessionId?: string;
+    jeuneId: string;
+    jeuneNom: string;
+    medicament: string;
+    posologie: string;
+    duree: string;
+    dateDebut: string;
+    dateFin: string;
+    instructions?: string;
+    dateCreation: string;
   };
 }
 

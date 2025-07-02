@@ -6,9 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus, AlertTriangle, Clock, User, Calendar } from "lucide-react";
+import { Heart, Plus, AlertTriangle, Clock, User, Calendar, Pill } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import TraitementForm from "@/components/TraitementForm";
+import { useJeunes } from "@/hooks/useJeunes";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import { useSession } from "@/hooks/useSession";
 
 interface FicheMedicale {
   id: number;
@@ -32,11 +36,29 @@ interface Incident {
   animateurPresent: string;
 }
 
+interface Traitement {
+  id: string;
+  jeuneId: string;
+  jeuneNom: string;
+  medicament: string;
+  posologie: string;
+  duree: string;
+  dateDebut: string;
+  dateFin: string;
+  instructions?: string;
+  dateCreation: string;
+}
+
 const Infirmerie = () => {
   const [fichesMedicales, setFichesMedicales] = useState<FicheMedicale[]>([]);
   const [selectedFiche, setSelectedFiche] = useState<number | null>(null);
   const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [showTraitementForm, setShowTraitementForm] = useState(false);
+  const [traitements, setTraitements] = useState<Traitement[]>([]);
   const { toast } = useToast();
+  const { jeunes } = useJeunes();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
   const [incidentForm, setIncidentForm] = useState({
     type: '' as 'blessure' | 'malaise' | 'medicament' | 'allergie' | '',
@@ -45,18 +67,59 @@ const Infirmerie = () => {
     animateurPresent: ''
   });
 
+  // Créer automatiquement les fiches médicales depuis les jeunes importés
+  useEffect(() => {
+    if (jeunes.length > 0) {
+      const newFiches = jeunes.map((jeune, index) => ({
+        id: parseInt(jeune.id) || index,
+        nomJeune: `${jeune.prenom} ${jeune.nom}`,
+        age: jeune.age,
+        allergies: jeune.allergies || [],
+        medicaments: jeune.medicaments || [],
+        problemesSante: jeune.problemesSante || [],
+        contactUrgence: jeune.contactUrgence || '',
+        dateCreation: jeune.dateInscription || new Date().toLocaleDateString('fr-FR'),
+        incidents: []
+      }));
+      setFichesMedicales(newFiches);
+    }
+  }, [jeunes]);
+
+  // Charger les incidents depuis localStorage
   useEffect(() => {
     const savedFiches = localStorage.getItem('fiches-medicales');
     if (savedFiches) {
-      setFichesMedicales(JSON.parse(savedFiches));
+      const fichesSaved = JSON.parse(savedFiches);
+      setFichesMedicales(prev => {
+        return prev.map(fiche => {
+          const savedFiche = fichesSaved.find((f: any) => f.id === fiche.id);
+          return savedFiche ? { ...fiche, incidents: savedFiche.incidents || [] } : fiche;
+        });
+      });
     }
   }, []);
+
+  // Charger les traitements depuis la base de données
+  useEffect(() => {
+    const loadTraitements = async () => {
+      if (!isInitialized || !currentSession) return;
+      
+      try {
+        const dbTraitements = await db.getAll('traitements', currentSession.id);
+        setTraitements(dbTraitements);
+      } catch (error) {
+        console.error('Erreur lors du chargement des traitements:', error);
+      }
+    };
+
+    loadTraitements();
+  }, [isInitialized, db, currentSession]);
 
   useEffect(() => {
     if (fichesMedicales.length > 0) {
       localStorage.setItem('fiches-medicales', JSON.stringify(fichesMedicales));
     }
-  }, [fichesMedicales]);
+  }, [fichesMedicales.map(f => f.incidents).flat().length]);
 
   const addIncident = () => {
     if (!selectedFiche || !incidentForm.type || !incidentForm.description) return;
@@ -91,6 +154,17 @@ const Infirmerie = () => {
     });
   };
 
+  const handleTraitementAdded = async () => {
+    if (!isInitialized || !currentSession) return;
+    
+    try {
+      const dbTraitements = await db.getAll('traitements', currentSession.id);
+      setTraitements(dbTraitements);
+    } catch (error) {
+      console.error('Erreur lors du rechargement des traitements:', error);
+    }
+  };
+
   const getTypeColor = (type: string) => {
     switch (type) {
       case 'blessure': return 'bg-red-100 text-red-800';
@@ -101,7 +175,13 @@ const Infirmerie = () => {
     }
   };
 
+  const getTraitementsActifs = () => {
+    const today = new Date().toISOString().split('T')[0];
+    return traitements.filter(t => t.dateDebut <= today && t.dateFin >= today);
+  };
+
   const selectedFicheData = fichesMedicales.find(f => f.id === selectedFiche);
+  const traitementsActifs = getTraitementsActifs();
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -125,10 +205,21 @@ const Infirmerie = () => {
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
-                <CardTitle>Fiches médicales</CardTitle>
-                <CardDescription>
-                  {fichesMedicales.length} fiche(s) médicale(s)
-                </CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle>Fiches médicales</CardTitle>
+                    <CardDescription>
+                      {fichesMedicales.length} fiche(s) médicale(s)
+                    </CardDescription>
+                  </div>
+                  <Button 
+                    onClick={() => setShowTraitementForm(true)}
+                    className="bg-blue-600 hover:bg-blue-700"
+                  >
+                    <Pill className="h-4 w-4 mr-2" />
+                    Nouveau traitement
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
@@ -179,6 +270,37 @@ const Infirmerie = () => {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Traitements actifs */}
+            {traitementsActifs.length > 0 && (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Pill className="h-5 w-5 text-blue-600" />
+                    <span>Traitements en cours</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {traitementsActifs.map((traitement) => (
+                      <div key={traitement.id} className="p-3 border rounded-lg bg-blue-50">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium">{traitement.jeuneNom}</div>
+                            <div className="text-sm text-gray-600">{traitement.medicament}</div>
+                            <div className="text-xs text-gray-500">{traitement.posologie}</div>
+                          </div>
+                          <div className="text-right text-xs text-gray-500">
+                            <div>Du {new Date(traitement.dateDebut).toLocaleDateString('fr-FR')}</div>
+                            <div>au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Détails et incidents */}
@@ -323,6 +445,13 @@ const Infirmerie = () => {
           </div>
         </div>
       </main>
+
+      <TraitementForm 
+        isOpen={showTraitementForm}
+        onClose={() => setShowTraitementForm(false)}
+        jeunes={jeunes}
+        onTraitementAdded={handleTraitementAdded}
+      />
     </div>
   );
 };
