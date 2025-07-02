@@ -1,5 +1,4 @@
 
-
 import * as XLSX from 'xlsx';
 import { Youngster } from "@/types/youngster";
 
@@ -19,9 +18,9 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
         // Convertir en JSON à partir de la ligne 7 (index 6)
         const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
           header: 1,
-          range: 6, // Commencer à la ligne 7 (index 6)
-          raw: false, // Importante pour avoir les dates en format texte
-          dateNF: 'dd/mm/yyyy' // Format de date français
+          range: 6,
+          raw: false,
+          dateNF: 'dd/mm/yyyy'
         });
         
         console.log('Données Excel brutes:', jsonData);
@@ -52,12 +51,11 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           const nom = nomPrenomParts[0] || '';
           const prenom = nomPrenomParts.slice(1).join(' ') || '';
           
-          // Colonne 1: Date de Naissance - Conversion correcte MM/JJ/YYYY vers JJ/MM
+          // Colonne 1: Date de Naissance
           let dateNaissance = '';
           if (row[1]) {
             const dateValue = row[1];
             if (typeof dateValue === 'number') {
-              // Convertir le numéro de série Excel en date
               const excelEpoch = new Date(1900, 0, 1);
               const excelDate = new Date(excelEpoch.getTime() + (dateValue - 2) * 24 * 60 * 60 * 1000);
               dateNaissance = excelDate.toLocaleDateString('fr-FR');
@@ -65,21 +63,17 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
               let dateString = dateValue.toString();
               console.log('Date string original:', dateString);
               
-              // Gérer le format MM/JJ/YY ou MM/JJ/YYYY
               const dateMatch = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
               if (dateMatch) {
                 let [, mm, jj, yy] = dateMatch;
                 
-                // Convertir l'année sur 2 chiffres en 4 chiffres si nécessaire
                 if (yy.length === 2) {
                   const currentYear = new Date().getFullYear();
                   const currentCentury = Math.floor(currentYear / 100) * 100;
                   const year2digit = parseInt(yy);
-                  // Si l'année à 2 chiffres est > 50, c'est probablement 19xx, sinon 20xx
                   yy = year2digit > 50 ? (1900 + year2digit).toString() : (currentCentury + year2digit).toString();
                 }
                 
-                // Inverser MM/JJ vers JJ/MM
                 dateNaissance = `${jj.padStart(2, '0')}/${mm.padStart(2, '0')}/${yy}`;
                 console.log('Date convertie:', dateNaissance);
               } else {
@@ -88,7 +82,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             }
           }
           
-          // Colonne 2: Âge - Extraction directe
+          // Colonne 2: Âge
           let age = 0;
           if (row[2]) {
             const ageValue = row[2];
@@ -112,37 +106,89 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
           // Colonne 4: Responsable
           const responsable = row[4]?.toString() || '';
           
-          // Colonne 5: Téléphones - Format simple (un seul numéro)
-          const telephone = row[5]?.toString().replace(/\s/g, '') || '';
+          // Colonne 5: Téléphones - Extraire tous les numéros
+          let telephone = '';
+          let remarquesWithPhones = '';
+          
+          if (row[5]) {
+            const phoneData = row[5].toString();
+            console.log('Données téléphone brutes:', phoneData);
+            
+            // Chercher tous les numéros avec leurs types
+            const phoneMatches = phoneData.match(/(Perso|Bureau|Portable|Individuel):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/g);
+            
+            if (phoneMatches && phoneMatches.length > 0) {
+              // Prendre le premier numéro pour le champ principal
+              const firstMatch = phoneMatches[0].match(/(Perso|Bureau|Portable|Individuel):\s*(0[1-9](?:\d{8}|\d{2}\.\d{2}\.\d{2}\.\d{2}))/);
+              if (firstMatch) {
+                telephone = firstMatch[2].replace(/\./g, '');
+              }
+              
+              // Ajouter tous les numéros aux remarques
+              remarquesWithPhones = phoneMatches.join(' | ');
+            } else {
+              // Si pas de format spécial, chercher juste un numéro simple
+              const simplePhone = phoneData.match(/0[1-9]\d{8}/);
+              if (simplePhone) {
+                telephone = simplePhone[0];
+              } else {
+                telephone = phoneData.replace(/\s/g, '');
+              }
+            }
+          }
+          
           console.log('Téléphone extrait:', telephone);
+          console.log('Remarques téléphone:', remarquesWithPhones);
           
-          // Colonne 6: Adresse complète - Parser correctement
-          const adresseComplete = row[6]?.toString() || '';
-          console.log('Adresse complète:', adresseComplete);
-          
+          // Colonne 6: Adresse complète
           let adresse = '';
           let ville = '';
           let codePostal = '';
           
-          if (adresseComplete) {
-            // Chercher le code postal (5 chiffres) dans l'adresse
+          if (row[6]) {
+            const adresseComplete = row[6].toString();
+            console.log('Adresse complète brute:', adresseComplete);
+            
+            // Méthode 1: Chercher le code postal (5 chiffres)
             const codePostalMatch = adresseComplete.match(/(\d{5})/);
             if (codePostalMatch) {
               codePostal = codePostalMatch[1];
+              
               // Diviser l'adresse au niveau du code postal
-              const parts = adresseComplete.split(codePostal);
-              adresse = parts[0]?.trim().replace(/,$/, '') || ''; // Retirer la virgule finale si présente
-              ville = parts[1]?.trim() || '';
+              const beforePostal = adresseComplete.substring(0, adresseComplete.indexOf(codePostal));
+              const afterPostal = adresseComplete.substring(adresseComplete.indexOf(codePostal) + 5);
+              
+              adresse = beforePostal.trim().replace(/[,\s]+$/, '');
+              ville = afterPostal.trim();
             } else {
-              // Si pas de code postal trouvé, prendre toute l'adresse
-              adresse = adresseComplete;
+              // Méthode 2: Si pas de code postal, essayer de diviser par virgule
+              const parts = adresseComplete.split(',');
+              if (parts.length >= 2) {
+                adresse = parts.slice(0, -1).join(',').trim();
+                ville = parts[parts.length - 1].trim();
+              } else {
+                adresse = adresseComplete;
+              }
             }
           }
           
           console.log('Adresse parsée:', { adresse, codePostal, ville });
           
-          // Colonne 7: Observations
-          const observations = row[7]?.toString() || '';
+          // Colonne 7: Observations/Remarques
+          let observations = '';
+          if (row[7]) {
+            observations = row[7].toString();
+          }
+          
+          // Combiner les remarques existantes avec les infos téléphone
+          let remarquesFinales = '';
+          if (remarquesWithPhones && observations) {
+            remarquesFinales = `${remarquesWithPhones} | ${observations}`;
+          } else if (remarquesWithPhones) {
+            remarquesFinales = remarquesWithPhones;
+          } else if (observations) {
+            remarquesFinales = observations;
+          }
           
           // Colonne 8: Transport
           const transport = row[8]?.toString() || '';
@@ -164,7 +210,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             codePostal,
             telephone,
             email,
-            remarques: observations
+            remarques: remarquesFinales
           };
           
           console.log('Jeune créé:', youngster);
@@ -187,4 +233,3 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
     reader.readAsBinaryString(file);
   });
 };
-
