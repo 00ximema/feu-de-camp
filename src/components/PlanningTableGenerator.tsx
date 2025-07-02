@@ -1,19 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Calendar, Plus, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar, Plus, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+
+interface Animateur {
+  id: number;
+  nom: string;
+  prenom: string;
+  role: string;
+}
 
 interface PlanningEvent {
   id: string;
   name: string;
   description?: string;
   color: string;
+  assignedMember?: Animateur;
+  type: 'activity' | 'duty' | 'leave' | 'recovery';
 }
 
 interface PlanningCell {
@@ -37,7 +47,14 @@ const PlanningTableGenerator = () => {
   const [planningData, setPlanningData] = useState<PlanningCell[]>([]);
   const [showTable, setShowTable] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ date: string; timeSlot: string } | null>(null);
-  const [newEvent, setNewEvent] = useState({ name: '', description: '', color: 'bg-green-100 text-green-800' });
+  const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
+  const [newEvent, setNewEvent] = useState({ 
+    name: '', 
+    description: '', 
+    color: 'bg-green-100 text-green-800',
+    type: 'activity' as 'activity' | 'duty' | 'leave' | 'recovery',
+    assignedMember: null as Animateur | null
+  });
   const { toast } = useToast();
 
   const timeSlots = [
@@ -46,7 +63,7 @@ const PlanningTableGenerator = () => {
     'Après-midi',
     'Dîner',
     'Veillées',
-    'Nuit'
+    'Astreintes, congés, repos récupérateurs'
   ];
 
   const eventColors = [
@@ -55,8 +72,25 @@ const PlanningTableGenerator = () => {
     'bg-purple-100 text-purple-800',
     'bg-yellow-100 text-yellow-800',
     'bg-red-100 text-red-800',
-    'bg-pink-100 text-pink-800'
+    'bg-pink-100 text-pink-800',
+    'bg-orange-100 text-orange-800',
+    'bg-gray-100 text-gray-800'
   ];
+
+  const eventTypes = [
+    { value: 'activity', label: 'Activité' },
+    { value: 'duty', label: 'Astreinte' },
+    { value: 'leave', label: 'Congé' },
+    { value: 'recovery', label: 'Repos récupérateur' }
+  ];
+
+  // Charger les animateurs depuis localStorage
+  useEffect(() => {
+    const savedAnimateurs = localStorage.getItem('equipe-animateurs');
+    if (savedAnimateurs) {
+      setAnimateurs(JSON.parse(savedAnimateurs));
+    }
+  }, []);
 
   const generateDates = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -116,6 +150,17 @@ const PlanningTableGenerator = () => {
   const addEvent = () => {
     if (!selectedCell || !newEvent.name) return;
 
+    // Vérifier si un membre de l'équipe est requis pour certains créneaux
+    const requiresMember = selectedCell.timeSlot === 'Astreintes, congés, repos récupérateurs';
+    if (requiresMember && !newEvent.assignedMember) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez sélectionner un membre de l'équipe pour ce créneau",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const updatedData = planningData.map(cell => {
       if (cell.date === selectedCell.date && cell.timeSlot === selectedCell.timeSlot) {
         return {
@@ -124,7 +169,9 @@ const PlanningTableGenerator = () => {
             id: Date.now().toString(),
             name: newEvent.name,
             description: newEvent.description,
-            color: newEvent.color
+            color: newEvent.color,
+            type: newEvent.type,
+            assignedMember: newEvent.assignedMember
           }
         };
       }
@@ -133,7 +180,13 @@ const PlanningTableGenerator = () => {
 
     setPlanningData(updatedData);
     setSelectedCell(null);
-    setNewEvent({ name: '', description: '', color: 'bg-green-100 text-green-800' });
+    setNewEvent({ 
+      name: '', 
+      description: '', 
+      color: 'bg-green-100 text-green-800',
+      type: 'activity',
+      assignedMember: null
+    });
     
     toast({
       title: "Événement ajouté",
@@ -151,6 +204,10 @@ const PlanningTableGenerator = () => {
     });
 
     setPlanningData(updatedData);
+  };
+
+  const isSpecialTimeSlot = (timeSlot: string) => {
+    return timeSlot === 'Astreintes, congés, repos récupérateurs';
   };
 
   return (
@@ -235,18 +292,28 @@ const PlanningTableGenerator = () => {
                         return (
                           <td key={`${date}-${timeSlot}`} className="border border-gray-300 p-1 h-16 relative">
                             {cell?.event ? (
-                              <div className="h-full flex items-center justify-between p-2">
-                                <Badge className={cell.event.color}>
-                                  {cell.event.name}
-                                </Badge>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => removeEvent(date, timeSlot)}
-                                  className="h-6 w-6 p-0 hover:bg-red-100"
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                              <div className="h-full flex flex-col justify-between p-2">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <Badge className={cell.event.color}>
+                                      {cell.event.name}
+                                    </Badge>
+                                    {cell.event.assignedMember && (
+                                      <div className="text-xs text-gray-600 mt-1 flex items-center">
+                                        <Users className="h-3 w-3 mr-1" />
+                                        {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeEvent(date, timeSlot)}
+                                    className="h-6 w-6 p-0 hover:bg-red-100"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
                               </div>
                             ) : (
                               <Button
@@ -277,6 +344,27 @@ const PlanningTableGenerator = () => {
           </DialogHeader>
           <div className="space-y-4">
             <div>
+              <Label>Type d'événement</Label>
+              <Select 
+                value={newEvent.type} 
+                onValueChange={(value: 'activity' | 'duty' | 'leave' | 'recovery') => 
+                  setNewEvent(prev => ({ ...prev, type: value }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {eventTypes.map(type => (
+                    <SelectItem key={type.value} value={type.value}>
+                      {type.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label>Nom de l'événement</Label>
               <Input
                 value={newEvent.name}
@@ -284,6 +372,7 @@ const PlanningTableGenerator = () => {
                 placeholder="ex: Randonnées à poney"
               />
             </div>
+
             <div>
               <Label>Description (optionnelle)</Label>
               <Input
@@ -292,9 +381,35 @@ const PlanningTableGenerator = () => {
                 placeholder="Détails de l'activité..."
               />
             </div>
+
+            {/* Sélection du membre de l'équipe pour les créneaux spéciaux */}
+            {selectedCell && isSpecialTimeSlot(selectedCell.timeSlot) && (
+              <div>
+                <Label>Membre de l'équipe *</Label>
+                <Select 
+                  value={newEvent.assignedMember?.id.toString() || ''} 
+                  onValueChange={(value) => {
+                    const member = animateurs.find(a => a.id.toString() === value);
+                    setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un membre" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {animateurs.map(animateur => (
+                      <SelectItem key={animateur.id} value={animateur.id.toString()}>
+                        {animateur.prenom} {animateur.nom} ({animateur.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div>
               <Label>Couleur</Label>
-              <div className="flex gap-2 mt-2">
+              <div className="flex gap-2 mt-2 flex-wrap">
                 {eventColors.map(color => (
                   <button
                     key={color}
@@ -306,6 +421,7 @@ const PlanningTableGenerator = () => {
                 ))}
               </div>
             </div>
+
             <div className="flex space-x-2">
               <Button onClick={addEvent} disabled={!newEvent.name}>
                 Ajouter
