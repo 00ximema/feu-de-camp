@@ -1,3 +1,4 @@
+
 import * as XLSX from 'xlsx';
 import { Youngster } from "@/types/youngster";
 
@@ -86,10 +87,30 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             }
           }
           
-          // Colonne 2: Âge (ex: "17 ans 6 mois 19 jours")
-          const ageText = row[2]?.toString() || '';
-          const ageMatch = ageText.match(/(\d+)\s*ans?/);
-          const age = ageMatch ? parseInt(ageMatch[1]) : 0;
+          // Colonne 2: Âge - Extraction améliorée
+          let age = 0;
+          if (row[2]) {
+            const ageValue = row[2];
+            console.log('Valeur âge brute:', ageValue, 'Type:', typeof ageValue);
+            
+            if (typeof ageValue === 'number') {
+              // Si c'est déjà un nombre, l'utiliser directement
+              age = Math.floor(ageValue);
+            } else {
+              // Si c'est du texte, extraire le nombre
+              const ageText = ageValue.toString();
+              console.log('Texte âge:', ageText);
+              
+              // Chercher un nombre au début de la chaîne ou après "ans"
+              const ageMatch = ageText.match(/(\d+)/);
+              if (ageMatch) {
+                age = parseInt(ageMatch[1]);
+                console.log('Âge extrait:', age);
+              }
+            }
+          }
+          
+          console.log('Âge final assigné:', age);
           
           // Colonne 3: M/F
           const genre = row[3]?.toString().trim() || '';
@@ -234,7 +255,7 @@ export const parseExcel = async (file: File): Promise<Youngster[]> => {
             remarques
           };
           
-          console.log('Jeune créé:', youngster);
+          console.log('Jeune créé avec âge:', youngster.age);
           youngsters.push(youngster);
         }
         
