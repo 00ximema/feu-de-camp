@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,10 +6,10 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Users, Upload, Search, UserPlus, AlertCircle, FileText, Calendar, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import YoungsterCard from "@/components/YoungsterCard";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
 import { parseExcel } from "@/utils/excelParser";
 import { Youngster } from "@/types/youngster";
@@ -345,27 +344,53 @@ const Jeunes = () => {
                     </p>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {filteredYoungsters.map((youngster) => (
-                      <div key={youngster.id} className="relative">
-                        <YoungsterCard
-                          youngster={youngster}
-                          onClick={() => setSelectedYoungster(youngster)}
-                        />
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="absolute top-2 right-2"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedYoungsterForEvent(youngster);
-                            setShowEventDialog(true);
-                          }}
-                        >
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    ))}
+                  <div className="border rounded-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Nom</TableHead>
+                          <TableHead>Sexe</TableHead>
+                          <TableHead>Âge</TableHead>
+                          <TableHead>Responsable</TableHead>
+                          <TableHead className="w-[100px]">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredYoungsters.map((youngster) => (
+                          <TableRow 
+                            key={youngster.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => setSelectedYoungster(youngster)}
+                          >
+                            <TableCell className="font-medium">
+                              {youngster.prenom} {youngster.nom}
+                            </TableCell>
+                            <TableCell>
+                              {youngster.genre || '-'}
+                            </TableCell>
+                            <TableCell>
+                              {youngster.age} ans
+                            </TableCell>
+                            <TableCell>
+                              {youngster.responsable || '-'}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedYoungsterForEvent(youngster);
+                                  setShowEventDialog(true);
+                                }}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </CardContent>
@@ -462,7 +487,6 @@ const Jeunes = () => {
             youngster={selectedYoungster}
             isOpen={!!selectedYoungster}
             onClose={() => setSelectedYoungster(null)}
-            onUpdate={handleUpdateYoungster}
           />
         )}
       </main>
