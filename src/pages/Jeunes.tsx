@@ -1,413 +1,403 @@
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Upload, User, AlertTriangle, Plus, FileText, ArrowLeft, Calendar, Clock, Eye } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router-dom";
-import { Youngster } from "@/types/youngster";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Users, Upload, Search, UserPlus, AlertCircle, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { parseExcel } from "@/utils/excelParser";
+import { Link } from "react-router-dom";
+import YoungsterCard from "@/components/YoungsterCard";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
-import { useEvents } from "@/hooks/useEvents";
+import { parseExcelFile } from "@/utils/excelParser";
+import { Youngster } from "@/types/youngster";
+import { useJeunes } from "@/hooks/useJeunes";
 
 const Jeunes = () => {
-  const [youngsters, setYoungsters] = useState<Youngster[]>([]);
-  const [selectedYoungster, setSelectedYoungster] = useState<string | null>(null);
-  const [showAlert, setShowAlert] = useState(false);
-  const [selectedYoungsterForModal, setSelectedYoungsterForModal] = useState<Youngster | null>(null);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [eventType, setEventType] = useState<string>('');
-  const [eventDescription, setEventDescription] = useState<string>('');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedYoungster, setSelectedYoungster] = useState<Youngster | null>(null);
+  const [showAddForm, setShowAddForm] = useState(false);
   const { toast } = useToast();
-  const { events, addEvent } = useEvents();
+  const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, isInitialized } = useJeunes();
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    console.log('Fichier sélectionné:', file);
-    
-    if (file) {
-      console.log('Type de fichier:', file.type);
-      console.log('Taille du fichier:', file.size);
-      
-      try {
-        // Vérifier l'extension du fichier
-        const fileName = file.name.toLowerCase();
-        
-        if (!fileName.endsWith('.xls') && !fileName.endsWith('.xlsx')) {
-          throw new Error('Format de fichier non supporté. Utilisez uniquement .xlsx ou .xls');
-        }
-        
-        // Parser Excel uniquement
-        const parsedYoungsters = await parseExcel(file);
-        
-        console.log('Jeunes parsés:', parsedYoungsters);
-        setYoungsters(parsedYoungsters);
-        
-        // Sauvegarder dans localStorage pour la page Administratif
-        localStorage.setItem('imported-youngsters', JSON.stringify(parsedYoungsters));
-        
-        toast({
-          title: "Import réussi",
-          description: `${parsedYoungsters.length} jeunes ont été importés avec succès.`,
-        });
-      } catch (error) {
-        console.error("Erreur lors du parsing:", error);
-        toast({
-          title: "Erreur d'import",
-          description: error instanceof Error ? error.message : "Impossible de lire le fichier. Vérifiez le format.",
-          variant: "destructive",
-        });
-      }
-    }
-  };
+  const [newYoungster, setNewYoungster] = useState({
+    nom: "",
+    prenom: "",
+    age: "",
+    telephone: "",
+    email: "",
+    adresse: "",
+    allergies: "",
+    medicaments: "",
+    notes: ""
+  });
 
-  const handleMedicalEvent = (eventType: string) => {
-    setEventType(eventType);
-    if (eventType === "consultation_medecin") {
-      setShowAlert(true);
-    }
-  };
+  const filteredYoungsters = jeunes.filter(
+    (youngster) =>
+      youngster.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      youngster.prenom.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-  const handleSaveEvent = () => {
-    if (!selectedYoungster || !eventType || !eventDescription.trim()) {
+  const handleAddYoungster = async () => {
+    if (!newYoungster.nom || !newYoungster.prenom || !newYoungster.age) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs.",
-        variant: "destructive",
+        description: "Veuillez remplir au moins le nom, prénom et âge",
+        variant: "destructive"
       });
       return;
     }
 
-    const youngster = youngsters.find(y => y.id === selectedYoungster);
-    if (!youngster) return;
-
-    const event = addEvent(
-      selectedYoungster,
-      `${youngster.prenom} ${youngster.nom}`,
-      eventType,
-      eventDescription
-    );
-
-    toast({
-      title: "Événement enregistré",
-      description: `Événement "${eventType}" enregistré pour ${youngster.prenom} ${youngster.nom}`,
-    });
-
-    // Réinitialiser le formulaire
-    setSelectedYoungster(null);
-    setEventType('');
-    setEventDescription('');
-    setShowAlert(false);
-  };
-
-  const handleYoungsterClick = (youngster: Youngster) => {
-    setSelectedYoungsterForModal(youngster);
-    setIsModalOpen(true);
-  };
-
-  const handleCloseModal = () => {
-    setIsModalOpen(false);
-    setSelectedYoungsterForModal(null);
-  };
-
-  const getEventTypeLabel = (type: string) => {
-    const labels: { [key: string]: string } = {
-      'blessure': 'Blessure',
-      'consultation_medecin': 'Consultation médecin',
-      'malaise': 'Malaise',
-      'allergie': 'Réaction allergique',
-      'autre': 'Autre'
+    const youngsterData = {
+      nom: newYoungster.nom,
+      prenom: newYoungster.prenom,
+      age: parseInt(newYoungster.age),
+      telephone: newYoungster.telephone,
+      email: newYoungster.email,
+      adresse: newYoungster.adresse,
+      allergies: newYoungster.allergies.split(',').map(a => a.trim()).filter(a => a),
+      medicaments: newYoungster.medicaments.split(',').map(m => m.trim()).filter(m => m),
+      notes: newYoungster.notes
     };
-    return labels[type] || type;
+
+    const result = await addJeune(youngsterData);
+    if (result) {
+      toast({
+        title: "Jeune ajouté",
+        description: `${newYoungster.prenom} ${newYoungster.nom} a été ajouté avec succès`
+      });
+      
+      setNewYoungster({
+        nom: "",
+        prenom: "",
+        age: "",
+        telephone: "",
+        email: "",
+        adresse: "",
+        allergies: "",
+        medicaments: "",
+        notes: ""
+      });
+      setShowAddForm(false);
+    }
   };
+
+  const handleUpdateYoungster = async (id: string, updates: Partial<Youngster>) => {
+    const result = await updateJeune(id, updates);
+    if (result) {
+      toast({
+        title: "Jeune mis à jour",
+        description: "Les informations ont été mises à jour avec succès"
+      });
+    }
+  };
+
+  const handleDeleteYoungster = async (id: string) => {
+    const result = await deleteJeune(id);
+    if (result) {
+      toast({
+        title: "Jeune supprimé",
+        description: "Le jeune a été supprimé avec succès"
+      });
+    }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const youngsters = await parseExcelFile(file);
+      const result = await addMultipleJeunes(youngsters);
+      
+      if (result.length > 0) {
+        toast({
+          title: "Import réussi",
+          description: `${result.length} jeunes ont été importés avec succès`
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      toast({
+        title: "Erreur d'import",
+        description: "Impossible d'importer le fichier. Vérifiez le format.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  if (!isInitialized) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Initialisation de la base de données...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      {/* Header */}
+    <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <User className="h-8 w-8 text-blue-600" />
-              <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestion des jeunes</h1>
-                <p className="text-gray-600">Import Excel et suivi des événements</p>
-              </div>
+              <Users className="h-6 w-6 text-purple-600" />
+              <h1 className="text-2xl font-bold text-gray-900">Gestion des Jeunes</h1>
             </div>
             <Link to="/">
-              <Button variant="outline" className="flex items-center space-x-2">
-                <ArrowLeft className="h-4 w-4" />
-                <span>Retour</span>
-              </Button>
+              <Button variant="outline">Retour accueil</Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Alert for medical consultation */}
-        {showAlert && (
-          <Alert className="mb-6 border-orange-200 bg-orange-50">
-            <AlertTriangle className="h-4 w-4 text-orange-600" />
-            <AlertDescription className="text-orange-800">
-              <strong>Consultation médicale :</strong> Il faut contacter les parents + l'organisateur immédiatement.
-            </AlertDescription>
-          </Alert>
-        )}
+        <Tabs defaultValue="list" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="list">Liste des jeunes</TabsTrigger>
+            <TabsTrigger value="add">Ajouter un jeune</TabsTrigger>
+            <TabsTrigger value="import">Importer depuis Excel</TabsTrigger>
+          </TabsList>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* File Upload */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Upload className="h-5 w-5" />
-                <span>Import Excel</span>
-              </CardTitle>
-              <CardDescription>
-                Importer la liste des jeunes depuis un fichier Excel (.xlsx ou .xls)
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-4">
-                    <Label htmlFor="file-upload" className="cursor-pointer">
-                      <span className="text-sm font-medium text-gray-900">Cliquer pour uploader</span>
-                      <span className="text-sm text-gray-500"> ou glisser-déposer</span>
-                    </Label>
+          <TabsContent value="list" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center space-x-2">
+                      <Users className="h-5 w-5" />
+                      <span>Liste des jeunes ({jeunes.length})</span>
+                    </CardTitle>
+                    <CardDescription>Gérez les informations des jeunes participants</CardDescription>
+                  </div>
+                  <Button onClick={() => setShowAddForm(true)}>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Ajouter un jeune
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                     <Input
-                      id="file-upload"
-                      type="file"
-                      accept=".xlsx,.xls"
-                      onChange={handleFileUpload}
-                      className="hidden"
+                      placeholder="Rechercher par nom ou prénom..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Fichiers Excel (.xlsx, .xls) jusqu'à 10MB</p>
+                  <Badge variant="outline">
+                    {filteredYoungsters.length} résultat{filteredYoungsters.length !== 1 ? 's' : ''}
+                  </Badge>
                 </div>
-                
-                {youngsters.length > 0 && (
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Upload className="h-5 w-5 text-green-600" />
-                        <span className="text-green-800 font-medium">
-                          {youngsters.length} jeunes importés
-                        </span>
-                      </div>
-                      <span className="text-sm text-green-600">
-                        {events.length} événements enregistrés
-                      </span>
-                    </div>
+
+                {filteredYoungsters.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun jeune trouvé</h3>
+                    <p className="text-gray-500 mb-4">
+                      {searchTerm ? "Aucun résultat pour votre recherche" : "Commencez par ajouter des jeunes"}
+                    </p>
+                    <Button onClick={() => setShowAddForm(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Ajouter le premier jeune
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {filteredYoungsters.map((youngster) => (
+                      <YoungsterCard
+                        key={youngster.id}
+                        youngster={youngster}
+                        onEdit={(youngster) => setSelectedYoungster(youngster)}
+                        onDelete={(id) => handleDeleteYoungster(id)}
+                      />
+                    ))}
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-          {/* Event Management */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Saisir un événement</span>
-              </CardTitle>
-              <CardDescription>
-                Enregistrer les événements médicaux et incidents
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="youngster-select">Sélectionner un jeune</Label>
-                  <Select value={selectedYoungster || undefined} onValueChange={setSelectedYoungster}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choisir un jeune" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {youngsters.map((youngster) => (
-                        <SelectItem key={youngster.id} value={youngster.id}>
-                          {youngster.prenom} {youngster.nom}
-                        </SelectItem>
-                      ))}
-                      {youngsters.length === 0 && (
-                        <SelectItem value="none" disabled>
-                          Aucun jeune importé
-                        </SelectItem>
-                      )}
-                    </SelectContent>
-                  </Select>
+          <TabsContent value="add">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <UserPlus className="h-5 w-5" />
+                  <span>Ajouter un jeune</span>
+                </CardTitle>
+                <CardDescription>
+                  Ajoutez un nouveau jeune participant à la liste
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="nom">Nom</Label>
+                    <Input
+                      id="nom"
+                      type="text"
+                      value={newYoungster.nom}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, nom: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="prenom">Prénom</Label>
+                    <Input
+                      id="prenom"
+                      type="text"
+                      value={newYoungster.prenom}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, prenom: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="age">Âge</Label>
+                    <Input
+                      id="age"
+                      type="number"
+                      value={newYoungster.age}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, age: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="telephone">Téléphone</Label>
+                    <Input
+                      id="telephone"
+                      type="text"
+                      value={newYoungster.telephone}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, telephone: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={newYoungster.email}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, email: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="adresse">Adresse</Label>
+                    <Input
+                      id="adresse"
+                      type="text"
+                      value={newYoungster.adresse}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, adresse: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="allergies">Allergies</Label>
+                    <Input
+                      id="allergies"
+                      type="text"
+                      value={newYoungster.allergies}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, allergies: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="medicaments">Médicaments</Label>
+                    <Input
+                      id="medicaments"
+                      type="text"
+                      value={newYoungster.medicaments}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, medicaments: e.target.value })}
+                      className="w-full"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="notes">Notes</Label>
+                    <textarea
+                      id="notes"
+                      value={newYoungster.notes}
+                      onChange={(e) => setNewYoungster({ ...newYoungster, notes: e.target.value })}
+                      className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      placeholder="Décrivez les notes spécifiques au jeune..."
+                    />
+                  </div>
+
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    disabled={!newYoungster.nom || !newYoungster.prenom || !newYoungster.age}
+                    onClick={handleAddYoungster}
+                  >
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Ajouter le jeune
+                  </Button>
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
-                <div>
-                  <Label htmlFor="event-type">Type d'événement</Label>
-                  <Select value={eventType} onValueChange={handleMedicalEvent}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="blessure">Blessure</SelectItem>
-                      <SelectItem value="consultation_medecin">Consultation médecin</SelectItem>
-                      <SelectItem value="malaise">Malaise</SelectItem>
-                      <SelectItem value="allergie">Réaction allergique</SelectItem>
-                      <SelectItem value="autre">Autre</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div>
-                  <Label htmlFor="event-description">Description</Label>
-                  <textarea
-                    id="event-description"
-                    value={eventDescription}
-                    onChange={(e) => setEventDescription(e.target.value)}
-                    className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Décrire l'événement en détail..."
+          <TabsContent value="import">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Upload className="h-5 w-5" />
+                  <span>Importer depuis Excel</span>
+                </CardTitle>
+                <CardDescription>
+                  Importez une liste de jeunes depuis un fichier Excel (.xlsx, .xls)
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                  <Upload className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Sélectionnez un fichier Excel</h3>
+                  <p className="text-gray-500 mb-4">
+                    Le fichier doit contenir les colonnes : Nom, Prénom, Age, Téléphone, Email, Adresse, Allergies, Médicaments, Notes
+                  </p>
+                  <Input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileUpload}
+                    className="max-w-xs mx-auto"
                   />
                 </div>
 
-                <Button 
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  disabled={!selectedYoungster || !eventType || !eventDescription.trim()}
-                  onClick={handleSaveEvent}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Enregistrer l'événement
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Journal des événements */}
-        {events.length > 0 && (
-          <Card className="mt-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Journal des événements ({events.length})</span>
-              </CardTitle>
-              <CardDescription>
-                Historique de tous les événements enregistrés
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4 max-h-96 overflow-y-auto">
-                {events.map((event) => (
-                  <div key={event.id} className="border border-gray-200 rounded-lg p-4 bg-white">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <span className="font-medium text-gray-900">{event.youngsterName}</span>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            event.type === 'consultation_medecin' ? 'bg-red-100 text-red-800' :
-                            event.type === 'blessure' ? 'bg-orange-100 text-orange-800' :
-                            event.type === 'malaise' ? 'bg-yellow-100 text-yellow-800' :
-                            event.type === 'allergie' ? 'bg-purple-100 text-purple-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {getEventTypeLabel(event.type)}
-                          </span>
-                        </div>
-                        <p className="text-gray-700 text-sm mb-3">{event.description}</p>
-                        <div className="flex items-center space-x-4 text-xs text-gray-500">
-                          <div className="flex items-center space-x-1">
-                            <Calendar className="h-3 w-3" />
-                            <span>{event.date}</span>
-                          </div>
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-3 w-3" />
-                            <span>{new Date(event.timestamp).toLocaleTimeString('fr-FR')}</span>
-                          </div>
-                        </div>
-                      </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <div className="flex items-start space-x-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 mt-0.5" />
+                    <div>
+                      <h4 className="font-medium text-blue-900">Format attendu</h4>
+                      <p className="text-sm text-blue-700 mt-1">
+                        Assurez-vous que votre fichier Excel contient les colonnes suivantes (dans l'ordre) :
+                        Nom, Prénom, Age, Téléphone, Email, Adresse, Allergies, Médicaments, Notes
+                      </p>
                     </div>
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
+
+        {selectedYoungster && (
+          <YoungsterDetailsModal
+            youngster={selectedYoungster}
+            isOpen={!!selectedYoungster}
+            onClose={() => setSelectedYoungster(null)}
+            onUpdate={handleUpdateYoungster}
+          />
         )}
-
-        {/* Youngsters Table */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Liste des jeunes ({youngsters.length})</CardTitle>
-            <CardDescription>
-              Jeunes actuellement enregistrés dans le système - Cliquez sur l'icône œil pour voir tous les détails
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {youngsters.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <User className="mx-auto h-12 w-12 text-gray-300 mb-4" />
-                <p>Aucun jeune enregistré</p>
-                <p className="text-sm">Importez un fichier Excel pour commencer</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Nom</TableHead>
-                      <TableHead>Prénom</TableHead>
-                      <TableHead>Âge</TableHead>
-                      <TableHead>Genre</TableHead>
-                      <TableHead>Responsable</TableHead>
-                      <TableHead>Téléphone</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Transport</TableHead>
-                      <TableHead>Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {youngsters.map((youngster) => (
-                      <TableRow key={youngster.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">{youngster.nom}</TableCell>
-                        <TableCell>{youngster.prenom}</TableCell>
-                        <TableCell>{youngster.age}</TableCell>
-                        <TableCell>
-                          <span className={`px-2 py-1 text-xs rounded-full ${
-                            youngster.genre === 'M' ? 'bg-blue-100 text-blue-800' : 'bg-pink-100 text-pink-800'
-                          }`}>
-                            {youngster.genre === 'M' ? 'Garçon' : 'Fille'}
-                          </span>
-                        </TableCell>
-                        <TableCell>{youngster.responsable}</TableCell>
-                        <TableCell>{youngster.telephone}</TableCell>
-                        <TableCell className="truncate max-w-[150px]">{youngster.email}</TableCell>
-                        <TableCell>{youngster.transport}</TableCell>
-                        <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleYoungsterClick(youngster)}
-                            className="h-8 w-8 p-0"
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Modal for youngster details */}
-        <YoungsterDetailsModal
-          youngster={selectedYoungsterForModal}
-          isOpen={isModalOpen}
-          onClose={handleCloseModal}
-        />
       </main>
     </div>
   );

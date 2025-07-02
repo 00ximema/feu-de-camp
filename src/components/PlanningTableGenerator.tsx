@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Calendar, Plus, Trash2, Users } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 
 interface Animateur {
   id: number;
@@ -56,6 +57,7 @@ const PlanningTableGenerator = () => {
     assignedMember: null as Animateur | null
   });
   const { toast } = useToast();
+  const { isInitialized, db } = useLocalDatabase();
 
   const timeSlots = [
     'Matin',
@@ -63,7 +65,9 @@ const PlanningTableGenerator = () => {
     'Après-midi',
     'Dîner',
     'Veillées',
-    'Astreintes, congés, repos récupérateurs'
+    'Astreintes',
+    'Congés',
+    'Repos récupérateurs'
   ];
 
   const eventColors = [
@@ -84,13 +88,27 @@ const PlanningTableGenerator = () => {
     { value: 'recovery', label: 'Repos récupérateur' }
   ];
 
-  // Charger les animateurs depuis localStorage
+  // Charger les animateurs depuis la base de données
   useEffect(() => {
-    const savedAnimateurs = localStorage.getItem('equipe-animateurs');
-    if (savedAnimateurs) {
-      setAnimateurs(JSON.parse(savedAnimateurs));
-    }
-  }, []);
+    const loadAnimateurs = async () => {
+      if (!isInitialized) return;
+      
+      try {
+        const dbAnimateurs = await db.getAll('animateurs');
+        setAnimateurs(dbAnimateurs);
+        console.log('Animateurs chargés depuis la base de données:', dbAnimateurs);
+      } catch (error) {
+        console.error('Erreur lors du chargement des animateurs:', error);
+        // Fallback vers localStorage
+        const savedAnimateurs = localStorage.getItem('equipe-animateurs');
+        if (savedAnimateurs) {
+          setAnimateurs(JSON.parse(savedAnimateurs));
+        }
+      }
+    };
+
+    loadAnimateurs();
+  }, [isInitialized, db]);
 
   const generateDates = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -151,7 +169,7 @@ const PlanningTableGenerator = () => {
     if (!selectedCell || !newEvent.name) return;
 
     // Vérifier si un membre de l'équipe est requis pour certains créneaux
-    const requiresMember = selectedCell.timeSlot === 'Astreintes, congés, repos récupérateurs';
+    const requiresMember = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(selectedCell.timeSlot);
     if (requiresMember && !newEvent.assignedMember) {
       toast({
         title: "Erreur",
@@ -207,7 +225,7 @@ const PlanningTableGenerator = () => {
   };
 
   const isSpecialTimeSlot = (timeSlot: string) => {
-    return timeSlot === 'Astreintes, congés, repos récupérateurs';
+    return ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
   };
 
   return (
