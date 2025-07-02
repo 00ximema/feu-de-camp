@@ -1,9 +1,9 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
+import SessionManager from "@/components/SessionManager";
 
 interface Animateur {
   id: number;
@@ -136,16 +136,21 @@ const Index = () => {
       {/* Header */}
       <header className="bg-white shadow-sm border-b">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center space-x-4">
-            <img 
-              src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
-              alt="Logo Fondation Maison de la Gendarmerie" 
-              className="h-16 w-auto"
-            />
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
-              <p className="text-gray-600">Système de gestion de colonie de vacances</p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <img 
+                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                alt="Logo Fondation Maison de la Gendarmerie" 
+                className="h-16 w-auto"
+              />
+              <div>
+                <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
+                <p className="text-gray-600">Système de gestion de colonie de vacances</p>
+              </div>
             </div>
+            
+            {/* Session Manager */}
+            <SessionManager />
           </div>
         </div>
       </header>
