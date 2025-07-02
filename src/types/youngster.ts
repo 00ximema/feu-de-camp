@@ -4,9 +4,13 @@ export interface Youngster {
   nom: string;
   prenom: string;
   age: number;
+  genre?: string;
+  responsable?: string;
+  transport?: string;
   dateNaissance?: string;
   adresse?: string;
   ville?: string;
+  codePostal?: string;
   telephone?: string;
   email?: string;
   etablissementScolaire?: string;
