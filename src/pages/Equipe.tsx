@@ -54,18 +54,20 @@ const Equipe = () => {
   // Charger les animateurs depuis la base de données
   useEffect(() => {
     const loadAnimateurs = async () => {
-      if (!isInitialized) return;
+      if (!isInitialized || !currentSession) {
+        setAnimateurs([]);
+        return;
+      }
       
       try {
-        const dbAnimateurs = await db.getAll('animateurs', currentSession?.id);
-        setAnimateurs(dbAnimateurs);
+        const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
+        // S'assurer qu'on ne charge que les animateurs de la session courante
+        const sessionAnimateurs = dbAnimateurs.filter(a => a.sessionId === currentSession.id);
+        setAnimateurs(sessionAnimateurs);
+        console.log('Animateurs chargés pour la session', currentSession.id, ':', sessionAnimateurs);
       } catch (error) {
         console.error('Erreur lors du chargement des animateurs:', error);
-        // Fallback vers localStorage si erreur
-        const savedAnimateurs = localStorage.getItem('equipe-animateurs');
-        if (savedAnimateurs) {
-          setAnimateurs(JSON.parse(savedAnimateurs));
-        }
+        setAnimateurs([]);
       }
     };
 
@@ -270,65 +272,73 @@ const Equipe = () => {
                   </div>
                 )}
 
-                <div className="space-y-3">
-                  {animateurs.map((animateur) => (
-                    <div
-                      key={animateur.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedAnimateur === animateur.id 
-                          ? 'border-green-500 bg-green-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedAnimateur(animateur.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-lg">
-                            {animateur.prenom} {animateur.nom}
+                {animateurs.length === 0 ? (
+                  <div className="text-center text-gray-500 py-8">
+                    <UserCheck className="h-12 w-12 mx-auto mb-2 opacity-50" />
+                    <p>Aucun animateur dans l'équipe pour cette session</p>
+                    <p className="text-sm">Cliquez sur "Nouvel animateur" pour ajouter le premier membre</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {animateurs.map((animateur) => (
+                      <div
+                        key={animateur.id}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedAnimateur === animateur.id 
+                            ? 'border-green-500 bg-green-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedAnimateur(animateur.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-lg">
+                              {animateur.prenom} {animateur.nom}
+                            </div>
+                            <div className="text-gray-600">
+                              {animateur.role} • {animateur.age} ans
+                              {animateur.age < 18 && (
+                                <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
+                                  Mineur
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
+                              <div className="flex items-center space-x-1">
+                                <Phone className="h-3 w-3" />
+                                <span>{animateur.telephone}</span>
+                              </div>
+                              <div className="flex items-center space-x-1">
+                                <Mail className="h-3 w-3" />
+                                <span>{animateur.email}</span>
+                              </div>
+                            </div>
                           </div>
-                          <div className="text-gray-600">
-                            {animateur.role} • {animateur.age} ans
-                            {animateur.age < 18 && (
-                              <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
-                                Mineur
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {animateur.formations.length} formation(s)
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {animateur.documents.length} document(s)
+                            </div>
+                          </div>
+                        </div>
+                        {animateur.formations.length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-1">
+                            {animateur.formations.map((formation, index) => (
+                              <span
+                                key={index}
+                                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
+                              >
+                                {formation}
                               </span>
-                            )}
+                            ))}
                           </div>
-                          <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                            <div className="flex items-center space-x-1">
-                              <Phone className="h-3 w-3" />
-                              <span>{animateur.telephone}</span>
-                            </div>
-                            <div className="flex items-center space-x-1">
-                              <Mail className="h-3 w-3" />
-                              <span>{animateur.email}</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {animateur.formations.length} formation(s)
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {animateur.documents.length} document(s)
-                          </div>
-                        </div>
+                        )}
                       </div>
-                      {animateur.formations.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1">
-                          {animateur.formations.map((formation, index) => (
-                            <span
-                              key={index}
-                              className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                            >
-                              {formation}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
