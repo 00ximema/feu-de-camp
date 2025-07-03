@@ -59,6 +59,17 @@ interface DatabaseSchema {
     notes?: string;
     dateInscription?: string;
   };
+
+  // Groupes de jeunes
+  groupes: {
+    id: string;
+    sessionId?: string;
+    nom: string;
+    description?: string;
+    couleur: string;
+    jeunesIds: string[];
+    createdAt: string;
+  };
   
   // Événements
   events: {
@@ -94,6 +105,11 @@ interface DatabaseSchema {
           prenom: string;
           role: string;
         };
+        assignedGroup?: {
+          id: string;
+          nom: string;
+          couleur: string;
+        };
       };
     }>;
     createdAt: string;
@@ -118,7 +134,7 @@ interface DatabaseSchema {
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 2; // Augmenter la version pour forcer la mise à jour
+  private version = 3; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -150,6 +166,11 @@ class LocalDatabase {
           const jeunesStore = db.createObjectStore('jeunes', { keyPath: 'id' });
           jeunesStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table jeunes créée');
+        }
+        if (!db.objectStoreNames.contains('groupes')) {
+          const groupesStore = db.createObjectStore('groupes', { keyPath: 'id' });
+          groupesStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table groupes créée');
         }
         if (!db.objectStoreNames.contains('events')) {
           const eventsStore = db.createObjectStore('events', { keyPath: 'id' });

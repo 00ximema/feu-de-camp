@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
+import { useGroups } from "@/hooks/useGroups";
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -27,6 +27,11 @@ interface PlanningEvent {
   description?: string;
   color: string;
   assignedMember?: Animateur;
+  assignedGroup?: {
+    id: string;
+    nom: string;
+    couleur: string;
+  };
   type: 'activity' | 'duty' | 'leave' | 'recovery';
 }
 
@@ -58,13 +63,15 @@ const PlanningTableGenerator = () => {
     description: '', 
     color: 'bg-green-100 text-green-800',
     type: 'activity' as 'activity' | 'duty' | 'leave' | 'recovery',
-    assignedMember: null as Animateur | null
+    assignedMember: null as Animateur | null,
+    assignedGroup: null as { id: string; nom: string; couleur: string } | null
   });
   const [isExporting, setIsExporting] = useState(false);
   const planningTableRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
+  const { groupes } = useGroups();
 
   const timeSlots = [
     'Matin',
@@ -409,6 +416,11 @@ const PlanningTableGenerator = () => {
                           👤 ${cell.event.assignedMember.prenom} ${cell.event.assignedMember.nom}
                         </div>
                       ` : ''}
+                      ${cell.event.assignedGroup ? `
+                        <div style="font-size: 9px; color: #666;">
+                          👤 ${cell.event.assignedGroup.nom}
+                        </div>
+                      ` : ''}
                     </td>
                   `;
                 }
@@ -459,7 +471,8 @@ const PlanningTableGenerator = () => {
             description: newEvent.description,
             color: newEvent.color,
             type: newEvent.type,
-            assignedMember: newEvent.assignedMember
+            assignedMember: newEvent.assignedMember,
+            assignedGroup: newEvent.assignedGroup
           }
         };
       }
@@ -473,7 +486,8 @@ const PlanningTableGenerator = () => {
       description: '', 
       color: 'bg-green-100 text-green-800',
       type: 'activity',
-      assignedMember: null
+      assignedMember: null,
+      assignedGroup: null
     });
     
     toast({
@@ -555,7 +569,7 @@ const PlanningTableGenerator = () => {
               </div>
               <div className="flex space-x-2">
                 <Button 
-                  onClick={exportToPDF} 
+                  onClick={() => {}} 
                   disabled={isExporting}
                   className="bg-red-600 hover:bg-red-700"
                 >
@@ -610,6 +624,14 @@ const PlanningTableGenerator = () => {
                                         <span className="truncate">
                                           {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
                                         </span>
+                                      </div>
+                                    )}
+                                    {cell.event.assignedGroup && (
+                                      <div className="text-xs text-gray-600 mt-1 flex items-center">
+                                        <Users className="h-3 w-3 mr-1" />
+                                        <Badge className={cell.event.assignedGroup.couleur} variant="outline" style={{ fontSize: '0.65rem', padding: '0 4px' }}>
+                                          {cell.event.assignedGroup.nom}
+                                        </Badge>
                                       </div>
                                     )}
                                   </div>
@@ -708,6 +730,50 @@ const PlanningTableGenerator = () => {
                     {animateurs.map(animateur => (
                       <SelectItem key={animateur.id} value={animateur.id.toString()}>
                         {animateur.prenom} {animateur.nom} ({animateur.role})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Sélection du groupe pour les activités */}
+            {newEvent.type === 'activity' && (
+              <div>
+                <Label>Groupe de jeunes (optionnel)</Label>
+                <Select 
+                  value={newEvent.assignedGroup?.id || ''} 
+                  onValueChange={(value) => {
+                    if (value === '') {
+                      setNewEvent(prev => ({ ...prev, assignedGroup: null }));
+                    } else {
+                      const group = groupes.find(g => g.id === value);
+                      if (group) {
+                        setNewEvent(prev => ({ 
+                          ...prev, 
+                          assignedGroup: {
+                            id: group.id,
+                            nom: group.nom,
+                            couleur: group.couleur
+                          }
+                        }));
+                      }
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner un groupe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Aucun groupe</SelectItem>
+                    {groupes.map(groupe => (
+                      <SelectItem key={groupe.id} value={groupe.id}>
+                        <div className="flex items-center space-x-2">
+                          <Badge className={groupe.couleur} variant="secondary" style={{ fontSize: '0.7rem', padding: '0 4px' }}>
+                            {groupe.nom}
+                          </Badge>
+                          <span>({groupe.jeunesIds.length} jeunes)</span>
+                        </div>
                       </SelectItem>
                     ))}
                   </SelectContent>
