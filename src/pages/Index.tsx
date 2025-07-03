@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle } from "lucide-react";
+import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SessionManager from "@/components/SessionManager";
@@ -42,6 +42,20 @@ interface Planning {
   createdAt: string;
 }
 
+interface Traitement {
+  id: string;
+  jeuneId: string;
+  jeuneNom: string;
+  medicament: string;
+  posologie: string;
+  duree: string;
+  dateDebut: string;
+  dateFin: string;
+  instructions?: string;
+  ordonnance: boolean;
+  dateCreation: string;
+}
+
 const Index = () => {
   const { currentSession } = useSession();
   const { jeunes } = useJeunes();
@@ -49,6 +63,7 @@ const Index = () => {
   const { isInitialized, db } = useLocalDatabase();
   const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
   const [plannings, setPlannings] = useState<Planning[]>([]);
+  const [traitements, setTraitements] = useState<Traitement[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -62,6 +77,10 @@ const Index = () => {
         // Charger les plannings de la session courante
         const dbPlannings = await db.getAll('plannings', currentSession.id);
         setPlannings(dbPlannings);
+
+        // Charger les traitements de la session courante
+        const dbTraitements = await db.getAll('traitements', currentSession.id);
+        setTraitements(dbTraitements);
       } catch (error) {
         console.error('Erreur lors du chargement des données:', error);
       }
@@ -89,6 +108,10 @@ const Index = () => {
     return events.filter(event => event.date === new Date().toLocaleDateString('fr-FR'));
   };
 
+  const getTraitementsActifs = () => {
+    return traitements.filter(t => t.dateDebut <= today && t.dateFin >= today);
+  };
+
   const getAnimateurName = (id: number) => {
     const animateur = animateurs.find(a => a.id === id);
     return animateur ? `${animateur.prenom} ${animateur.nom}` : 'Inconnu';
@@ -97,6 +120,7 @@ const Index = () => {
   const todayPlanning = getTodayPlanning();
   const tomorrowPlanning = getTomorrowPlanning();
   const todayEvents = getTodayEvents();
+  const traitementsActifs = getTraitementsActifs();
 
   const modules = [
     {
@@ -268,7 +292,7 @@ const Index = () => {
         {/* Quick stats */}
         <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Aperçu rapide</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{jeunes.length}</div>
               <div className="text-sm text-gray-600">Jeunes inscrits</div>
@@ -285,10 +309,14 @@ const Index = () => {
               <div className="text-2xl font-bold text-orange-600">0</div>
               <div className="text-sm text-gray-600">Jours de séjour</div>
             </div>
+            <div className="text-center">
+              <div className="text-2xl font-bold text-teal-600">{traitementsActifs.length}</div>
+              <div className="text-sm text-gray-600">Traitements actifs</div>
+            </div>
           </div>
 
           {/* Planning et événements du jour */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Aujourd'hui */}
             <div>
               <h4 className="font-medium text-gray-900 mb-3 flex items-center">
@@ -363,6 +391,30 @@ const Index = () => {
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">Aucun événement enregistré</div>
+              )}
+            </div>
+
+            {/* Traitements en cours */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <Pill className="h-4 w-4 mr-2 text-teal-600" />
+                Traitements en cours
+              </h4>
+              {traitementsActifs.length > 0 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {traitementsActifs.map((traitement, index) => (
+                    <div key={index} className="text-sm p-2 bg-teal-50 rounded border-l-2 border-teal-200">
+                      <div className="font-medium text-teal-900">{traitement.jeuneNom}</div>
+                      <div className="text-teal-700">{traitement.medicament}</div>
+                      <div className="text-teal-600 text-xs">{traitement.posologie}</div>
+                      {traitement.ordonnance && (
+                        <div className="text-xs text-green-700 mt-1">📄 Avec ordonnance</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">Aucun traitement en cours</div>
               )}
             </div>
           </div>
