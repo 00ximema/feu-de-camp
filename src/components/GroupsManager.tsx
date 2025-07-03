@@ -86,6 +86,14 @@ const GroupsManager = () => {
     return jeunes.filter(j => !groupe.jeunesIds.includes(j.id));
   };
 
+  const handleCloseMembersDialog = () => {
+    setShowMembersDialog(null);
+    toast({
+      title: "Modifications enregistrées",
+      description: "Les membres du groupe ont été mis à jour"
+    });
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -214,9 +222,9 @@ const GroupsManager = () => {
           </div>
         )}
 
-        {/* Dialog pour gérer les membres du groupe */}
+        {/* Dialog pour gérer les membres du groupe - fenêtre plus grande */}
         <Dialog open={!!showMembersDialog} onOpenChange={() => setShowMembersDialog(null)}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-4xl max-h-[80vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>Gérer les membres - {showMembersDialog?.nom}</DialogTitle>
               <DialogDescription>
@@ -224,23 +232,23 @@ const GroupsManager = () => {
               </DialogDescription>
             </DialogHeader>
             {showMembersDialog && (
-              <div className="space-y-6">
+              <div className="space-y-6 overflow-y-auto max-h-[60vh] pr-2">
                 {/* Jeunes dans le groupe */}
                 <div>
                   <h4 className="font-medium mb-3">Membres du groupe ({getJeunesInGroup(showMembersDialog.id).length})</h4>
                   {getJeunesInGroup(showMembersDialog.id).length === 0 ? (
                     <p className="text-gray-500 text-sm">Aucun membre dans ce groupe</p>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-3">
                       {getJeunesInGroup(showMembersDialog.id).map(jeune => (
-                        <div key={jeune.id} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm">{jeune.prenom} {jeune.nom}</span>
+                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-green-50 rounded border">
+                          <span className="text-sm font-medium">{jeune.prenom} {jeune.nom}</span>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => removeJeuneFromGroupe(showMembersDialog.id, jeune.id)}
                           >
-                            <UserMinus className="h-3 w-3" />
+                            <UserMinus className="h-4 w-4 text-red-600" />
                           </Button>
                         </div>
                       ))}
@@ -254,16 +262,16 @@ const GroupsManager = () => {
                   {getJeunesNotInGroup(showMembersDialog.id).length === 0 ? (
                     <p className="text-gray-500 text-sm">Tous les jeunes sont déjà dans ce groupe</p>
                   ) : (
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-3">
                       {getJeunesNotInGroup(showMembersDialog.id).map(jeune => (
-                        <div key={jeune.id} className="flex items-center justify-between p-2 border rounded">
+                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
                           <span className="text-sm">{jeune.prenom} {jeune.nom}</span>
                           <Button
                             size="sm"
                             variant="ghost"
                             onClick={() => addJeuneToGroupe(showMembersDialog.id, jeune.id)}
                           >
-                            <UserPlus className="h-3 w-3" />
+                            <UserPlus className="h-4 w-4 text-green-600" />
                           </Button>
                         </div>
                       ))}
@@ -272,6 +280,11 @@ const GroupsManager = () => {
                 </div>
               </div>
             )}
+            <div className="flex justify-end space-x-2 pt-4 border-t">
+              <Button onClick={handleCloseMembersDialog} className="bg-green-600 hover:bg-green-700">
+                Valider les modifications
+              </Button>
+            </div>
           </DialogContent>
         </Dialog>
       </CardContent>

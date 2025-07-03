@@ -787,6 +787,9 @@ const PlanningTableGenerator = () => {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Ajouter un événement</DialogTitle>
+            <DialogDescription>
+              Ajoutez un événement à votre planning pour le {selectedCell && new Date(selectedCell.date).toLocaleDateString('fr-FR')} - {selectedCell?.timeSlot}
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
