@@ -205,52 +205,19 @@ const PlanningTableGenerator = () => {
     setIsExporting(true);
     
     try {
-      const element = planningTableRef.current;
+      const uniqueDates = [...new Set(planningData.map(cell => cell.date))].sort();
+      const totalDays = uniqueDates.length;
       
-      // Configuration pour capturer le tableau
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      const imgData = canvas.toDataURL('image/png');
-      
-      // Créer le PDF en format paysage pour les tableaux larges
-      const pdf = new jsPDF('landscape', 'mm', 'a4');
-      const imgWidth = 297; // Largeur A4 paysage
-      const pageHeight = 210; // Hauteur A4 paysage
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      // Ajouter le titre
-      pdf.setFontSize(16);
-      pdf.text(`Planning - ${config.name}`, 15, 15);
-      pdf.setFontSize(12);
-      pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
-
-      // Ajouter l'image du planning
-      pdf.addImage(imgData, 'PNG', 10, 35, imgWidth - 20, imgHeight - 35);
-      heightLeft -= pageHeight - 35;
-
-      // Ajouter des pages supplémentaires si nécessaire
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth - 20, imgHeight);
-        heightLeft -= pageHeight;
+      // Si plus de 7 jours, découper en chunks de 7 jours maximum
+      if (totalDays > 7) {
+        await exportMultiPagePDF(uniqueDates);
+      } else {
+        await exportSinglePagePDF();
       }
-
-      // Télécharger le PDF
-      const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      pdf.save(fileName);
 
       toast({
         title: "Export réussi",
-        description: `Le planning a été exporté en PDF : ${fileName}`
+        description: `Le planning a été exporté en PDF`
       });
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
@@ -262,6 +229,148 @@ const PlanningTableGenerator = () => {
     } finally {
       setIsExporting(false);
     }
+  };
+
+  const exportSinglePagePDF = async () => {
+    const element = planningTableRef.current!;
+    
+    const canvas = await html2canvas(element, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('landscape', 'mm', 'a4');
+    const imgWidth = 277;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+    
+    // Titre
+    pdf.setFontSize(16);
+    pdf.text(`Planning - ${config.name}`, 15, 15);
+    pdf.setFontSize(12);
+    pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
+
+    // Image
+    pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, Math.min(imgHeight, 175));
+
+    const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(fileName);
+  };
+
+  const exportMultiPagePDF = async (allDates: string[]) => {
+    const pdf = new jsPDF('landscape', 'mm', 'a4');
+    const daysPerPage = 7;
+    const chunks = [];
+    
+    // Découper les dates en chunks de 7 jours
+    for (let i = 0; i < allDates.length; i += daysPerPage) {
+      chunks.push(allDates.slice(i, i + daysPerPage));
+    }
+
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
+      
+      // Créer un tableau temporaire pour cette page
+      const tempTable = createTemporaryTable(chunk);
+      document.body.appendChild(tempTable);
+      
+      try {
+        const canvas = await html2canvas(tempTable, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+
+        const imgData = canvas.toDataURL('image/png');
+        
+        if (chunkIndex > 0) {
+          pdf.addPage();
+        }
+        
+        // Titre pour chaque page
+        pdf.setFontSize(16);
+        pdf.text(`Planning - ${config.name} (Page ${chunkIndex + 1}/${chunks.length})`, 15, 15);
+        pdf.setFontSize(12);
+        const startDate = new Date(chunk[0]).toLocaleDateString('fr-FR');
+        const endDate = new Date(chunk[chunk.length - 1]).toLocaleDateString('fr-FR');
+        pdf.text(`Du ${startDate} au ${endDate}`, 15, 25);
+
+        // Image
+        const imgWidth = 277;
+        const imgHeight = (canvas.height * imgWidth) / canvas.width;
+        pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, Math.min(imgHeight, 175));
+        
+      } finally {
+        document.body.removeChild(tempTable);
+      }
+    }
+
+    const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(fileName);
+  };
+
+  const createTemporaryTable = (dates: string[]) => {
+    const table = document.createElement('div');
+    table.style.position = 'absolute';
+    table.style.left = '-9999px';
+    table.style.backgroundColor = 'white';
+    table.style.padding = '20px';
+    
+    const tableHTML = `
+      <table style="border-collapse: collapse; width: 100%; font-family: system-ui;">
+        <thead>
+          <tr>
+            <th style="border: 1px solid #d1d5db; padding: 8px; background-color: #f9fafb; font-weight: 500;">
+              Créneaux
+            </th>
+            ${dates.map(date => {
+              const dateObj = new Date(date);
+              const dayName = dateObj.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
+              const dateDisplay = dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+              return `
+                <th style="border: 1px solid #d1d5db; padding: 8px; background-color: #f9fafb; text-align: center; min-width: 120px;">
+                  <div style="font-weight: 500;">${dayName}.</div>
+                  <div style="color: #6b7280;">${dateDisplay}</div>
+                </th>
+              `;
+            }).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${timeSlots.map(timeSlot => `
+            <tr>
+              <td style="border: 1px solid #d1d5db; padding: 12px; background-color: #f9fafb; font-weight: 500;">
+                ${timeSlot}
+              </td>
+              ${dates.map(date => {
+                const cell = planningData.find(c => c.date === date && c.timeSlot === timeSlot);
+                if (cell?.event) {
+                  return `
+                    <td style="border: 1px solid #d1d5db; padding: 8px; height: 64px;">
+                      <div style="background-color: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 4px;">
+                        ${cell.event.name}
+                      </div>
+                      ${cell.event.assignedMember ? `
+                        <div style="font-size: 10px; color: #6b7280; display: flex; align-items: center;">
+                          👥 ${cell.event.assignedMember.prenom} ${cell.event.assignedMember.nom}
+                        </div>
+                      ` : ''}
+                    </td>
+                  `;
+                }
+                return `<td style="border: 1px solid #d1d5db; height: 64px;"></td>`;
+              }).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+    
+    table.innerHTML = tableHTML;
+    return table;
   };
 
   const getDayName = (dateStr: string) => {
@@ -279,7 +388,6 @@ const PlanningTableGenerator = () => {
   const addEvent = () => {
     if (!selectedCell || !newEvent.name) return;
 
-    // Vérifier si un membre de l'équipe est requis pour certains créneaux
     const requiresMember = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(selectedCell.timeSlot);
     if (requiresMember && !newEvent.assignedMember) {
       toast({
@@ -442,13 +550,15 @@ const PlanningTableGenerator = () => {
                               <div className="h-full flex flex-col justify-between p-2">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
-                                    <Badge className={cell.event.color}>
+                                    <Badge className={cell.event.color} variant="secondary">
                                       {cell.event.name}
                                     </Badge>
                                     {cell.event.assignedMember && (
                                       <div className="text-xs text-gray-600 mt-1 flex items-center">
                                         <Users className="h-3 w-3 mr-1" />
-                                        {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                        <span className="truncate">
+                                          {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                        </span>
                                       </div>
                                     )}
                                   </div>
@@ -456,7 +566,7 @@ const PlanningTableGenerator = () => {
                                     variant="ghost"
                                     size="sm"
                                     onClick={() => removeEvent(date, timeSlot)}
-                                    className="h-6 w-6 p-0 hover:bg-red-100"
+                                    className="h-6 w-6 p-0 hover:bg-red-100 ml-1 flex-shrink-0"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </Button>
