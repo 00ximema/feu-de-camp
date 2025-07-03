@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -70,11 +69,17 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   };
 
   const handleSubmit = async () => {
-    console.log('Début de l\'enregistrement du traitement');
+    console.log('=== DÉBUT ENREGISTREMENT TRAITEMENT ===');
     console.log('Session actuelle:', currentSession);
     console.log('Base de données initialisée:', isInitialized);
+    console.log('DB object:', db);
+    console.log('Jeune sélectionné:', selectedJeune);
+    console.log('Durée:', duree);
+    console.log('Date début:', dateDebut);
+    console.log('Médicaments:', medicaments);
 
     if (!selectedJeune || !duree || !dateDebut) {
+      console.error('Champs obligatoires manquants');
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -85,7 +90,10 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
 
     // Vérifier qu'au moins un médicament est renseigné
     const medicamentsValides = medicaments.filter(m => m.nom.trim() && m.posologie.trim());
+    console.log('Médicaments valides:', medicamentsValides);
+    
     if (medicamentsValides.length === 0) {
+      console.error('Aucun médicament valide');
       toast({
         title: "Erreur",
         description: "Veuillez ajouter au moins un médicament avec sa posologie",
@@ -115,8 +123,11 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
     }
 
     const jeune = jeunes.find(j => j.id === selectedJeune);
+    console.log('Jeune trouvé:', jeune);
+    
     if (!jeune) {
-      console.error('Jeune non trouvé');
+      console.error('Jeune non trouvé avec ID:', selectedJeune);
+      console.error('Jeunes disponibles:', jeunes);
       toast({
         title: "Erreur",
         description: "Jeune non trouvé",
@@ -131,9 +142,17 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
     const fin = new Date(debut);
     fin.setDate(fin.getDate() + dureeJours);
 
+    console.log('Date début calculée:', debut);
+    console.log('Date fin calculée:', fin);
+
     try {
+      console.log('=== DÉBUT SAUVEGARDE MÉDICAMENTS ===');
+      
       // Créer un traitement pour chaque médicament
-      for (const medicament of medicamentsValides) {
+      for (let i = 0; i < medicamentsValides.length; i++) {
+        const medicament = medicamentsValides[i];
+        console.log(`Traitement ${i + 1}/${medicamentsValides.length}:`, medicament);
+        
         const traitement = {
           id: `traitement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           sessionId: currentSession.id,
@@ -148,10 +167,21 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
           dateCreation: new Date().toISOString()
         };
 
-        console.log('Traitement à enregistrer:', traitement);
-        await db.save('traitements', traitement);
-        console.log('Traitement enregistré avec succès');
+        console.log('Objet traitement à enregistrer:', traitement);
+        console.log('Type de db.save:', typeof db.save);
+        
+        try {
+          console.log(`Tentative d'enregistrement traitement ${i + 1}...`);
+          await db.save('traitements', traitement);
+          console.log(`✅ Traitement ${i + 1} enregistré avec succès`);
+        } catch (saveError) {
+          console.error(`❌ Erreur lors de l'enregistrement du traitement ${i + 1}:`, saveError);
+          console.error('Stack trace:', saveError.stack);
+          throw saveError;
+        }
       }
+      
+      console.log('=== TOUS LES TRAITEMENTS ENREGISTRÉS ===');
       
       toast({
         title: "Traitements ajoutés",
@@ -165,10 +195,18 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
       setDateDebut('');
       setInstructions('');
       
+      console.log('Appel de onTraitementAdded...');
       onTraitementAdded();
+      console.log('Fermeture du formulaire...');
       onClose();
+      
     } catch (error) {
+      console.error('=== ERREUR GLOBALE ===');
       console.error('Erreur lors de l\'enregistrement des traitements:', error);
+      console.error('Type d\'erreur:', typeof error);
+      console.error('Message d\'erreur:', error.message);
+      console.error('Stack trace complète:', error.stack);
+      
       toast({
         title: "Erreur",
         description: `Impossible d'enregistrer les traitements: ${error.message || error}`,
