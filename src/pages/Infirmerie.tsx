@@ -77,6 +77,18 @@ const Infirmerie = () => {
   const selectedJeuneData = jeunes.find(j => j.id === selectedJeune);
   const traitementsActifs = getTraitementsActifs();
 
+  const handleAddTraitement = () => {
+    if (!selectedJeune) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez d'abord sélectionner un jeune",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowTraitementForm(true);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
@@ -240,7 +252,7 @@ const Infirmerie = () => {
                     {/* Bouton pour ajouter un traitement */}
                     <div>
                       <Button 
-                        onClick={() => setShowTraitementForm(true)}
+                        onClick={handleAddTraitement}
                         className="w-full bg-blue-600 hover:bg-blue-700"
                       >
                         <Plus className="h-4 w-4 mr-2" />
@@ -264,6 +276,7 @@ const Infirmerie = () => {
         isOpen={showTraitementForm}
         onClose={() => setShowTraitementForm(false)}
         jeunes={jeunes}
+        selectedJeuneId={selectedJeune}
         onTraitementAdded={handleTraitementAdded}
       />
     </div>

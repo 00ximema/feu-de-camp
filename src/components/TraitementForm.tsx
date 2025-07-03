@@ -1,22 +1,29 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Pill, Plus } from "lucide-react";
+import { Calendar, Pill, Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
 import { Youngster } from "@/types/youngster";
 
+interface Medicament {
+  id: string;
+  nom: string;
+  posologie: string;
+}
+
 interface TraitementFormProps {
   isOpen: boolean;
   onClose: () => void;
   jeunes: Youngster[];
+  selectedJeuneId?: string | null;
   onTraitementAdded: () => void;
 }
 
@@ -24,11 +31,13 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   isOpen, 
   onClose, 
   jeunes, 
+  selectedJeuneId,
   onTraitementAdded 
 }) => {
   const [selectedJeune, setSelectedJeune] = useState<string>('');
-  const [medicament, setMedicament] = useState('');
-  const [posologie, setPosologie] = useState('');
+  const [medicaments, setMedicaments] = useState<Medicament[]>([
+    { id: '1', nom: '', posologie: '' }
+  ]);
   const [duree, setDuree] = useState('');
   const [dateDebut, setDateDebut] = useState('');
   const [instructions, setInstructions] = useState('');
@@ -37,11 +46,45 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
 
+  // Pré-sélectionner le jeune si un ID est fourni
+  useEffect(() => {
+    if (selectedJeuneId && isOpen) {
+      setSelectedJeune(selectedJeuneId);
+    }
+  }, [selectedJeuneId, isOpen]);
+
+  const addMedicament = () => {
+    setMedicaments([...medicaments, { id: Date.now().toString(), nom: '', posologie: '' }]);
+  };
+
+  const removeMedicament = (id: string) => {
+    if (medicaments.length > 1) {
+      setMedicaments(medicaments.filter(m => m.id !== id));
+    }
+  };
+
+  const updateMedicament = (id: string, field: 'nom' | 'posologie', value: string) => {
+    setMedicaments(medicaments.map(m => 
+      m.id === id ? { ...m, [field]: value } : m
+    ));
+  };
+
   const handleSubmit = async () => {
-    if (!selectedJeune || !medicament || !posologie || !duree || !dateDebut) {
+    if (!selectedJeune || !duree || !dateDebut) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Vérifier qu'au moins un médicament est renseigné
+    const medicamentsValides = medicaments.filter(m => m.nom.trim() && m.posologie.trim());
+    if (medicamentsValides.length === 0) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez ajouter au moins un médicament avec sa posologie",
         variant: "destructive"
       });
       return;
@@ -58,32 +101,34 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
     const fin = new Date(debut);
     fin.setDate(fin.getDate() + dureeJours);
 
-    const traitement = {
-      id: `traitement_${Date.now()}`,
-      sessionId: currentSession.id,
-      jeuneId: jeune.id,
-      jeuneNom: `${jeune.prenom} ${jeune.nom}`,
-      medicament,
-      posologie,
-      duree: `${duree} jours`,
-      dateDebut,
-      dateFin: fin.toISOString().split('T')[0],
-      instructions,
-      dateCreation: new Date().toISOString()
-    };
-
     try {
-      await db.save('traitements', traitement);
+      // Créer un traitement pour chaque médicament
+      for (const medicament of medicamentsValides) {
+        const traitement = {
+          id: `traitement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          sessionId: currentSession.id,
+          jeuneId: jeune.id,
+          jeuneNom: `${jeune.prenom} ${jeune.nom}`,
+          medicament: medicament.nom,
+          posologie: medicament.posologie,
+          duree: `${duree} jours`,
+          dateDebut,
+          dateFin: fin.toISOString().split('T')[0],
+          instructions,
+          dateCreation: new Date().toISOString()
+        };
+
+        await db.save('traitements', traitement);
+      }
       
       toast({
-        title: "Traitement ajouté",
-        description: `Traitement pour ${jeune.prenom} ${jeune.nom} enregistré avec succès`
+        title: "Traitements ajoutés",
+        description: `${medicamentsValides.length} traitement(s) pour ${jeune.prenom} ${jeune.nom} enregistré(s) avec succès`
       });
 
       // Réinitialiser le formulaire
       setSelectedJeune('');
-      setMedicament('');
-      setPosologie('');
+      setMedicaments([{ id: '1', nom: '', posologie: '' }]);
       setDuree('');
       setDateDebut('');
       setInstructions('');
@@ -91,10 +136,10 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
       onTraitementAdded();
       onClose();
     } catch (error) {
-      console.error('Erreur lors de l\'enregistrement du traitement:', error);
+      console.error('Erreur lors de l\'enregistrement des traitements:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer le traitement",
+        description: "Impossible d'enregistrer les traitements",
         variant: "destructive"
       });
     }
@@ -102,7 +147,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Pill className="h-5 w-5" />
@@ -128,21 +173,57 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
           </div>
 
           <div>
-            <Label>Médicament *</Label>
-            <Input
-              value={medicament}
-              onChange={(e) => setMedicament(e.target.value)}
-              placeholder="Nom du médicament"
-            />
-          </div>
-
-          <div>
-            <Label>Posologie *</Label>
-            <Input
-              value={posologie}
-              onChange={(e) => setPosologie(e.target.value)}
-              placeholder="ex: 1 comprimé matin et soir"
-            />
+            <div className="flex items-center justify-between mb-2">
+              <Label>Médicaments *</Label>
+              <Button 
+                type="button" 
+                variant="outline" 
+                size="sm" 
+                onClick={addMedicament}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Ajouter un médicament
+              </Button>
+            </div>
+            
+            <div className="space-y-3">
+              {medicaments.map((medicament, index) => (
+                <div key={medicament.id} className="p-3 border rounded-lg bg-gray-50">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium">Médicament {index + 1}</span>
+                    {medicaments.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => removeMedicament(medicament.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">Nom du médicament</Label>
+                      <Input
+                        value={medicament.nom}
+                        onChange={(e) => updateMedicament(medicament.id, 'nom', e.target.value)}
+                        placeholder="ex: Paracétamol"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Posologie</Label>
+                      <Input
+                        value={medicament.posologie}
+                        onChange={(e) => updateMedicament(medicament.id, 'posologie', e.target.value)}
+                        placeholder="ex: 1 comprimé matin et soir"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -178,7 +259,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
           <div className="flex space-x-2">
             <Button onClick={handleSubmit}>
               <Plus className="h-4 w-4 mr-2" />
-              Ajouter le traitement
+              Ajouter le(s) traitement(s)
             </Button>
             <Button variant="outline" onClick={onClose}>
               Annuler
