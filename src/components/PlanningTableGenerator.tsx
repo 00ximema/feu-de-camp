@@ -1,16 +1,17 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Trash2, Users, Save } from "lucide-react";
+import { Calendar, Plus, Trash2, Users, Save, FileDown } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 interface Animateur {
   id: number;
@@ -58,6 +59,8 @@ const PlanningTableGenerator = () => {
     type: 'activity' as 'activity' | 'duty' | 'leave' | 'recovery',
     assignedMember: null as Animateur | null
   });
+  const [isExporting, setIsExporting] = useState(false);
+  const planningTableRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
@@ -107,6 +110,13 @@ const PlanningTableGenerator = () => {
 
     loadAnimateurs();
   }, [isInitialized, db, currentSession]);
+
+  // Mettre à jour le nom du séjour avec celui de la session courante
+  useEffect(() => {
+    if (currentSession && !config.name) {
+      setConfig(prev => ({ ...prev, name: currentSession.name }));
+    }
+  }, [currentSession, config.name]);
 
   const generateDates = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -179,6 +189,78 @@ const PlanningTableGenerator = () => {
         description: "Impossible de sauvegarder le planning",
         variant: "destructive"
       });
+    }
+  };
+
+  const exportToPDF = async () => {
+    if (!planningTableRef.current || !showTable) {
+      toast({
+        title: "Erreur",
+        description: "Aucun planning à exporter",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsExporting(true);
+    
+    try {
+      const element = planningTableRef.current;
+      
+      // Configuration pour capturer le tableau
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      
+      // Créer le PDF en format paysage pour les tableaux larges
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      const imgWidth = 297; // Largeur A4 paysage
+      const pageHeight = 210; // Hauteur A4 paysage
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+
+      // Ajouter le titre
+      pdf.setFontSize(16);
+      pdf.text(`Planning - ${config.name}`, 15, 15);
+      pdf.setFontSize(12);
+      pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
+
+      // Ajouter l'image du planning
+      pdf.addImage(imgData, 'PNG', 10, 35, imgWidth - 20, imgHeight - 35);
+      heightLeft -= pageHeight - 35;
+
+      // Ajouter des pages supplémentaires si nécessaire
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 10, position, imgWidth - 20, imgHeight);
+        heightLeft -= pageHeight;
+      }
+
+      // Télécharger le PDF
+      const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      pdf.save(fileName);
+
+      toast({
+        title: "Export réussi",
+        description: `Le planning a été exporté en PDF : ${fileName}`
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter le planning en PDF",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -277,7 +359,7 @@ const PlanningTableGenerator = () => {
               <Input
                 value={config.name}
                 onChange={(e) => setConfig(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="ex: Robillard"
+                placeholder={currentSession?.name || "ex: Robillard"}
               />
             </div>
             <div>
@@ -312,14 +394,24 @@ const PlanningTableGenerator = () => {
                 <CardTitle>Planning Tableau - {config.name}</CardTitle>
                 <CardDescription>Cliquez sur les cases pour ajouter des événements</CardDescription>
               </div>
-              <Button onClick={savePlanning} className="bg-green-600 hover:bg-green-700">
-                <Save className="h-4 w-4 mr-2" />
-                Sauvegarder
-              </Button>
+              <div className="flex space-x-2">
+                <Button 
+                  onClick={exportToPDF} 
+                  disabled={isExporting}
+                  className="bg-red-600 hover:bg-red-700"
+                >
+                  <FileDown className="h-4 w-4 mr-2" />
+                  {isExporting ? 'Export...' : 'Exporter PDF'}
+                </Button>
+                <Button onClick={savePlanning} className="bg-green-600 hover:bg-green-700">
+                  <Save className="h-4 w-4 mr-2" />
+                  Sauvegarder
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            <div ref={planningTableRef} className="overflow-x-auto">
               <table className="w-full border-collapse border border-gray-300">
                 <thead>
                   <tr>
