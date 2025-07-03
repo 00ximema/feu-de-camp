@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -193,7 +194,10 @@ const PlanningTableGenerator = () => {
   };
 
   const exportToPDF = async () => {
+    console.log('Export PDF appelé');
+    
     if (!planningTableRef.current || !showTable) {
+      console.log('Pas de tableau à exporter');
       toast({
         title: "Erreur",
         description: "Aucun planning à exporter",
@@ -203,15 +207,20 @@ const PlanningTableGenerator = () => {
     }
 
     setIsExporting(true);
+    console.log('Début de l\'export PDF');
     
     try {
       const uniqueDates = [...new Set(planningData.map(cell => cell.date))].sort();
       const totalDays = uniqueDates.length;
       
+      console.log(`Export PDF - ${totalDays} jours détectés`);
+      
       // Si plus de 7 jours, découper en chunks de 7 jours maximum
       if (totalDays > 7) {
+        console.log('Export multi-pages');
         await exportMultiPagePDF(uniqueDates);
       } else {
+        console.log('Export page unique');
         await exportSinglePagePDF();
       }
 
@@ -232,34 +241,60 @@ const PlanningTableGenerator = () => {
   };
 
   const exportSinglePagePDF = async () => {
+    console.log('Début export page unique');
     const element = planningTableRef.current!;
     
-    const canvas = await html2canvas(element, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff'
-    });
+    try {
+      console.log('Capture de l\'élément avec html2canvas');
+      const canvas = await html2canvas(element, {
+        scale: 1.5,
+        useCORS: true,
+        logging: true,
+        backgroundColor: '#ffffff',
+        allowTaint: true,
+        foreignObjectRendering: true
+      });
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('landscape', 'mm', 'a4');
-    const imgWidth = 277;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-    
-    // Titre
-    pdf.setFontSize(16);
-    pdf.text(`Planning - ${config.name}`, 15, 15);
-    pdf.setFontSize(12);
-    pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
+      console.log('Canvas créé, génération du PDF');
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('landscape', 'mm', 'a4');
+      
+      // Calcul des dimensions
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth - 30; // Marges de 15mm de chaque côté
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Titre
+      pdf.setFontSize(16);
+      pdf.text(`Planning - ${config.name}`, 15, 15);
+      pdf.setFontSize(12);
+      pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
 
-    // Image
-    pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, Math.min(imgHeight, 175));
+      // Image du planning
+      const yPosition = 35;
+      const maxImageHeight = pdfHeight - yPosition - 15; // Laisser 15mm en bas
+      
+      if (imgHeight > maxImageHeight) {
+        // Si l'image est trop haute, la redimensionner
+        const scaledHeight = maxImageHeight;
+        const scaledWidth = (canvas.width * scaledHeight) / canvas.height;
+        pdf.addImage(imgData, 'PNG', 15, yPosition, scaledWidth, scaledHeight);
+      } else {
+        pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
+      }
 
-    const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-    pdf.save(fileName);
+      const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+      console.log('Sauvegarde du PDF:', fileName);
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Erreur dans exportSinglePagePDF:', error);
+      throw error;
+    }
   };
 
   const exportMultiPagePDF = async (allDates: string[]) => {
+    console.log('Début export multi-pages');
     const pdf = new jsPDF('landscape', 'mm', 'a4');
     const daysPerPage = 7;
     const chunks = [];
@@ -269,8 +304,11 @@ const PlanningTableGenerator = () => {
       chunks.push(allDates.slice(i, i + daysPerPage));
     }
 
+    console.log(`${chunks.length} pages à générer`);
+
     for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
       const chunk = chunks[chunkIndex];
+      console.log(`Génération page ${chunkIndex + 1}/${chunks.length}`);
       
       // Créer un tableau temporaire pour cette page
       const tempTable = createTemporaryTable(chunk);
@@ -278,10 +316,11 @@ const PlanningTableGenerator = () => {
       
       try {
         const canvas = await html2canvas(tempTable, {
-          scale: 2,
+          scale: 1.5,
           useCORS: true,
           logging: false,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          allowTaint: true
         });
 
         const imgData = canvas.toDataURL('image/png');
@@ -299,9 +338,19 @@ const PlanningTableGenerator = () => {
         pdf.text(`Du ${startDate} au ${endDate}`, 15, 25);
 
         // Image
-        const imgWidth = 277;
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        const imgWidth = pdfWidth - 30;
         const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, Math.min(imgHeight, 175));
+        const maxImageHeight = pdfHeight - 50;
+        
+        if (imgHeight > maxImageHeight) {
+          const scaledHeight = maxImageHeight;
+          const scaledWidth = (canvas.width * scaledHeight) / canvas.height;
+          pdf.addImage(imgData, 'PNG', 15, 35, scaledWidth, scaledHeight);
+        } else {
+          pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, imgHeight);
+        }
         
       } finally {
         document.body.removeChild(tempTable);
@@ -309,6 +358,7 @@ const PlanningTableGenerator = () => {
     }
 
     const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    console.log('Sauvegarde du PDF multi-pages:', fileName);
     pdf.save(fileName);
   };
 
@@ -318,12 +368,13 @@ const PlanningTableGenerator = () => {
     table.style.left = '-9999px';
     table.style.backgroundColor = 'white';
     table.style.padding = '20px';
+    table.style.width = '800px';
     
     const tableHTML = `
-      <table style="border-collapse: collapse; width: 100%; font-family: system-ui;">
+      <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 12px;">
         <thead>
           <tr>
-            <th style="border: 1px solid #d1d5db; padding: 8px; background-color: #f9fafb; font-weight: 500;">
+            <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; font-weight: bold; width: 100px;">
               Créneaux
             </th>
             ${dates.map(date => {
@@ -331,9 +382,9 @@ const PlanningTableGenerator = () => {
               const dayName = dateObj.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
               const dateDisplay = dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
               return `
-                <th style="border: 1px solid #d1d5db; padding: 8px; background-color: #f9fafb; text-align: center; min-width: 120px;">
-                  <div style="font-weight: 500;">${dayName}.</div>
-                  <div style="color: #6b7280;">${dateDisplay}</div>
+                <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; text-align: center; width: 100px; font-weight: bold;">
+                  <div>${dayName}.</div>
+                  <div style="font-size: 10px; color: #666;">${dateDisplay}</div>
                 </th>
               `;
             }).join('')}
@@ -342,26 +393,26 @@ const PlanningTableGenerator = () => {
         <tbody>
           ${timeSlots.map(timeSlot => `
             <tr>
-              <td style="border: 1px solid #d1d5db; padding: 12px; background-color: #f9fafb; font-weight: 500;">
+              <td style="border: 1px solid #000; padding: 8px; background-color: #f9f9f9; font-weight: bold; vertical-align: top;">
                 ${timeSlot}
               </td>
               ${dates.map(date => {
                 const cell = planningData.find(c => c.date === date && c.timeSlot === timeSlot);
                 if (cell?.event) {
                   return `
-                    <td style="border: 1px solid #d1d5db; padding: 8px; height: 64px;">
-                      <div style="background-color: #dcfce7; color: #166534; padding: 4px 8px; border-radius: 4px; font-size: 12px; margin-bottom: 4px;">
+                    <td style="border: 1px solid #000; padding: 6px; vertical-align: top; height: 50px;">
+                      <div style="background-color: #e6ffe6; color: #006600; padding: 3px 6px; border-radius: 3px; font-size: 10px; margin-bottom: 3px; font-weight: bold;">
                         ${cell.event.name}
                       </div>
                       ${cell.event.assignedMember ? `
-                        <div style="font-size: 10px; color: #6b7280; display: flex; align-items: center;">
-                          👥 ${cell.event.assignedMember.prenom} ${cell.event.assignedMember.nom}
+                        <div style="font-size: 9px; color: #666;">
+                          👤 ${cell.event.assignedMember.prenom} ${cell.event.assignedMember.nom}
                         </div>
                       ` : ''}
                     </td>
                   `;
                 }
-                return `<td style="border: 1px solid #d1d5db; height: 64px;"></td>`;
+                return `<td style="border: 1px solid #000; height: 50px; padding: 6px;"></td>`;
               }).join('')}
             </tr>
           `).join('')}
