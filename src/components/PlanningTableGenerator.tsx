@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Trash2, Users, Save, FileDown } from "lucide-react";
+import { Calendar, Plus, Trash2, Users, Save, FileDown, Edit } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
@@ -47,6 +47,16 @@ interface PlanningConfig {
   endDate: string;
 }
 
+interface SavedPlanning {
+  id: string;
+  sessionId?: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  data: PlanningCell[];
+  createdAt: string;
+}
+
 const PlanningTableGenerator = () => {
   const [config, setConfig] = useState<PlanningConfig>({
     name: '',
@@ -58,6 +68,8 @@ const PlanningTableGenerator = () => {
   const [selectedCell, setSelectedCell] = useState<{ date: string; timeSlot: string } | null>(null);
   const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
   const [planningId, setPlanningId] = useState<string | null>(null);
+  const [existingPlannings, setExistingPlannings] = useState<SavedPlanning[]>([]);
+  const [isLoadingPlannings, setIsLoadingPlannings] = useState(false);
   const [newEvent, setNewEvent] = useState({ 
     name: '', 
     description: '', 
@@ -102,6 +114,32 @@ const PlanningTableGenerator = () => {
     { value: 'recovery', label: 'Repos récupérateur' }
   ];
 
+  // Charger les plannings existants pour la session courante
+  useEffect(() => {
+    const loadExistingPlannings = async () => {
+      if (!isInitialized || !currentSession) return;
+      
+      setIsLoadingPlannings(true);
+      try {
+        const dbPlannings = await db.getAll('plannings', currentSession.id);
+        setExistingPlannings(dbPlannings);
+        console.log('Plannings chargés pour la session:', dbPlannings);
+        
+        // Si il y a un planning existant, le charger automatiquement
+        if (dbPlannings.length > 0) {
+          const latestPlanning = dbPlannings[0]; // Le plus récent
+          loadPlanning(latestPlanning);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des plannings:', error);
+      } finally {
+        setIsLoadingPlannings(false);
+      }
+    };
+
+    loadExistingPlannings();
+  }, [isInitialized, db, currentSession]);
+
   // Charger les animateurs depuis la base de données
   useEffect(() => {
     const loadAnimateurs = async () => {
@@ -125,6 +163,23 @@ const PlanningTableGenerator = () => {
       setConfig(prev => ({ ...prev, name: currentSession.name }));
     }
   }, [currentSession, config.name]);
+
+  const loadPlanning = (planning: SavedPlanning) => {
+    console.log('Chargement du planning:', planning);
+    setConfig({
+      name: planning.name,
+      startDate: planning.startDate,
+      endDate: planning.endDate
+    });
+    setPlanningData(planning.data);
+    setPlanningId(planning.id);
+    setShowTable(true);
+    
+    toast({
+      title: "Planning chargé",
+      description: `Planning "${planning.name}" chargé avec succès`
+    });
+  };
 
   const generateDates = (start: string, end: string) => {
     const startDate = new Date(start);
@@ -162,7 +217,13 @@ const PlanningTableGenerator = () => {
 
     setPlanningData(cells);
     setShowTable(true);
-    setPlanningId(`planning_${Date.now()}`);
+    
+    // Générer un nouvel ID ou utiliser l'existant si on modifie
+    const newPlanningId = planningId || `planning_${Date.now()}`;
+    setPlanningId(newPlanningId);
+    
+    // Sauvegarder automatiquement le nouveau planning
+    savePlanningToDatabase(cells, newPlanningId);
     
     toast({
       title: "Planning généré",
@@ -170,35 +231,53 @@ const PlanningTableGenerator = () => {
     });
   };
 
-  const savePlanning = async () => {
-    if (!isInitialized || !currentSession || !planningId) return;
+  const savePlanningToDatabase = async (data: PlanningCell[], id: string) => {
+    if (!isInitialized || !currentSession) return;
 
     try {
-      const planningToSave = {
-        id: planningId,
+      const planningToSave: SavedPlanning = {
+        id: id,
         sessionId: currentSession.id,
         name: config.name,
         startDate: config.startDate,
         endDate: config.endDate,
-        data: planningData,
+        data: data,
         createdAt: new Date().toISOString()
       };
 
       await db.save('plannings', planningToSave);
+      console.log('Planning sauvegardé:', planningToSave);
       
-      toast({
-        title: "Planning sauvegardé",
-        description: "Le planning a été enregistré avec succès"
-      });
+      // Recharger la liste des plannings
+      const updatedPlannings = await db.getAll('plannings', currentSession.id);
+      setExistingPlannings(updatedPlannings);
+      
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de sauvegarder le planning",
-        variant: "destructive"
-      });
+      console.error('Erreur lors de la sauvegarde automatique:', error);
     }
   };
+
+  const savePlanning = async () => {
+    if (!planningId) return;
+    
+    await savePlanningToDatabase(planningData, planningId);
+    
+    toast({
+      title: "Planning sauvegardé",
+      description: "Le planning a été enregistré avec succès"
+    });
+  };
+
+  // Sauvegarder automatiquement à chaque modification des données du planning
+  useEffect(() => {
+    if (planningData.length > 0 && planningId && isInitialized && currentSession) {
+      const timeoutId = setTimeout(() => {
+        savePlanningToDatabase(planningData, planningId);
+      }, 1000); // Sauvegarder après 1 seconde d'inactivité
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [planningData, planningId, isInitialized, currentSession]);
 
   const exportToPDF = async () => {
     console.log('Export PDF appelé');
@@ -514,6 +593,43 @@ const PlanningTableGenerator = () => {
 
   return (
     <div className="space-y-6">
+      {/* Liste des plannings existants */}
+      {existingPlannings.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Plannings existants</CardTitle>
+            <CardDescription>Plannings sauvegardés pour cette session</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-3">
+              {existingPlannings.map((planning) => (
+                <div key={planning.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div>
+                    <h4 className="font-medium">{planning.name}</h4>
+                    <p className="text-sm text-gray-600">
+                      Du {new Date(planning.startDate).toLocaleDateString('fr-FR')} au {new Date(planning.endDate).toLocaleDateString('fr-FR')}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Créé le {new Date(planning.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
+                  </div>
+                  <Button
+                    onClick={() => loadPlanning(planning)}
+                    variant="outline"
+                    size="sm"
+                    className="flex items-center space-x-2"
+                    disabled={planningId === planning.id}
+                  >
+                    <Edit className="h-4 w-4" />
+                    <span>{planningId === planning.id ? 'Actuel' : 'Charger'}</span>
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Configuration du séjour */}
       <Card>
         <CardHeader>
@@ -552,7 +668,7 @@ const PlanningTableGenerator = () => {
               />
             </div>
             <Button onClick={generatePlanning} className="bg-blue-600 hover:bg-blue-700">
-              Générer planning complet
+              {showTable ? 'Mettre à jour' : 'Générer planning complet'}
             </Button>
           </div>
         </CardContent>
@@ -565,11 +681,11 @@ const PlanningTableGenerator = () => {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Planning Tableau - {config.name}</CardTitle>
-                <CardDescription>Cliquez sur les cases pour ajouter des événements</CardDescription>
+                <CardDescription>Cliquez sur les cases pour ajouter des événements • Sauvegarde automatique</CardDescription>
               </div>
               <div className="flex space-x-2">
                 <Button 
-                  onClick={() => {}} 
+                  onClick={exportToPDF} 
                   disabled={isExporting}
                   className="bg-red-600 hover:bg-red-700"
                 >
@@ -578,7 +694,7 @@ const PlanningTableGenerator = () => {
                 </Button>
                 <Button onClick={savePlanning} className="bg-green-600 hover:bg-green-700">
                   <Save className="h-4 w-4 mr-2" />
-                  Sauvegarder
+                  Sauvegarder maintenant
                 </Button>
               </div>
             </div>
