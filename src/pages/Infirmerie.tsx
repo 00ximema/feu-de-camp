@@ -1,39 +1,15 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus, AlertTriangle, Clock, User, Calendar, Pill } from "lucide-react";
+import { Heart, Plus, Pill, Clock } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import TraitementForm from "@/components/TraitementForm";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
-
-interface FicheMedicale {
-  id: number;
-  nomJeune: string;
-  age: number;
-  allergies: string[];
-  medicaments: string[];
-  problemesSante: string[];
-  contactUrgence: string;
-  dateCreation: string;
-  incidents: Incident[];
-}
-
-interface Incident {
-  id: number;
-  date: string;
-  heure: string;
-  type: 'blessure' | 'malaise' | 'medicament' | 'allergie';
-  description: string;
-  traitementDonne: string;
-  animateurPresent: string;
-}
 
 interface Traitement {
   id: string;
@@ -49,54 +25,13 @@ interface Traitement {
 }
 
 const Infirmerie = () => {
-  const [fichesMedicales, setFichesMedicales] = useState<FicheMedicale[]>([]);
-  const [selectedFiche, setSelectedFiche] = useState<number | null>(null);
-  const [showIncidentForm, setShowIncidentForm] = useState(false);
+  const [selectedJeune, setSelectedJeune] = useState<string | null>(null);
   const [showTraitementForm, setShowTraitementForm] = useState(false);
   const [traitements, setTraitements] = useState<Traitement[]>([]);
   const { toast } = useToast();
   const { jeunes } = useJeunes();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
-
-  const [incidentForm, setIncidentForm] = useState({
-    type: '' as 'blessure' | 'malaise' | 'medicament' | 'allergie' | '',
-    description: '',
-    traitementDonne: '',
-    animateurPresent: ''
-  });
-
-  // Créer automatiquement les fiches médicales depuis les jeunes importés
-  useEffect(() => {
-    if (jeunes.length > 0) {
-      const newFiches = jeunes.map((jeune, index) => ({
-        id: parseInt(jeune.id) || index,
-        nomJeune: `${jeune.prenom} ${jeune.nom}`,
-        age: jeune.age,
-        allergies: jeune.allergies || [],
-        medicaments: jeune.medicaments || [],
-        problemesSante: jeune.problemesSante || [],
-        contactUrgence: jeune.contactUrgence || '',
-        dateCreation: jeune.dateInscription || new Date().toLocaleDateString('fr-FR'),
-        incidents: []
-      }));
-      setFichesMedicales(newFiches);
-    }
-  }, [jeunes]);
-
-  // Charger les incidents depuis localStorage
-  useEffect(() => {
-    const savedFiches = localStorage.getItem('fiches-medicales');
-    if (savedFiches) {
-      const fichesSaved = JSON.parse(savedFiches);
-      setFichesMedicales(prev => {
-        return prev.map(fiche => {
-          const savedFiche = fichesSaved.find((f: any) => f.id === fiche.id);
-          return savedFiche ? { ...fiche, incidents: savedFiche.incidents || [] } : fiche;
-        });
-      });
-    }
-  }, []);
 
   // Charger les traitements depuis la base de données
   useEffect(() => {
@@ -114,45 +49,6 @@ const Infirmerie = () => {
     loadTraitements();
   }, [isInitialized, db, currentSession]);
 
-  useEffect(() => {
-    if (fichesMedicales.length > 0) {
-      localStorage.setItem('fiches-medicales', JSON.stringify(fichesMedicales));
-    }
-  }, [fichesMedicales.map(f => f.incidents).flat().length]);
-
-  const addIncident = () => {
-    if (!selectedFiche || !incidentForm.type || !incidentForm.description) return;
-
-    const newIncident: Incident = {
-      id: Date.now(),
-      date: new Date().toLocaleDateString('fr-FR'),
-      heure: new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }),
-      type: incidentForm.type as any,
-      description: incidentForm.description,
-      traitementDonne: incidentForm.traitementDonne,
-      animateurPresent: incidentForm.animateurPresent
-    };
-
-    setFichesMedicales(prev => prev.map(fiche => 
-      fiche.id === selectedFiche 
-        ? { ...fiche, incidents: [...fiche.incidents, newIncident] }
-        : fiche
-    ));
-
-    setIncidentForm({
-      type: '',
-      description: '',
-      traitementDonne: '',
-      animateurPresent: ''
-    });
-    setShowIncidentForm(false);
-
-    toast({
-      title: "Incident enregistré",
-      description: "L'incident médical a été ajouté au dossier du jeune"
-    });
-  };
-
   const handleTraitementAdded = async () => {
     if (!isInitialized || !currentSession) return;
     
@@ -161,16 +57,6 @@ const Infirmerie = () => {
       setTraitements(dbTraitements);
     } catch (error) {
       console.error('Erreur lors du rechargement des traitements:', error);
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'blessure': return 'bg-red-100 text-red-800';
-      case 'malaise': return 'bg-orange-100 text-orange-800';
-      case 'medicament': return 'bg-blue-100 text-blue-800';
-      case 'allergie': return 'bg-purple-100 text-purple-800';
-      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
@@ -188,7 +74,7 @@ const Infirmerie = () => {
     );
   };
 
-  const selectedFicheData = fichesMedicales.find(f => f.id === selectedFiche);
+  const selectedJeuneData = jeunes.find(j => j.id === selectedJeune);
   const traitementsActifs = getTraitementsActifs();
 
   return (
@@ -209,84 +95,61 @@ const Infirmerie = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Liste des fiches médicales */}
+          {/* Liste des jeunes */}
           <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Fiches médicales</CardTitle>
+                    <CardTitle>Sélectionner un jeune</CardTitle>
                     <CardDescription>
-                      {fichesMedicales.length} fiche(s) médicale(s)
+                      Choisissez un jeune pour lui ajouter un traitement
                     </CardDescription>
                   </div>
-                  <Button 
-                    onClick={() => setShowTraitementForm(true)}
-                    className="bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Pill className="h-4 w-4 mr-2" />
-                    Nouveau traitement
-                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {fichesMedicales.map((fiche) => {
-                    const jeuneTraitements = getTraitementsForJeune(fiche.id.toString());
+                  {jeunes.map((jeune) => {
+                    const jeuneTraitements = getTraitementsForJeune(jeune.id);
                     return (
                       <div
-                        key={fiche.id}
+                        key={jeune.id}
                         className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                          selectedFiche === fiche.id 
+                          selectedJeune === jeune.id 
                             ? 'border-red-500 bg-red-50' 
                             : 'border-gray-200 hover:border-gray-300'
                         }`}
-                        onClick={() => setSelectedFiche(fiche.id)}
+                        onClick={() => setSelectedJeune(jeune.id)}
                       >
                         <div className="flex items-center justify-between">
                           <div>
-                            <div className="font-medium text-lg">{fiche.nomJeune}</div>
-                            <div className="text-gray-600">{fiche.age} ans</div>
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {fiche.allergies.length > 0 && (
-                                <Badge variant="destructive" className="text-xs">
-                                  {fiche.allergies.length} allergie(s)
-                                </Badge>
-                              )}
-                              {fiche.medicaments.length > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  {fiche.medicaments.length} médicament(s)
-                                </Badge>
-                              )}
-                              {jeuneTraitements.length > 0 && (
+                            <div className="font-medium text-lg">{jeune.prenom} {jeune.nom}</div>
+                            <div className="text-gray-600">{jeune.age} ans</div>
+                            {jeuneTraitements.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-2">
                                 <Badge className="text-xs bg-blue-100 text-blue-800">
                                   <Pill className="h-3 w-3 mr-1" />
                                   {jeuneTraitements.length} traitement(s) actif(s)
                                 </Badge>
-                              )}
-                            </div>
+                              </div>
+                            )}
                             {jeuneTraitements.length > 0 && (
                               <div className="mt-2 text-xs text-blue-600">
                                 {jeuneTraitements.map(t => t.medicament).join(', ')}
                               </div>
                             )}
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">
-                              {fiche.incidents.length} incident(s)
-                            </div>
-                            <div className="text-sm text-gray-500">{fiche.dateCreation}</div>
-                          </div>
                         </div>
                       </div>
                     );
                   })}
 
-                  {fichesMedicales.length === 0 && (
+                  {jeunes.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
                       <Heart className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                      <p>Aucune fiche médicale</p>
-                      <p className="text-sm">Les fiches se créent automatiquement lors de l'import des jeunes</p>
+                      <p>Aucun jeune trouvé</p>
+                      <p className="text-sm">Importez d'abord des jeunes dans la section correspondante</p>
                     </div>
                   )}
                 </div>
@@ -299,7 +162,7 @@ const Infirmerie = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Pill className="h-5 w-5 text-blue-600" />
-                    <span>Aperçu rapide - Traitements en cours</span>
+                    <span>Traitements en cours</span>
                     <Badge variant="secondary">{traitementsActifs.length}</Badge>
                   </CardTitle>
                 </CardHeader>
@@ -333,26 +196,26 @@ const Infirmerie = () => {
             )}
           </div>
 
-          {/* Détails et incidents */}
+          {/* Actions pour le jeune sélectionné */}
           <div>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center space-x-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span>Suivi médical</span>
+                  <Pill className="h-5 w-5" />
+                  <span>Actions</span>
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                {selectedFicheData ? (
+                {selectedJeuneData ? (
                   <div className="space-y-4">
                     <div className="p-3 bg-red-50 rounded-lg">
-                      <div className="font-medium text-lg">{selectedFicheData.nomJeune}</div>
-                      <div className="text-gray-600">{selectedFicheData.age} ans</div>
+                      <div className="font-medium text-lg">{selectedJeuneData.prenom} {selectedJeuneData.nom}</div>
+                      <div className="text-gray-600">{selectedJeuneData.age} ans</div>
                     </div>
 
                     {/* Traitements actifs pour ce jeune */}
                     {(() => {
-                      const jeuneTraitements = getTraitementsForJeune(selectedFicheData.id.toString());
+                      const jeuneTraitements = getTraitementsForJeune(selectedJeuneData.id);
                       return jeuneTraitements.length > 0 && (
                         <div>
                           <h4 className="font-medium mb-2 flex items-center space-x-2">
@@ -374,124 +237,21 @@ const Infirmerie = () => {
                       );
                     })()}
 
-                    {/* Informations médicales */}
-                    {(selectedFicheData.allergies.length > 0 || selectedFicheData.medicaments.length > 0) && (
-                      <div>
-                        <h4 className="font-medium mb-2">Informations importantes</h4>
-                        {selectedFicheData.allergies.length > 0 && (
-                          <div className="mb-2">
-                            <div className="text-sm font-medium text-red-600">Allergies :</div>
-                            <div className="text-sm">{selectedFicheData.allergies.join(', ')}</div>
-                          </div>
-                        )}
-                        {selectedFicheData.medicaments.length > 0 && (
-                          <div>
-                            <div className="text-sm font-medium text-blue-600">Médicaments :</div>
-                            <div className="text-sm">{selectedFicheData.medicaments.join(', ')}</div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Formulaire d'incident */}
+                    {/* Bouton pour ajouter un traitement */}
                     <div>
                       <Button 
-                        onClick={() => setShowIncidentForm(!showIncidentForm)}
-                        size="sm"
-                        className="w-full"
+                        onClick={() => setShowTraitementForm(true)}
+                        className="w-full bg-blue-600 hover:bg-blue-700"
                       >
                         <Plus className="h-4 w-4 mr-2" />
-                        Signaler un incident
+                        Ajouter un traitement
                       </Button>
                     </div>
-
-                    {showIncidentForm && (
-                      <div className="p-3 border rounded-lg bg-gray-50">
-                        <div className="space-y-3">
-                          <div>
-                            <Label>Type d'incident</Label>
-                            <select 
-                              className="w-full p-2 border rounded"
-                              value={incidentForm.type}
-                              onChange={(e) => setIncidentForm(prev => ({ ...prev, type: e.target.value as any }))}
-                            >
-                              <option value="">Sélectionner</option>
-                              <option value="blessure">Blessure</option>
-                              <option value="malaise">Malaise</option>
-                              <option value="medicament">Prise de médicament</option>
-                              <option value="allergie">Réaction allergique</option>
-                            </select>
-                          </div>
-                          <div>
-                            <Label>Description</Label>
-                            <Textarea
-                              value={incidentForm.description}
-                              onChange={(e) => setIncidentForm(prev => ({ ...prev, description: e.target.value }))}
-                              placeholder="Décrire l'incident..."
-                            />
-                          </div>
-                          <div>
-                            <Label>Traitement donné</Label>
-                            <Input
-                              value={incidentForm.traitementDonne}
-                              onChange={(e) => setIncidentForm(prev => ({ ...prev, traitementDonne: e.target.value }))}
-                              placeholder="Soins prodigués..."
-                            />
-                          </div>
-                          <div>
-                            <Label>Animateur présent</Label>
-                            <Input
-                              value={incidentForm.animateurPresent}
-                              onChange={(e) => setIncidentForm(prev => ({ ...prev, animateurPresent: e.target.value }))}
-                              placeholder="Nom de l'animateur"
-                            />
-                          </div>
-                          <div className="flex space-x-2">
-                            <Button onClick={addIncident} size="sm">Enregistrer</Button>
-                            <Button variant="outline" onClick={() => setShowIncidentForm(false)} size="sm">
-                              Annuler
-                            </Button>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Historique des incidents */}
-                    {selectedFicheData.incidents.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-2">Historique des incidents</h4>
-                        <div className="space-y-2 max-h-48 overflow-y-auto">
-                          {selectedFicheData.incidents.map((incident) => (
-                            <div key={incident.id} className="p-3 border rounded text-sm">
-                              <div className="flex items-center justify-between mb-1">
-                                <Badge className={getTypeColor(incident.type)}>
-                                  {incident.type}
-                                </Badge>
-                                <div className="text-xs text-gray-500">
-                                  {incident.date} à {incident.heure}
-                                </div>
-                              </div>
-                              <div className="font-medium mb-1">{incident.description}</div>
-                              {incident.traitementDonne && (
-                                <div className="text-gray-600">
-                                  Traitement: {incident.traitementDonne}
-                                </div>
-                              )}
-                              {incident.animateurPresent && (
-                                <div className="text-xs text-gray-500">
-                                  Par: {incident.animateurPresent}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ) : (
                   <div className="text-center text-gray-500 py-8">
                     <Heart className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Sélectionnez une fiche pour voir les détails</p>
+                    <p>Sélectionnez un jeune pour ajouter un traitement</p>
                   </div>
                 )}
               </CardContent>
