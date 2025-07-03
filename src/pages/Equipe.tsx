@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { UserCheck, Plus, Upload, FileText, Calendar, Phone, Mail } from "lucide-react";
+import { UserCheck, Plus, Upload, FileText, Calendar, Phone, Mail, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
@@ -119,6 +119,38 @@ const Equipe = () => {
       toast({
         title: "Erreur",
         description: "Impossible d'enregistrer l'animateur",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const deleteAnimateur = async (animateurId: number) => {
+    if (!isInitialized) return;
+    
+    const animateurToDelete = animateurs.find(a => a.id === animateurId);
+    if (!animateurToDelete) return;
+
+    try {
+      await db.delete('animateurs', animateurId);
+      const updatedAnimateurs = animateurs.filter(a => a.id !== animateurId);
+      setAnimateurs(updatedAnimateurs);
+      
+      // Si l'animateur supprimé était sélectionné, désélectionner
+      if (selectedAnimateur === animateurId) {
+        setSelectedAnimateur(null);
+      }
+      
+      toast({
+        title: "Animateur supprimé",
+        description: `${animateurToDelete.prenom} ${animateurToDelete.nom} a été supprimé de l'équipe`
+      });
+      
+      console.log('Animateur supprimé de la base de données');
+    } catch (error) {
+      console.error('Erreur lors de la suppression de l\'animateur:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer l'animateur",
         variant: "destructive"
       });
     }
@@ -291,7 +323,7 @@ const Equipe = () => {
                         onClick={() => setSelectedAnimateur(animateur.id)}
                       >
                         <div className="flex items-center justify-between">
-                          <div>
+                          <div className="flex-1">
                             <div className="font-medium text-lg">
                               {animateur.prenom} {animateur.nom}
                             </div>
@@ -314,13 +346,26 @@ const Equipe = () => {
                               </div>
                             </div>
                           </div>
-                          <div className="text-right">
-                            <div className="text-sm font-medium">
-                              {animateur.formations.length} formation(s)
+                          <div className="flex items-center space-x-2">
+                            <div className="text-right">
+                              <div className="text-sm font-medium">
+                                {animateur.formations.length} formation(s)
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {animateur.documents.length} document(s)
+                              </div>
                             </div>
-                            <div className="text-sm text-gray-500">
-                              {animateur.documents.length} document(s)
-                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                deleteAnimateur(animateur.id);
+                              }}
+                              className="h-8 w-8 p-0 hover:bg-red-100 text-red-600"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                         {animateur.formations.length > 0 && (
