@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Pill, Plus, X } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -40,6 +41,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   const [duree, setDuree] = useState('');
   const [dateDebut, setDateDebut] = useState('');
   const [instructions, setInstructions] = useState('');
+  const [ordonnance, setOrdonnance] = useState(false);
   
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
@@ -76,6 +78,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
     console.log('Jeune sélectionné:', selectedJeune);
     console.log('Durée:', duree);
     console.log('Date début:', dateDebut);
+    console.log('Ordonnance:', ordonnance);
     console.log('Médicaments:', medicaments);
 
     if (!selectedJeune || !duree || !dateDebut) {
@@ -164,6 +167,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
           dateDebut: dateDebut,
           dateFin: fin.toISOString().split('T')[0],
           instructions: instructions || '',
+          ordonnance: ordonnance,
           dateCreation: new Date().toISOString()
         };
 
@@ -194,6 +198,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
       setDuree('');
       setDateDebut('');
       setInstructions('');
+      setOrdonnance(false);
       
       console.log('Appel de onTraitementAdded...');
       onTraitementAdded();
@@ -314,6 +319,20 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
                 onChange={(e) => setDateDebut(e.target.value)}
               />
             </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="ordonnance"
+              checked={ordonnance}
+              onCheckedChange={(checked) => setOrdonnance(checked as boolean)}
+            />
+            <Label 
+              htmlFor="ordonnance" 
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Traitement avec ordonnance
+            </Label>
           </div>
 
           <div>

@@ -21,6 +21,7 @@ interface Traitement {
   dateDebut: string;
   dateFin: string;
   instructions?: string;
+  ordonnance: boolean;
   dateCreation: string;
 }
 
@@ -144,6 +145,11 @@ const Infirmerie = () => {
                           <div className="font-medium text-lg">{traitement.jeuneNom}</div>
                           <div className="text-sm text-blue-700 font-medium mt-1">{traitement.medicament}</div>
                           <div className="text-xs text-gray-600 mt-1">{traitement.posologie}</div>
+                          {traitement.ordonnance && (
+                            <div className="text-xs text-green-700 font-medium mt-1 flex items-center space-x-1">
+                              <span>📄 Avec ordonnance</span>
+                            </div>
+                          )}
                           {traitement.instructions && (
                             <div className="text-xs text-gray-500 mt-1 italic">
                               {traitement.instructions}

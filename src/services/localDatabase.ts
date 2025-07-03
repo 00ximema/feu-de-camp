@@ -111,6 +111,7 @@ interface DatabaseSchema {
     dateDebut: string;
     dateFin: string;
     instructions?: string;
+    ordonnance: boolean;
     dateCreation: string;
   };
 }
