@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle } from "lucide-react";
@@ -19,13 +18,28 @@ interface Animateur {
 
 interface Planning {
   id: string;
-  date: string;
-  animateurs: {
-    id: number;
-    heureDebut: string;
-    heureFin: string;
-    typeService: string;
-  }[];
+  sessionId?: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  data: Array<{
+    date: string;
+    timeSlot: string;
+    event?: {
+      id: string;
+      name: string;
+      description?: string;
+      color: string;
+      type: 'activity' | 'duty' | 'leave' | 'recovery';
+      assignedMember?: {
+        id: number;
+        nom: string;
+        prenom: string;
+        role: string;
+      };
+    };
+  }>;
+  createdAt: string;
 }
 
 const Index = () => {
@@ -60,11 +74,15 @@ const Index = () => {
   const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
 
   const getTodayPlanning = () => {
-    return plannings.find(p => p.date === today);
+    return plannings.find(p => 
+      p.data.some(slot => slot.date === today && slot.event)
+    );
   };
 
   const getTomorrowPlanning = () => {
-    return plannings.find(p => p.date === tomorrow);
+    return plannings.find(p => 
+      p.data.some(slot => slot.date === tomorrow && slot.event)
+    );
   };
 
   const getTodayEvents = () => {
@@ -279,14 +297,20 @@ const Index = () => {
               </h4>
               {todayPlanning ? (
                 <div className="space-y-2">
-                  {todayPlanning.animateurs.map((service, index) => (
-                    <div key={index} className="text-sm p-2 bg-gray-50 rounded">
-                      <div className="font-medium">{getAnimateurName(service.id)}</div>
-                      <div className="text-gray-600">
-                        {service.typeService} • {service.heureDebut}-{service.heureFin}
+                  {todayPlanning.data
+                    .filter(slot => slot.date === today && slot.event)
+                    .map((slot, index) => (
+                      <div key={index} className="text-sm p-2 bg-gray-50 rounded">
+                        <div className="font-medium">{slot.event?.name}</div>
+                        <div className="text-gray-600">
+                          {slot.timeSlot} • {slot.event?.assignedMember ? 
+                            `${slot.event.assignedMember.prenom} ${slot.event.assignedMember.nom}` : 
+                            'Non assigné'
+                          }
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  }
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">Aucun planning défini</div>
@@ -301,14 +325,20 @@ const Index = () => {
               </h4>
               {tomorrowPlanning ? (
                 <div className="space-y-2">
-                  {tomorrowPlanning.animateurs.map((service, index) => (
-                    <div key={index} className="text-sm p-2 bg-gray-50 rounded">
-                      <div className="font-medium">{getAnimateurName(service.id)}</div>
-                      <div className="text-gray-600">
-                        {service.typeService} • {service.heureDebut}-{service.heureFin}
+                  {tomorrowPlanning.data
+                    .filter(slot => slot.date === tomorrow && slot.event)
+                    .map((slot, index) => (
+                      <div key={index} className="text-sm p-2 bg-gray-50 rounded">
+                        <div className="font-medium">{slot.event?.name}</div>
+                        <div className="text-gray-600">
+                          {slot.timeSlot} • {slot.event?.assignedMember ? 
+                            `${slot.event.assignedMember.prenom} ${slot.event.assignedMember.nom}` : 
+                            'Non assigné'
+                          }
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    ))
+                  }
                 </div>
               ) : (
                 <div className="text-sm text-gray-500">Aucun planning défini</div>
