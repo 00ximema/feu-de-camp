@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -784,149 +783,173 @@ const PlanningTableGenerator = () => {
       )}
 
       {/* Dialog pour ajouter un événement */}
-      <Dialog open={!!selectedCell} onOpenChange={() => setSelectedCell(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ajouter un événement</DialogTitle>
-            <DialogDescription>
-              Ajoutez un événement à votre planning pour le {selectedCell && new Date(selectedCell.date).toLocaleDateString('fr-FR')} - {selectedCell?.timeSlot}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Type d'événement</Label>
-              <Select 
-                value={newEvent.type} 
-                onValueChange={(value: 'activity' | 'duty' | 'leave' | 'recovery') => 
-                  setNewEvent(prev => ({ ...prev, type: value }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {eventTypes.map(type => (
-                    <SelectItem key={type.value} value={type.value}>
-                      {type.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div>
-              <Label>Nom de l'événement</Label>
-              <Input
-                value={newEvent.name}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="ex: Randonnées à poney"
-              />
-            </div>
-
-            <div>
-              <Label>Description (optionnelle)</Label>
-              <Input
-                value={newEvent.description}
-                onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Détails de l'activité..."
-              />
-            </div>
-
-            {/* Sélection du membre de l'équipe pour les créneaux spéciaux */}
-            {selectedCell && isSpecialTimeSlot(selectedCell.timeSlot) && (
+      {selectedCell && (
+        <Dialog open={true} onOpenChange={() => {
+          setSelectedCell(null);
+          setNewEvent({ 
+            name: '', 
+            description: '', 
+            color: 'bg-green-100 text-green-800',
+            type: 'activity',
+            assignedMember: null,
+            assignedGroup: null
+          });
+        }}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Ajouter un événement</DialogTitle>
+              <DialogDescription>
+                Ajoutez un événement à votre planning pour le {new Date(selectedCell.date).toLocaleDateString('fr-FR')} - {selectedCell.timeSlot}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <div>
-                <Label>Membre de l'équipe *</Label>
+                <Label htmlFor="event-type">Type d'événement</Label>
                 <Select 
-                  value={newEvent.assignedMember?.id.toString() || ''} 
-                  onValueChange={(value) => {
-                    const member = animateurs.find(a => a.id.toString() === value);
-                    setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
-                  }}
+                  value={newEvent.type} 
+                  onValueChange={(value: 'activity' | 'duty' | 'leave' | 'recovery') => 
+                    setNewEvent(prev => ({ ...prev, type: value }))
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un membre" />
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {animateurs.map(animateur => (
-                      <SelectItem key={animateur.id} value={animateur.id.toString()}>
-                        {animateur.prenom} {animateur.nom} ({animateur.role})
+                    {eventTypes.map(type => (
+                      <SelectItem key={type.value} value={type.value}>
+                        {type.label}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-            )}
 
-            {/* Sélection du groupe pour les activités */}
-            {newEvent.type === 'activity' && (
               <div>
-                <Label>Groupe de jeunes (optionnel)</Label>
-                <Select 
-                  value={newEvent.assignedGroup?.id || ''} 
-                  onValueChange={(value) => {
-                    if (value === '') {
-                      setNewEvent(prev => ({ ...prev, assignedGroup: null }));
-                    } else {
-                      const group = groupes.find(g => g.id === value);
-                      if (group) {
-                        setNewEvent(prev => ({ 
-                          ...prev, 
-                          assignedGroup: {
-                            id: group.id,
-                            nom: group.nom,
-                            couleur: group.couleur
-                          }
-                        }));
+                <Label htmlFor="event-name">Nom de l'événement</Label>
+                <Input
+                  id="event-name"
+                  value={newEvent.name}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, name: e.target.value }))}
+                  placeholder="ex: Randonnées à poney"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="event-description">Description (optionnelle)</Label>
+                <Input
+                  id="event-description"
+                  value={newEvent.description}
+                  onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Détails de l'activité..."
+                />
+              </div>
+
+              {/* Sélection du membre de l'équipe pour les créneaux spéciaux */}
+              {isSpecialTimeSlot(selectedCell.timeSlot) && (
+                <div>
+                  <Label htmlFor="assigned-member">Membre de l'équipe *</Label>
+                  <Select 
+                    value={newEvent.assignedMember?.id.toString() || ''} 
+                    onValueChange={(value) => {
+                      const member = animateurs.find(a => a.id.toString() === value);
+                      setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un membre" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {animateurs.map(animateur => (
+                        <SelectItem key={animateur.id} value={animateur.id.toString()}>
+                          {animateur.prenom} {animateur.nom} ({animateur.role})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Sélection du groupe pour les activités */}
+              {newEvent.type === 'activity' && (
+                <div>
+                  <Label htmlFor="assigned-group">Groupe de jeunes (optionnel)</Label>
+                  <Select 
+                    value={newEvent.assignedGroup?.id || ''} 
+                    onValueChange={(value) => {
+                      if (value === '') {
+                        setNewEvent(prev => ({ ...prev, assignedGroup: null }));
+                      } else {
+                        const group = groupes.find(g => g.id === value);
+                        if (group) {
+                          setNewEvent(prev => ({ 
+                            ...prev, 
+                            assignedGroup: {
+                              id: group.id,
+                              nom: group.nom,
+                              couleur: group.couleur
+                            }
+                          }));
+                        }
                       }
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un groupe" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">Aucun groupe</SelectItem>
-                    {groupes.map(groupe => (
-                      <SelectItem key={groupe.id} value={groupe.id}>
-                        <div className="flex items-center space-x-2">
-                          <Badge className={groupe.couleur} variant="secondary" style={{ fontSize: '0.7rem', padding: '0 4px' }}>
-                            {groupe.nom}
-                          </Badge>
-                          <span>({groupe.jeunesIds.length} jeunes)</span>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un groupe" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Aucun groupe</SelectItem>
+                      {groupes.map(groupe => (
+                        <SelectItem key={groupe.id} value={groupe.id}>
+                          <div className="flex items-center space-x-2">
+                            <Badge className={groupe.couleur} variant="secondary" style={{ fontSize: '0.7rem', padding: '0 4px' }}>
+                              {groupe.nom}
+                            </Badge>
+                            <span>({groupe.jeunesIds.length} jeunes)</span>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
-            <div>
-              <Label>Couleur</Label>
-              <div className="flex gap-2 mt-2 flex-wrap">
-                {eventColors.map(color => (
-                  <button
-                    key={color}
-                    className={`w-8 h-8 rounded border-2 ${color} ${
-                      newEvent.color === color ? 'border-gray-800' : 'border-gray-300'
-                    }`}
-                    onClick={() => setNewEvent(prev => ({ ...prev, color }))}
-                  />
-                ))}
+              <div>
+                <Label>Couleur</Label>
+                <div className="flex gap-2 mt-2 flex-wrap">
+                  {eventColors.map(color => (
+                    <button
+                      key={color}
+                      className={`w-8 h-8 rounded border-2 ${color} ${
+                        newEvent.color === color ? 'border-gray-800' : 'border-gray-300'
+                      }`}
+                      onClick={() => setNewEvent(prev => ({ ...prev, color }))}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex space-x-2 pt-4">
+                <Button onClick={addEvent} disabled={!newEvent.name}>
+                  Ajouter
+                </Button>
+                <Button variant="outline" onClick={() => {
+                  setSelectedCell(null);
+                  setNewEvent({ 
+                    name: '', 
+                    description: '', 
+                    color: 'bg-green-100 text-green-800',
+                    type: 'activity',
+                    assignedMember: null,
+                    assignedGroup: null
+                  });
+                }}>
+                  Annuler
+                </Button>
               </div>
             </div>
-
-            <div className="flex space-x-2">
-              <Button onClick={addEvent} disabled={!newEvent.name}>
-                Ajouter
-              </Button>
-              <Button variant="outline" onClick={() => setSelectedCell(null)}>
-                Annuler
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 };
