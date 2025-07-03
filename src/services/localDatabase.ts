@@ -1,4 +1,3 @@
-
 interface DatabaseSchema {
   // Sessions
   sessions: {
@@ -153,6 +152,10 @@ class LocalDatabase {
           const planningsStore = db.createObjectStore('plannings', { keyPath: 'id' });
           planningsStore.createIndex('sessionId', 'sessionId', { unique: false });
         }
+        if (!db.objectStoreNames.contains('traitements')) {
+          const traitementsStore = db.createObjectStore('traitements', { keyPath: 'id' });
+          traitementsStore.createIndex('sessionId', 'sessionId', { unique: false });
+        }
       };
     });
   }
@@ -230,7 +233,12 @@ class LocalDatabase {
     
     const transaction = this.db!.transaction([table], 'readwrite');
     const store = transaction.objectStore(table);
-    await store.delete(id);
+    
+    return new Promise((resolve, reject) => {
+      const request = store.delete(id);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
   }
 
   async clear<T extends keyof DatabaseSchema>(table: T): Promise<void> {
