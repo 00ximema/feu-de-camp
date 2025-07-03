@@ -12,11 +12,17 @@ import Equipe from "./pages/Equipe";
 import Infirmerie from "./pages/Infirmerie";
 import Jeunes from "./pages/Jeunes";
 import Planning from "./pages/Planning";
+import OfflineIndicator from "./components/OfflineIndicator";
 
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       staleTime: 5 * 60 * 1000, // 5 minutes
+      retry: (failureCount, error) => {
+        // Ne pas réessayer si hors ligne
+        if (!navigator.onLine) return false;
+        return failureCount < 3;
+      },
     },
   },
 });
@@ -27,6 +33,7 @@ const App = () => {
       <TooltipProvider>
         <Toaster />
         <Sonner />
+        <OfflineIndicator />
         <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />

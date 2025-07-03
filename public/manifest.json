@@ -1,0 +1,24 @@
+
+{
+  "name": "Gestion CVJ MG",
+  "short_name": "CVJ MG",
+  "description": "Système de gestion de colonie de vacances",
+  "theme_color": "#3b82f6",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "orientation": "portrait",
+  "scope": "/",
+  "start_url": "/",
+  "icons": [
+    {
+      "src": "/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
