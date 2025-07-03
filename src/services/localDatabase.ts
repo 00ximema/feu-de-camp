@@ -130,11 +130,30 @@ interface DatabaseSchema {
     ordonnance: boolean;
     dateCreation: string;
   };
+
+  // Soins et consultations
+  soins: {
+    id: string;
+    sessionId?: string;
+    jeuneId: string;
+    jeuneNom: string;
+    type: 'soin' | 'consultation';
+    titre: string;
+    description: string;
+    date: string;
+    heure: string;
+    soignant?: string;
+    symptomes?: string;
+    diagnostic?: string;
+    traitement?: string;
+    suivi?: boolean;
+    dateCreation: string;
+  };
 }
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 3; // Augmenter la version pour forcer la mise à jour
+  private version = 4; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -186,6 +205,11 @@ class LocalDatabase {
           const traitementsStore = db.createObjectStore('traitements', { keyPath: 'id' });
           traitementsStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table traitements créée');
+        }
+        if (!db.objectStoreNames.contains('soins')) {
+          const soinsStore = db.createObjectStore('soins', { keyPath: 'id' });
+          soinsStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table soins créée');
         }
       };
     });
