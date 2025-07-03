@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -180,6 +179,15 @@ const Infirmerie = () => {
     return traitements.filter(t => t.dateDebut <= today && t.dateFin >= today);
   };
 
+  const getTraitementsForJeune = (jeuneId: string) => {
+    const today = new Date().toISOString().split('T')[0];
+    return traitements.filter(t => 
+      t.jeuneId === jeuneId && 
+      t.dateDebut <= today && 
+      t.dateFin >= today
+    );
+  };
+
   const selectedFicheData = fichesMedicales.find(f => f.id === selectedFiche);
   const traitementsActifs = getTraitementsActifs();
 
@@ -223,42 +231,56 @@ const Infirmerie = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {fichesMedicales.map((fiche) => (
-                    <div
-                      key={fiche.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                        selectedFiche === fiche.id 
-                          ? 'border-red-500 bg-red-50' 
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                      onClick={() => setSelectedFiche(fiche.id)}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <div className="font-medium text-lg">{fiche.nomJeune}</div>
-                          <div className="text-gray-600">{fiche.age} ans</div>
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {fiche.allergies.length > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {fiche.allergies.length} allergie(s)
-                              </Badge>
-                            )}
-                            {fiche.medicaments.length > 0 && (
-                              <Badge variant="secondary" className="text-xs">
-                                {fiche.medicaments.length} médicament(s)
-                              </Badge>
+                  {fichesMedicales.map((fiche) => {
+                    const jeuneTraitements = getTraitementsForJeune(fiche.id.toString());
+                    return (
+                      <div
+                        key={fiche.id}
+                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
+                          selectedFiche === fiche.id 
+                            ? 'border-red-500 bg-red-50' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedFiche(fiche.id)}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <div className="font-medium text-lg">{fiche.nomJeune}</div>
+                            <div className="text-gray-600">{fiche.age} ans</div>
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {fiche.allergies.length > 0 && (
+                                <Badge variant="destructive" className="text-xs">
+                                  {fiche.allergies.length} allergie(s)
+                                </Badge>
+                              )}
+                              {fiche.medicaments.length > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {fiche.medicaments.length} médicament(s)
+                                </Badge>
+                              )}
+                              {jeuneTraitements.length > 0 && (
+                                <Badge className="text-xs bg-blue-100 text-blue-800">
+                                  <Pill className="h-3 w-3 mr-1" />
+                                  {jeuneTraitements.length} traitement(s) actif(s)
+                                </Badge>
+                              )}
+                            </div>
+                            {jeuneTraitements.length > 0 && (
+                              <div className="mt-2 text-xs text-blue-600">
+                                {jeuneTraitements.map(t => t.medicament).join(', ')}
+                              </div>
                             )}
                           </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {fiche.incidents.length} incident(s)
+                          <div className="text-right">
+                            <div className="text-sm font-medium">
+                              {fiche.incidents.length} incident(s)
+                            </div>
+                            <div className="text-sm text-gray-500">{fiche.dateCreation}</div>
                           </div>
-                          <div className="text-sm text-gray-500">{fiche.dateCreation}</div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {fichesMedicales.length === 0 && (
                     <div className="text-center py-12 text-gray-500">
@@ -271,28 +293,36 @@ const Infirmerie = () => {
               </CardContent>
             </Card>
 
-            {/* Traitements actifs */}
+            {/* Aperçu rapide des traitements actifs */}
             {traitementsActifs.length > 0 && (
               <Card className="mt-6">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Pill className="h-5 w-5 text-blue-600" />
-                    <span>Traitements en cours</span>
+                    <span>Aperçu rapide - Traitements en cours</span>
+                    <Badge variant="secondary">{traitementsActifs.length}</Badge>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {traitementsActifs.map((traitement) => (
-                      <div key={traitement.id} className="p-3 border rounded-lg bg-blue-50">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <div className="font-medium">{traitement.jeuneNom}</div>
-                            <div className="text-sm text-gray-600">{traitement.medicament}</div>
-                            <div className="text-xs text-gray-500">{traitement.posologie}</div>
+                      <div key={traitement.id} className="p-3 border rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-sm">{traitement.jeuneNom}</div>
+                            <div className="text-sm text-blue-700 font-medium">{traitement.medicament}</div>
+                            <div className="text-xs text-gray-600 mt-1">{traitement.posologie}</div>
+                            {traitement.instructions && (
+                              <div className="text-xs text-gray-500 mt-1 italic">
+                                {traitement.instructions}
+                              </div>
+                            )}
                           </div>
-                          <div className="text-right text-xs text-gray-500">
-                            <div>Du {new Date(traitement.dateDebut).toLocaleDateString('fr-FR')}</div>
-                            <div>au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}</div>
+                          <div className="text-right text-xs text-gray-500 ml-2">
+                            <div className="flex items-center space-x-1">
+                              <Clock className="h-3 w-3" />
+                              <span>Jusqu'au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -319,6 +349,30 @@ const Infirmerie = () => {
                       <div className="font-medium text-lg">{selectedFicheData.nomJeune}</div>
                       <div className="text-gray-600">{selectedFicheData.age} ans</div>
                     </div>
+
+                    {/* Traitements actifs pour ce jeune */}
+                    {(() => {
+                      const jeuneTraitements = getTraitementsForJeune(selectedFicheData.id.toString());
+                      return jeuneTraitements.length > 0 && (
+                        <div>
+                          <h4 className="font-medium mb-2 flex items-center space-x-2">
+                            <Pill className="h-4 w-4 text-blue-600" />
+                            <span>Traitements en cours</span>
+                          </h4>
+                          <div className="space-y-2">
+                            {jeuneTraitements.map((traitement) => (
+                              <div key={traitement.id} className="p-2 border rounded bg-blue-50 text-sm">
+                                <div className="font-medium text-blue-700">{traitement.medicament}</div>
+                                <div className="text-gray-600">{traitement.posologie}</div>
+                                <div className="text-xs text-gray-500">
+                                  Jusqu'au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Informations médicales */}
                     {(selectedFicheData.allergies.length > 0 || selectedFicheData.medicaments.length > 0) && (
