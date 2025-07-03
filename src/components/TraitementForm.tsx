@@ -70,6 +70,10 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   };
 
   const handleSubmit = async () => {
+    console.log('Début de l\'enregistrement du traitement');
+    console.log('Session actuelle:', currentSession);
+    console.log('Base de données initialisée:', isInitialized);
+
     if (!selectedJeune || !duree || !dateDebut) {
       toast({
         title: "Erreur",
@@ -90,10 +94,36 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
       return;
     }
 
-    if (!isInitialized || !currentSession) return;
+    if (!isInitialized) {
+      console.error('Base de données non initialisée');
+      toast({
+        title: "Erreur",
+        description: "Base de données non initialisée",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!currentSession) {
+      console.error('Aucune session active');
+      toast({
+        title: "Erreur",
+        description: "Aucune session active",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const jeune = jeunes.find(j => j.id === selectedJeune);
-    if (!jeune) return;
+    if (!jeune) {
+      console.error('Jeune non trouvé');
+      toast({
+        title: "Erreur",
+        description: "Jeune non trouvé",
+        variant: "destructive"
+      });
+      return;
+    }
 
     // Calculer la date de fin
     const debut = new Date(dateDebut);
@@ -112,13 +142,15 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
           medicament: medicament.nom,
           posologie: medicament.posologie,
           duree: `${duree} jours`,
-          dateDebut,
+          dateDebut: dateDebut,
           dateFin: fin.toISOString().split('T')[0],
-          instructions,
+          instructions: instructions || '',
           dateCreation: new Date().toISOString()
         };
 
+        console.log('Traitement à enregistrer:', traitement);
         await db.save('traitements', traitement);
+        console.log('Traitement enregistré avec succès');
       }
       
       toast({
@@ -139,7 +171,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
       console.error('Erreur lors de l\'enregistrement des traitements:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer les traitements",
+        description: `Impossible d'enregistrer les traitements: ${error.message || error}`,
         variant: "destructive"
       });
     }
