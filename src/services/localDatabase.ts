@@ -1,3 +1,4 @@
+
 interface DatabaseSchema {
   // Sessions
   sessions: {
@@ -116,7 +117,7 @@ interface DatabaseSchema {
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 1;
+  private version = 2; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -126,35 +127,43 @@ class LocalDatabase {
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         this.db = request.result;
+        console.log('Base de données initialisée avec version', this.version);
         resolve();
       };
 
-      request.onupgradeneeded = () => {
+      request.onupgradeneeded = (event) => {
         const db = request.result;
+        console.log('Mise à jour de la base de données...', event.oldVersion, '->', event.newVersion);
         
         // Créer les tables si elles n'existent pas
         if (!db.objectStoreNames.contains('sessions')) {
           db.createObjectStore('sessions', { keyPath: 'id' });
+          console.log('Table sessions créée');
         }
         if (!db.objectStoreNames.contains('animateurs')) {
           const animateursStore = db.createObjectStore('animateurs', { keyPath: 'id' });
           animateursStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table animateurs créée');
         }
         if (!db.objectStoreNames.contains('jeunes')) {
           const jeunesStore = db.createObjectStore('jeunes', { keyPath: 'id' });
           jeunesStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table jeunes créée');
         }
         if (!db.objectStoreNames.contains('events')) {
           const eventsStore = db.createObjectStore('events', { keyPath: 'id' });
           eventsStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table events créée');
         }
         if (!db.objectStoreNames.contains('plannings')) {
           const planningsStore = db.createObjectStore('plannings', { keyPath: 'id' });
           planningsStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table plannings créée');
         }
         if (!db.objectStoreNames.contains('traitements')) {
           const traitementsStore = db.createObjectStore('traitements', { keyPath: 'id' });
           traitementsStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table traitements créée');
         }
       };
     });
