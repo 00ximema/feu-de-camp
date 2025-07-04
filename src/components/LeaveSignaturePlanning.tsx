@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -168,29 +169,32 @@ const LeaveSignaturePlanning = () => {
         const leaves: LeaveEntry[] = [];
 
         plannings.forEach(planning => {
-          planning.data.forEach(cell => {
-            if (cell.event && 
-                (cell.event.type === 'leave' || cell.event.type === 'recovery') &&
-                cell.event.assignedMember) {
-              
-              const existingEntry = leaves.find(entry => 
-                entry.animateurId === cell.event!.assignedMember!.id &&
-                entry.date === cell.date &&
-                entry.timeSlot === cell.timeSlot
-              );
+          // planning.data is PlanningCell[][], so we need to iterate over each day (array) and then each cell
+          planning.data.forEach(day => {
+            day.forEach(cell => {
+              if (cell.event && 
+                  (cell.event.type === 'leave' || cell.event.type === 'recovery') &&
+                  cell.event.assignedMember) {
+                
+                const existingEntry = leaves.find(entry => 
+                  entry.animateurId === cell.event!.assignedMember!.id &&
+                  entry.date === cell.date &&
+                  entry.timeSlot === cell.timeSlot
+                );
 
-              if (!existingEntry) {
-                leaves.push({
-                  id: `${cell.event.assignedMember.id}_${cell.date}_${cell.timeSlot}`,
-                  animateurId: cell.event.assignedMember.id,
-                  animateurNom: cell.event.assignedMember.nom,
-                  animateurPrenom: cell.event.assignedMember.prenom,
-                  type: cell.event.type as 'leave' | 'recovery',
-                  date: cell.date,
-                  timeSlot: cell.timeSlot
-                });
+                if (!existingEntry) {
+                  leaves.push({
+                    id: `${cell.event.assignedMember.id}_${cell.date}_${cell.timeSlot}`,
+                    animateurId: cell.event.assignedMember.id,
+                    animateurNom: cell.event.assignedMember.nom,
+                    animateurPrenom: cell.event.assignedMember.prenom,
+                    type: cell.event.type as 'leave' | 'recovery',
+                    date: cell.date,
+                    timeSlot: cell.timeSlot
+                  });
+                }
               }
-            }
+            });
           });
         });
 

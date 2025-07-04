@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
@@ -16,30 +17,25 @@ interface Animateur {
   role: string;
 }
 
+// Updated Planning interface to match database structure
 interface Planning {
   id: string;
   sessionId?: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  data: Array<{
+  data: Array<Array<{
     date: string;
     timeSlot: string;
-    event?: {
+    event: {
       id: string;
       name: string;
-      description?: string;
-      color: string;
-      type: 'activity' | 'duty' | 'leave' | 'recovery';
-      assignedMember?: {
+      type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'other';
+      assignedMember: {
         id: number;
         nom: string;
         prenom: string;
         role: string;
-      };
-    };
-  }>;
-  createdAt: string;
+      } | null;
+    } | null;
+  }>>;
 }
 
 interface Traitement {
@@ -74,9 +70,9 @@ const Index = () => {
         const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
         setAnimateurs(dbAnimateurs);
 
-        // Charger les plannings de la session courante
+        // Charger les plannings de la session courante - cast to match interface
         const dbPlannings = await db.getAll('plannings', currentSession.id);
-        setPlannings(dbPlannings);
+        setPlannings(dbPlannings as Planning[]);
 
         // Charger les traitements de la session courante
         const dbTraitements = await db.getAll('traitements', currentSession.id);
@@ -94,13 +90,13 @@ const Index = () => {
 
   const getTodayPlanning = () => {
     return plannings.find(p => 
-      p.data.some(slot => slot.date === today && slot.event)
+      p.data.some(day => day.some(slot => slot.date === today && slot.event))
     );
   };
 
   const getTomorrowPlanning = () => {
     return plannings.find(p => 
-      p.data.some(slot => slot.date === tomorrow && slot.event)
+      p.data.some(day => day.some(slot => slot.date === tomorrow && slot.event))
     );
   };
 
@@ -326,6 +322,7 @@ const Index = () => {
               {todayPlanning ? (
                 <div className="space-y-2">
                   {todayPlanning.data
+                    .flat()
                     .filter(slot => slot.date === today && slot.event)
                     .map((slot, index) => (
                       <div key={index} className="text-sm p-2 bg-gray-50 rounded">
@@ -354,6 +351,7 @@ const Index = () => {
               {tomorrowPlanning ? (
                 <div className="space-y-2">
                   {tomorrowPlanning.data
+                    .flat()
                     .filter(slot => slot.date === tomorrow && slot.event)
                     .map((slot, index) => (
                       <div key={index} className="text-sm p-2 bg-gray-50 rounded">
