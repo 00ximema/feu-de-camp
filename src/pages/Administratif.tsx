@@ -354,139 +354,145 @@ const Administratif = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Numéros d'urgence */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Phone className="h-5 w-5 text-red-600" />
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2 text-lg">
+              <Phone className="h-4 w-4 text-red-600" />
               <span>Numéros d'urgence du séjour</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Personnalisez et complétez les contacts importants pour votre séjour
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {/* Contacts d'urgence */}
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold">Contacts d'urgence</h3>
-                  <Button onClick={addEmergencyContact} size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter un contact
-                  </Button>
-                </div>
-                
-                <div className="space-y-4">
-                  {/* Liste compacte des contacts */}
-                  <div className="grid gap-3">
-                    {emergencyContacts.map((contact) => (
-                      <div key={contact.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
-                        <div className="flex-1">
-                          <div className="flex items-center space-x-3">
-                            <span className="font-medium">{contact.label}</span>
-                            <span className="text-sm text-gray-500">-</span>
-                            <span className="font-mono">{contact.number || "Non renseigné"}</span>
-                            <span className="text-sm text-gray-500">({contact.description})</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => startEditingContact(contact)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => removeEmergencyContact(contact.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+          <CardContent className="space-y-4">
+            {/* Contacts d'urgence */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-base font-semibold">Contacts d'urgence</h3>
+                <Button onClick={addEmergencyContact} size="sm" className="h-8">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Ajouter
+                </Button>
+              </div>
+              
+              <div className="space-y-2">
+                {/* Liste compacte des contacts */}
+                <div className="grid gap-2">
+                  {emergencyContacts.map((contact) => (
+                    <div key={contact.id} className="flex items-center justify-between p-2 border rounded bg-gray-50">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-2 text-sm">
+                          <span className="font-medium">{contact.label}</span>
+                          <span className="text-gray-400">-</span>
+                          <span className="font-mono text-xs">{contact.number || "Non renseigné"}</span>
+                          <span className="text-xs text-gray-500">({contact.description})</span>
                         </div>
                       </div>
-                    ))}
-                  </div>
-
-                  {/* Formulaire d'édition */}
-                  {isEditing && editingContact && (
-                    <div className="p-4 border rounded-lg bg-white">
-                      <h4 className="font-medium mb-3">Modifier le contact</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
-                        <div>
-                          <Label htmlFor="edit-label">Libellé</Label>
-                          <Input
-                            id="edit-label"
-                            value={editingContact.label}
-                            onChange={(e) => setEditingContact(prev => prev ? {...prev, label: e.target.value} : null)}
-                            placeholder="Ex: Urgences médicales"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-number">Numéro</Label>
-                          <Input
-                            id="edit-number"
-                            value={editingContact.number}
-                            onChange={(e) => setEditingContact(prev => prev ? {...prev, number: e.target.value} : null)}
-                            placeholder="Ex: 15"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="edit-description">Description</Label>
-                          <Input
-                            id="edit-description"
-                            value={editingContact.description}
-                            onChange={(e) => setEditingContact(prev => prev ? {...prev, description: e.target.value} : null)}
-                            placeholder="Ex: SAMU"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button onClick={saveEditingContact} size="sm">
-                          Sauvegarder
+                      <div className="flex items-center space-x-1">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => startEditingContact(contact)}
+                        >
+                          <Edit className="h-3 w-3" />
                         </Button>
-                        <Button onClick={cancelEditing} variant="outline" size="sm">
-                          Annuler
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-7 w-7 p-0"
+                          onClick={() => removeEmergencyContact(contact.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
-                  )}
+                  ))}
                 </div>
-              </div>
 
-              {/* Détails hôpital */}
-              <div>
-                <h3 className="text-lg font-semibold mb-4">Hôpital le plus proche</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="hopital-nom">Nom de l'établissement</Label>
-                    <Input
-                      id="hopital-nom"
-                      value={hospitalDetails.nom}
-                      onChange={(e) => handleHospitalDetailsChange('nom', e.target.value)}
-                      placeholder="Centre Hospitalier..."
-                    />
+                {/* Formulaire d'édition compact */}
+                {isEditing && editingContact && (
+                  <div className="p-3 border rounded-lg bg-white">
+                    <h4 className="font-medium mb-2 text-sm">Modifier le contact</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
+                      <div>
+                        <Label htmlFor="edit-label" className="text-xs">Libellé</Label>
+                        <Input
+                          id="edit-label"
+                          className="h-8 text-sm"
+                          value={editingContact.label}
+                          onChange={(e) => setEditingContact(prev => prev ? {...prev, label: e.target.value} : null)}
+                          placeholder="Ex: Urgences médicales"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-number" className="text-xs">Numéro</Label>
+                        <Input
+                          id="edit-number"
+                          className="h-8 text-sm"
+                          value={editingContact.number}
+                          onChange={(e) => setEditingContact(prev => prev ? {...prev, number: e.target.value} : null)}
+                          placeholder="Ex: 15"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="edit-description" className="text-xs">Description</Label>
+                        <Input
+                          id="edit-description"
+                          className="h-8 text-sm"
+                          value={editingContact.description}
+                          onChange={(e) => setEditingContact(prev => prev ? {...prev, description: e.target.value} : null)}
+                          placeholder="Ex: SAMU"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <Button onClick={saveEditingContact} size="sm" className="h-7 text-xs">
+                        Sauvegarder
+                      </Button>
+                      <Button onClick={cancelEditing} variant="outline" size="sm" className="h-7 text-xs">
+                        Annuler
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="hopital-tel">Téléphone</Label>
-                    <Input
-                      id="hopital-tel"
-                      value={hospitalDetails.telephone}
-                      onChange={(e) => handleHospitalDetailsChange('telephone', e.target.value)}
-                      placeholder="01 23 45 67 89"
-                    />
-                  </div>
-                  <div className="md:col-span-2">
-                    <Label htmlFor="hopital-adresse">Adresse complète</Label>
-                    <Textarea
-                      id="hopital-adresse"
-                      value={hospitalDetails.adresse}
-                      onChange={(e) => handleHospitalDetailsChange('adresse', e.target.value)}
-                      placeholder="Adresse complète de l'hôpital avec code postal et ville"
-                      rows={2}
-                    />
-                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Détails hôpital compact */}
+            <div>
+              <h3 className="text-base font-semibold mb-3">Hôpital le plus proche</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <Label htmlFor="hopital-nom" className="text-xs">Nom de l'établissement</Label>
+                  <Input
+                    id="hopital-nom"
+                    className="h-8 text-sm"
+                    value={hospitalDetails.nom}
+                    onChange={(e) => handleHospitalDetailsChange('nom', e.target.value)}
+                    placeholder="Centre Hospitalier..."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="hopital-tel" className="text-xs">Téléphone</Label>
+                  <Input
+                    id="hopital-tel"
+                    className="h-8 text-sm"
+                    value={hospitalDetails.telephone}
+                    onChange={(e) => handleHospitalDetailsChange('telephone', e.target.value)}
+                    placeholder="01 23 45 67 89"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label htmlFor="hopital-adresse" className="text-xs">Adresse complète</Label>
+                  <Textarea
+                    id="hopital-adresse"
+                    className="text-sm"
+                    value={hospitalDetails.adresse}
+                    onChange={(e) => handleHospitalDetailsChange('adresse', e.target.value)}
+                    placeholder="Adresse complète de l'hôpital avec code postal et ville"
+                    rows={2}
+                  />
                 </div>
               </div>
             </div>
@@ -494,90 +500,90 @@ const Administratif = () => {
         </Card>
 
         {/* Check-List Documents ACM */}
-        <Card className="mb-8">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <AlertTriangle className="h-5 w-5 text-orange-600" />
+        <Card className="mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2 text-lg">
+              <AlertTriangle className="h-4 w-4 text-orange-600" />
               <span>Documents obligatoires ACM</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Vérifiez que tous les documents obligatoires sont présents
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.declarationACM}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('declarationACM', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Déclaration ACM</label>
+                  <label className="text-xs font-medium">Déclaration ACM</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.projetEducatif}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('projetEducatif', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Projet éducatif</label>
+                  <label className="text-xs font-medium">Projet éducatif</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.projetPedagogique}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('projetPedagogique', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Projet pédagogique</label>
+                  <label className="text-xs font-medium">Projet pédagogique</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.reglementInterieur}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('reglementInterieur', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Règlement intérieur</label>
+                  <label className="text-xs font-medium">Règlement intérieur</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.registrePresence}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('registrePresence', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Registre de présence</label>
+                  <label className="text-xs font-medium">Registre de présence</label>
                 </div>
               </div>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.planEvacuation}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('planEvacuation', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Plan d'évacuation</label>
+                  <label className="text-xs font-medium">Plan d'évacuation</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.trousseSecours}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('trousseSecours', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Trousse de secours</label>
+                  <label className="text-xs font-medium">Trousse de secours</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.protocoleSanitaire}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('protocoleSanitaire', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Protocole sanitaire</label>
+                  <label className="text-xs font-medium">Protocole sanitaire</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.assurances}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('assurances', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Assurances</label>
+                  <label className="text-xs font-medium">Assurances</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     checked={acmDocuments.conventionsPartenaires}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('conventionsPartenaires', checked as boolean)}
                   />
-                  <label className="text-sm font-medium">Conventions partenaires</label>
+                  <label className="text-xs font-medium">Conventions partenaires</label>
                 </div>
               </div>
             </div>
@@ -586,13 +592,13 @@ const Administratif = () => {
 
         {/* Check-List Table - Only show if youngsters are imported */}
         {youngsters.length > 0 && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <CheckSquare className="h-5 w-5" />
+          <Card className="mb-6">
+            <CardHeader className="pb-4">
+              <CardTitle className="flex items-center space-x-2 text-lg">
+                <CheckSquare className="h-4 w-4" />
                 <span>Check-List Documents ({youngsters.length} jeunes)</span>
               </CardTitle>
-              <CardDescription>
+              <CardDescription className="text-sm">
                 Suivi des documents administratifs pour chaque jeune
               </CardDescription>
             </CardHeader>
@@ -601,27 +607,27 @@ const Administratif = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[200px]">Nom du jeune</TableHead>
-                      <TableHead className="text-center">Fiche de renseignements</TableHead>
-                      <TableHead className="text-center">Fiche sanitaire de liaison</TableHead>
-                      <TableHead className="text-center">Copie CNI</TableHead>
-                      <TableHead className="text-center">Copie des vaccins</TableHead>
-                      <TableHead className="text-center">Autorisation de sortie de territoire</TableHead>
-                      <TableHead className="text-center">Copie CNI parents</TableHead>
-                      <TableHead className="text-center">Autorisation QL</TableHead>
-                      <TableHead className="text-center">Progression</TableHead>
+                      <TableHead className="w-[160px] py-2">Nom du jeune</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Fiche de renseignements</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Fiche sanitaire de liaison</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Copie CNI</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Copie des vaccins</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Autorisation de sortie de territoire</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Copie CNI parents</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Autorisation QL</TableHead>
+                      <TableHead className="text-center py-2 text-xs">Progression</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {youngsters.map((youngster) => (
                       <TableRow key={youngster.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium">
+                        <TableCell className="font-medium py-2">
                           <div>
-                            <div className="font-semibold">{youngster.prenom} {youngster.nom}</div>
-                            <div className="text-sm text-gray-500">{youngster.age} ans</div>
+                            <div className="font-semibold text-sm">{youngster.prenom} {youngster.nom}</div>
+                            <div className="text-xs text-gray-500">{youngster.age} ans</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.ficheRenseignements || false}
                             onCheckedChange={(checked) => 
@@ -629,7 +635,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.ficheSanitaire || false}
                             onCheckedChange={(checked) => 
@@ -637,7 +643,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieCNI || false}
                             onCheckedChange={(checked) => 
@@ -645,7 +651,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieVaccins || false}
                             onCheckedChange={(checked) => 
@@ -653,7 +659,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.autorisationSortieTerritory || false}
                             onCheckedChange={(checked) => 
@@ -661,7 +667,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieCNIParents || false}
                             onCheckedChange={(checked) => 
@@ -669,7 +675,7 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <Checkbox
                             checked={checklistData[youngster.id]?.autorisationQL || false}
                             onCheckedChange={(checked) => 
@@ -677,11 +683,11 @@ const Administratif = () => {
                             }
                           />
                         </TableCell>
-                        <TableCell className="text-center">
+                        <TableCell className="text-center py-2">
                           <div className="flex items-center justify-center space-x-2">
-                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                            <div className="w-12 bg-gray-200 rounded-full h-1.5">
                               <div 
-                                className={`h-2 rounded-full transition-all duration-300 ${
+                                className={`h-1.5 rounded-full transition-all duration-300 ${
                                   getCompletionPercentage(youngster.id) === 100 
                                     ? 'bg-green-500' 
                                     : getCompletionPercentage(youngster.id) > 50 
@@ -701,7 +707,7 @@ const Administratif = () => {
                   </TableBody>
                 </Table>
               </div>
-              <div className="mt-4 text-sm text-gray-600">
+              <div className="mt-3 text-xs text-gray-600">
                 <p>
                   <span className="font-medium">Note :</span> Cette liste se base sur les jeunes importés dans la section "Gestion des jeunes". 
                   Importez d'abord votre fichier Excel dans cette section pour voir apparaître la check-list.
@@ -713,12 +719,12 @@ const Administratif = () => {
 
         {/* Rapport Infirmerie */}
         <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Download className="h-5 w-5" />
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2 text-lg">
+              <Download className="h-4 w-4" />
               <span>Rapport infirmerie et événements</span>
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               Générer le rapport complet au format PDF
             </CardDescription>
           </CardHeader>
