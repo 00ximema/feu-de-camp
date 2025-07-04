@@ -109,15 +109,15 @@ const SoinForm: React.FC<SoinFormProps> = ({
         sessionId: currentSession.id,
         jeuneId: jeune.id,
         jeuneNom: `${jeune.prenom} ${jeune.nom}`,
-        type,
+        type: type as 'soin' | 'consultation' | 'autre',
         titre,
         description,
         date,
         heure,
-        soignant: soignant || undefined,
-        symptomes: symptomes || undefined,
-        diagnostic: diagnostic || undefined,
-        traitement: traitement || undefined,
+        ...(soignant && { soignant }),
+        ...(symptomes && { symptomes }),
+        ...(diagnostic && { diagnostic }),
+        ...(traitement && { traitement }),
         suivi,
         dateCreation: new Date().toISOString()
       };
@@ -125,8 +125,8 @@ const SoinForm: React.FC<SoinFormProps> = ({
       await db.save('soins', soin);
       
       toast({
-        title: `${type === 'soin' ? 'Soin' : 'Consultation'} ajouté${type === 'consultation' ? 'e' : ''}`,
-        description: `${type === 'soin' ? 'Soin' : 'Consultation'} pour ${jeune.prenom} ${jeune.nom} enregistré${type === 'consultation' ? 'e' : ''} avec succès`
+        title: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} ajouté${type === 'consultation' ? 'e' : ''}`,
+        description: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} pour ${jeune.prenom} ${jeune.nom} enregistré${type === 'consultation' ? 'e' : ''} avec succès`
       });
 
       resetForm();
