@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -34,11 +35,11 @@ interface Soin {
   description: string;
   date: string;
   heure: string;
-  soignant: string;
-  symptomes: string;
-  diagnostic: string;
-  traitement: string;
-  suivi: boolean;
+  soignant?: string;
+  symptomes?: string;
+  diagnostic?: string;
+  traitement?: string;
+  suivi?: boolean;
   dateCreation: string;
 }
 
@@ -112,7 +113,7 @@ const Infirmerie = () => {
       await handleDataUpdated();
       
       toast({
-        title: `${soin.type === 'soin' ? 'Soin' : 'Consultation'} supprimé${soin.type === 'consultation' ? 'e' : ''}`,
+        title: `${soin.type === 'soin' ? 'Soin' : soin.type === 'consultation' ? 'Consultation' : 'Intervention'} supprimé${soin.type === 'consultation' ? 'e' : ''}`,
         description: `${soin.titre} pour ${soin.jeuneNom} a été supprimé${soin.type === 'consultation' ? 'e' : ''}`
       });
     } catch (error) {
@@ -123,29 +124,6 @@ const Infirmerie = () => {
         variant: "destructive"
       });
     }
-  };
-
-  const addSoin = (soin: Omit<Soin, 'id' | 'dateCreation'> & { sessionId?: string; soignant?: string; symptomes?: string; diagnostic?: string; traitement?: string; suivi?: boolean }) => {
-    const newSoin: Soin = {
-      id: Date.now().toString(),
-      dateCreation: new Date().toISOString(),
-      sessionId: getCurrentSession()?.id || '',
-      soignant: soin.soignant || '',
-      symptomes: soin.symptomes || '',
-      diagnostic: soin.diagnostic || '',
-      traitement: soin.traitement || '',
-      suivi: soin.suivi || false,
-      ...soin
-    };
-    
-    setSoins(prev => [...prev, newSoin]);
-    
-    // Sauvegarder dans localStorage
-    const updatedSoins = [...soins, newSoin];
-    localStorage.setItem('infirmerie-data', JSON.stringify({
-      soins: updatedSoins,
-      traitements: traitements
-    }));
   };
 
   const getTraitementsActifs = () => {
@@ -226,7 +204,7 @@ const Infirmerie = () => {
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
                             <Badge variant={soin.type === 'consultation' ? 'default' : 'secondary'}>
-                              {soin.type === 'consultation' ? 'Consultation' : 'Soin'}
+                              {soin.type === 'consultation' ? 'Consultation' : soin.type === 'soin' ? 'Soin' : 'Autre'}
                             </Badge>
                             <span className="font-medium text-lg">{soin.jeuneNom}</span>
                           </div>
