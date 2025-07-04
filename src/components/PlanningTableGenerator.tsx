@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -889,16 +890,21 @@ const PlanningTableGenerator = () => {
                 <div>
                   <Label htmlFor="assigned-member">Membre de l'équipe *</Label>
                   <Select 
-                    value={newEvent.assignedMember?.id.toString() || ''} 
+                    value={newEvent.assignedMember?.id.toString() || 'none'} 
                     onValueChange={(value) => {
-                      const member = animateurs.find(a => a.id.toString() === value);
-                      setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
+                      if (value === 'none') {
+                        setNewEvent(prev => ({ ...prev, assignedMember: null }));
+                      } else {
+                        const member = animateurs.find(a => a.id.toString() === value);
+                        setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
+                      }
                     }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="Sélectionner un membre" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="none">Aucun membre sélectionné</SelectItem>
                       {animateurs.map(animateur => (
                         <SelectItem key={animateur.id} value={animateur.id.toString()}>
                           {animateur.prenom} {animateur.nom} ({animateur.role})
@@ -914,9 +920,9 @@ const PlanningTableGenerator = () => {
                 <div>
                   <Label htmlFor="assigned-group">Groupe de jeunes (optionnel)</Label>
                   <Select 
-                    value={newEvent.assignedGroup?.id || ''} 
+                    value={newEvent.assignedGroup?.id || 'none'} 
                     onValueChange={(value) => {
-                      if (value === '') {
+                      if (value === 'none') {
                         setNewEvent(prev => ({ ...prev, assignedGroup: null }));
                       } else {
                         const group = groupes.find(g => g.id === value);
@@ -937,7 +943,7 @@ const PlanningTableGenerator = () => {
                       <SelectValue placeholder="Sélectionner un groupe" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Aucun groupe</SelectItem>
+                      <SelectItem value="none">Aucun groupe</SelectItem>
                       {groupes.map(groupe => (
                         <SelectItem key={groupe.id} value={groupe.id}>
                           <div className="flex items-center space-x-2">
