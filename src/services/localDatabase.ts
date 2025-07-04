@@ -1,4 +1,3 @@
-
 interface DatabaseSchema {
   // Sessions
   sessions: {
@@ -83,36 +82,25 @@ interface DatabaseSchema {
     timestamp: string;
   };
   
-  // Plannings - Enhanced structure
+  // Plannings - Updated to match PlanningCell structure
   plannings: {
     id: string;
     sessionId?: string;
-    name: string;
-    startDate: string;
-    endDate: string;
-    data: Array<{
+    data: Array<Array<{
       date: string;
       timeSlot: string;
-      event?: {
+      event: {
         id: string;
         name: string;
-        description?: string;
-        color: string;
-        type: 'activity' | 'duty' | 'leave' | 'recovery';
-        assignedMember?: {
+        type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'other';
+        assignedMember: {
           id: number;
           nom: string;
           prenom: string;
           role: string;
-        };
-        assignedGroup?: {
-          id: string;
-          nom: string;
-          couleur: string;
-        };
-      };
-    }>;
-    createdAt: string;
+        } | null;
+      } | null;
+    }>>;
   };
 
   // Room data - New dedicated table for room configurations and assignments
