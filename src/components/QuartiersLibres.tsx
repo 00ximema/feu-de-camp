@@ -6,40 +6,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, Download, Plus, Trash2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { FileText, Download, Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useJeunes } from "@/hooks/useJeunes";
-import { useGroups } from "@/hooks/useGroups";
 import jsPDF from 'jspdf';
 
 interface QuartierLibre {
   id: string;
-  jeuneId: string;
+  jeuneIds: string[];
   groupeQuartierLibre: string;
   heureDepart: string;
-  heureRetour: string;
+  heureRetour?: string;
+  statut: 'en_cours' | 'termine';
 }
 
 const QuartiersLibres = () => {
   const [quartiersLibres, setQuartiersLibres] = useState<QuartierLibre[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [selectedJeunes, setSelectedJeunes] = useState<string[]>([]);
   const [newQuartierLibre, setNewQuartierLibre] = useState({
-    jeuneId: '',
     groupeQuartierLibre: '',
-    heureDepart: '',
-    heureRetour: ''
+    heureDepart: ''
   });
   
   const { toast } = useToast();
   const { jeunes } = useJeunes();
-  const { groupes } = useGroups();
+
+  const handleJeuneSelection = (jeuneId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedJeunes([...selectedJeunes, jeuneId]);
+    } else {
+      setSelectedJeunes(selectedJeunes.filter(id => id !== jeuneId));
+    }
+  };
 
   const handleAddQuartierLibre = () => {
-    if (!newQuartierLibre.jeuneId || !newQuartierLibre.groupeQuartierLibre || 
-        !newQuartierLibre.heureDepart || !newQuartierLibre.heureRetour) {
+    if (selectedJeunes.length === 0 || !newQuartierLibre.groupeQuartierLibre || !newQuartierLibre.heureDepart) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir tous les champs",
+        description: "Veuillez sélectionner au moins un jeune, renseigner le groupe et l'heure de départ",
         variant: "destructive"
       });
       return;
@@ -47,21 +53,35 @@ const QuartiersLibres = () => {
 
     const quartierLibre: QuartierLibre = {
       id: Date.now().toString(),
-      ...newQuartierLibre
+      jeuneIds: [...selectedJeunes],
+      groupeQuartierLibre: newQuartierLibre.groupeQuartierLibre,
+      heureDepart: newQuartierLibre.heureDepart,
+      statut: 'en_cours'
     };
 
     setQuartiersLibres([...quartiersLibres, quartierLibre]);
     setNewQuartierLibre({
-      jeuneId: '',
       groupeQuartierLibre: '',
-      heureDepart: '',
-      heureRetour: ''
+      heureDepart: ''
     });
+    setSelectedJeunes([]);
     setShowAddForm(false);
     
     toast({
       title: "Quartier libre ajouté",
-      description: "Le quartier libre a été ajouté avec succès"
+      description: "Le quartier libre a été créé avec succès"
+    });
+  };
+
+  const handleUpdateHeureRetour = (id: string, heureRetour: string) => {
+    setQuartiersLibres(quartiersLibres.map(ql => 
+      ql.id === id 
+        ? { ...ql, heureRetour, statut: 'termine' as const }
+        : ql
+    ));
+    toast({
+      title: "Heure de retour mise à jour",
+      description: "Le quartier libre a été terminé"
     });
   };
 
@@ -86,9 +106,9 @@ const QuartiersLibres = () => {
     
     // Headers du tableau
     doc.setFontSize(10);
-    const headers = ['Nom', 'Prénom', 'Groupe QL', 'Heure départ', 'Heure retour'];
+    const headers = ['Jeunes', 'Groupe QL', 'Heure départ', 'Heure retour'];
     const startY = 65;
-    const cellWidth = 35;
+    const cellWidth = 45;
     
     headers.forEach((header, index) => {
       doc.text(header, 20 + (index * cellWidth), startY);
@@ -99,15 +119,16 @@ const QuartiersLibres = () => {
     
     // Données
     quartiersLibres.forEach((ql, index) => {
-      const jeune = jeunes.find(j => j.id === ql.jeuneId);
-      if (jeune) {
-        const y = startY + 15 + (index * 10);
-        doc.text(jeune.nom, 20, y);
-        doc.text(jeune.prenom, 20 + cellWidth, y);
-        doc.text(ql.groupeQuartierLibre, 20 + (cellWidth * 2), y);
-        doc.text(ql.heureDepart, 20 + (cellWidth * 3), y);
-        doc.text(ql.heureRetour, 20 + (cellWidth * 4), y);
-      }
+      const jeunesNoms = ql.jeuneIds.map(id => {
+        const jeune = jeunes.find(j => j.id === id);
+        return jeune ? `${jeune.prenom} ${jeune.nom}` : '';
+      }).join(', ');
+      
+      const y = startY + 15 + (index * 10);
+      doc.text(jeunesNoms.substring(0, 25) + (jeunesNoms.length > 25 ? '...' : ''), 20, y);
+      doc.text(ql.groupeQuartierLibre, 20 + cellWidth, y);
+      doc.text(ql.heureDepart, 20 + (cellWidth * 2), y);
+      doc.text(ql.heureRetour || '', 20 + (cellWidth * 3), y);
     });
     
     // Sauvegarder le PDF
@@ -116,6 +137,55 @@ const QuartiersLibres = () => {
     toast({
       title: "PDF généré",
       description: "Le fichier PDF a été téléchargé avec succès"
+    });
+  };
+
+  const generateBlankPDF = () => {
+    const doc = new jsPDF();
+    
+    // Titre
+    doc.setFontSize(20);
+    doc.text('Feuille de Quartiers Libres', 20, 30);
+    
+    // Date
+    doc.setFontSize(12);
+    doc.text(`Date: ______________`, 20, 45);
+    doc.text(`Heure de départ: ______________`, 20, 60);
+    
+    // Liste de tous les jeunes
+    doc.setFontSize(14);
+    doc.text('Liste des jeunes:', 20, 80);
+    
+    const startY = 95;
+    const lineHeight = 8;
+    
+    jeunes.forEach((jeune, index) => {
+      const y = startY + (index * lineHeight);
+      if (y > 270) return; // Éviter de dépasser la page
+      
+      // Case à cocher
+      doc.rect(20, y - 3, 4, 4);
+      // Nom du jeune
+      doc.setFontSize(10);
+      doc.text(`${jeune.prenom} ${jeune.nom}`, 30, y);
+      
+      // Groupe QL
+      doc.text('Groupe QL: ________________', 100, y);
+      
+      // Heure de retour
+      doc.text('Retour: ________', 170, y);
+    });
+    
+    // Signature
+    doc.setFontSize(12);
+    doc.text('Responsable: ________________________________', 20, 280);
+    
+    // Sauvegarder le PDF
+    doc.save(`feuille-quartiers-libres-vierge-${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "PDF vierge généré",
+      description: "La feuille vierge a été téléchargée avec succès"
     });
   };
 
@@ -147,7 +217,14 @@ const QuartiersLibres = () => {
                 disabled={quartiersLibres.length === 0}
               >
                 <Download className="h-4 w-4 mr-2" />
-                Générer PDF
+                PDF Rempli
+              </Button>
+              <Button 
+                onClick={generateBlankPDF}
+                variant="outline"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                PDF Vierge
               </Button>
             </div>
           </div>
@@ -155,26 +232,33 @@ const QuartiersLibres = () => {
         <CardContent>
           {showAddForm && (
             <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-              <h3 className="font-medium mb-4">Ajouter un quartier libre</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="jeune">Jeune</Label>
-                  <Select 
-                    value={newQuartierLibre.jeuneId} 
-                    onValueChange={(value) => setNewQuartierLibre({ ...newQuartierLibre, jeuneId: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un jeune" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {jeunes.map((jeune) => (
-                        <SelectItem key={jeune.id} value={jeune.id}>
-                          {jeune.prenom} {jeune.nom}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+              <h3 className="font-medium mb-4">Créer un nouveau quartier libre</h3>
+              
+              {/* Sélection des jeunes */}
+              <div className="mb-4">
+                <Label>Sélectionner les jeunes</Label>
+                <div className="max-h-48 overflow-y-auto border rounded p-3 bg-white mt-2">
+                  {jeunes.map((jeune) => (
+                    <div key={jeune.id} className="flex items-center space-x-2 py-1">
+                      <Checkbox
+                        id={`jeune-${jeune.id}`}
+                        checked={selectedJeunes.includes(jeune.id)}
+                        onCheckedChange={(checked) => handleJeuneSelection(jeune.id, checked as boolean)}
+                      />
+                      <Label htmlFor={`jeune-${jeune.id}`} className="text-sm">
+                        {jeune.prenom} {jeune.nom}
+                      </Label>
+                    </div>
+                  ))}
                 </div>
+                {selectedJeunes.length > 0 && (
+                  <p className="text-sm text-blue-600 mt-2">
+                    {selectedJeunes.length} jeune(s) sélectionné(s)
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="groupe">Groupe de quartier libre</Label>
                   <Input
@@ -193,21 +277,12 @@ const QuartiersLibres = () => {
                     onChange={(e) => setNewQuartierLibre({ ...newQuartierLibre, heureDepart: e.target.value })}
                   />
                 </div>
-                <div>
-                  <Label htmlFor="retour">Heure de retour</Label>
-                  <Input
-                    id="retour"
-                    type="time"
-                    value={newQuartierLibre.heureRetour}
-                    onChange={(e) => setNewQuartierLibre({ ...newQuartierLibre, heureRetour: e.target.value })}
-                  />
-                </div>
               </div>
               <Button 
                 className="mt-4"
                 onClick={handleAddQuartierLibre}
               >
-                Ajouter le quartier libre
+                Créer le quartier libre
               </Button>
             </div>
           )}
@@ -216,31 +291,59 @@ const QuartiersLibres = () => {
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun quartier libre</h3>
-              <p className="text-gray-500">Commencez par ajouter des autorisations de sortie</p>
+              <p className="text-gray-500">Commencez par créer un groupe de quartier libre</p>
             </div>
           ) : (
             <div className="border rounded-lg">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Nom</TableHead>
-                    <TableHead>Prénom</TableHead>
+                    <TableHead>Jeunes</TableHead>
                     <TableHead>Groupe QL</TableHead>
                     <TableHead>Heure départ</TableHead>
                     <TableHead>Heure retour</TableHead>
+                    <TableHead>Statut</TableHead>
                     <TableHead className="w-[100px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {quartiersLibres.map((ql) => {
-                    const jeune = jeunes.find(j => j.id === ql.jeuneId);
+                    const jeunesNoms = ql.jeuneIds.map(id => {
+                      const jeune = jeunes.find(j => j.id === id);
+                      return jeune ? `${jeune.prenom} ${jeune.nom}` : '';
+                    }).join(', ');
+                    
                     return (
                       <TableRow key={ql.id}>
-                        <TableCell className="font-medium">{jeune?.nom}</TableCell>
-                        <TableCell>{jeune?.prenom}</TableCell>
+                        <TableCell className="font-medium">{jeunesNoms}</TableCell>
                         <TableCell>{ql.groupeQuartierLibre}</TableCell>
                         <TableCell>{ql.heureDepart}</TableCell>
-                        <TableCell>{ql.heureRetour}</TableCell>
+                        <TableCell>
+                          {ql.statut === 'en_cours' ? (
+                            <div className="flex items-center space-x-2">
+                              <Input
+                                type="time"
+                                className="w-24"
+                                onChange={(e) => {
+                                  if (e.target.value) {
+                                    handleUpdateHeureRetour(ql.id, e.target.value);
+                                  }
+                                }}
+                              />
+                            </div>
+                          ) : (
+                            ql.heureRetour
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`inline-flex px-2 py-1 text-xs rounded-full ${
+                            ql.statut === 'en_cours' 
+                              ? 'bg-orange-100 text-orange-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {ql.statut === 'en_cours' ? 'En cours' : 'Terminé'}
+                          </span>
+                        </TableCell>
                         <TableCell>
                           <Button
                             size="sm"

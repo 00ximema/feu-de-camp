@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
@@ -92,18 +91,6 @@ const Index = () => {
     return traitements.filter(t => t.dateDebut <= today && t.dateFin >= today);
   };
 
-  const getJoursRestants = () => {
-    // Calculer les jours restants jusqu'à la fin du séjour
-    // Pour l'exemple, on suppose une durée de séjour de 21 jours à partir de la création de la session
-    if (!currentSession) return 0;
-    const sessionStart = new Date(currentSession.createdAt || Date.now());
-    const sessionEnd = new Date(sessionStart.getTime() + 21 * 24 * 60 * 60 * 1000); // 21 jours
-    const now = new Date();
-    const diffTime = sessionEnd.getTime() - now.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
-  };
-
   const getAstreintes = () => {
     return plannings
       .flatMap(p => p.data.flat())
@@ -129,7 +116,6 @@ const Index = () => {
   };
 
   const traitementsActifs = getTraitementsActifs();
-  const joursRestants = getJoursRestants();
   const astreintes = getAstreintes();
   const conges = getConges();
   const reposRecuperateurs = getReposRecuperateurs();
@@ -303,17 +289,13 @@ const Index = () => {
         {/* Quick stats */}
         <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Aperçu rapide</h3>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <div className="text-center">
               <div className="text-2xl font-bold text-blue-600">{jeunes.length}</div>
               <div className="text-sm text-gray-600">Jeunes inscrits</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-green-600">{animateurs.length}</div>
-              <div className="text-sm text-gray-600">Animateurs</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">{joursRestants}</div>
+              <div className="text-2xl font-bold text-purple-600">0</div>
               <div className="text-sm text-gray-600">Jours restants</div>
             </div>
             <div className="text-center">

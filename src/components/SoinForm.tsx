@@ -29,7 +29,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
   onSoinAdded 
 }) => {
   const [selectedJeune, setSelectedJeune] = useState<string>('');
-  const [type, setType] = useState<'soin' | 'consultation'>('soin');
+  const [type, setType] = useState<'soin' | 'consultation' | 'autre'>('soin');
   const [titre, setTitre] = useState('');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
@@ -149,7 +149,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Stethoscope className="h-5 w-5" />
-            <span>Nouveau {type === 'soin' ? 'soin' : 'consultation'}</span>
+            <span>Nouveau {type === 'soin' ? 'soin' : type === 'consultation' ? 'consultation' : 'autre'}</span>
           </DialogTitle>
         </DialogHeader>
         
@@ -173,13 +173,14 @@ const SoinForm: React.FC<SoinFormProps> = ({
 
             <div>
               <Label>Type *</Label>
-              <Select value={type} onValueChange={(value: 'soin' | 'consultation') => setType(value)}>
+              <Select value={type} onValueChange={(value: 'soin' | 'consultation' | 'autre') => setType(value)}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="soin">Soin</SelectItem>
                   <SelectItem value="consultation">Consultation médicale</SelectItem>
+                  <SelectItem value="autre">Autre</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -190,7 +191,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
             <Input
               value={titre}
               onChange={(e) => setTitre(e.target.value)}
-              placeholder={type === 'soin' ? "ex: Pansement genou" : "ex: Consultation fièvre"}
+              placeholder={type === 'soin' ? "ex: Pansement genou" : type === 'consultation' ? "ex: Consultation fièvre" : "ex: Autre intervention"}
             />
           </div>
 
@@ -199,7 +200,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
             <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Décrivez le soin ou la consultation"
+              placeholder="Décrivez le soin, la consultation ou l'intervention"
               rows={3}
             />
           </div>
