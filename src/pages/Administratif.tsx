@@ -9,9 +9,11 @@ import { FileText, Download, Upload, ArrowLeft, CheckSquare, Phone, AlertTriangl
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Youngster } from "@/types/youngster";
+import { useEvents } from "@/hooks/useEvents";
 
 const Administratif = () => {
   const [youngsters, setYoungsters] = useState<Youngster[]>([]);
+  const { events } = useEvents();
   const [checklistData, setChecklistData] = useState<{ [key: string]: { [key: string]: boolean } }>({});
   const [acmDocuments, setAcmDocuments] = useState<{ [key: string]: boolean }>({
     declarationACM: false,
@@ -127,18 +129,27 @@ const Administratif = () => {
       }
     }
     
-    // Ajouter les événements des jeunes
-    if (youngsters.length > 0) {
+    // Ajouter les événements des jeunes en utilisant les events du hook
+    if (events.length > 0) {
       reportData += "=== ÉVÉNEMENTS JEUNES ===\n\n";
-      youngsters.forEach(youngster => {
-        if (youngster.evenements && youngster.evenements.length > 0) {
-          reportData += `JEUNE: ${youngster.prenom} ${youngster.nom}\n`;
-          youngster.evenements.forEach((event: any, index: number) => {
-            reportData += `  ${index + 1}. ${event.date} - ${event.type}\n`;
-            reportData += `     Description: ${event.description}\n`;
-          });
-          reportData += "\n";
+      
+      // Grouper les événements par jeune
+      const eventsByYoungster: { [key: string]: any[] } = {};
+      events.forEach(event => {
+        if (!eventsByYoungster[event.youngsterName]) {
+          eventsByYoungster[event.youngsterName] = [];
         }
+        eventsByYoungster[event.youngsterName].push(event);
+      });
+      
+      // Ajouter les événements groupés au rapport
+      Object.entries(eventsByYoungster).forEach(([youngsterName, youngsterEvents]) => {
+        reportData += `JEUNE: ${youngsterName}\n`;
+        youngsterEvents.forEach((event: any, index: number) => {
+          reportData += `  ${index + 1}. ${event.date} - ${event.type}\n`;
+          reportData += `     Description: ${event.description}\n`;
+        });
+        reportData += "\n";
       });
     }
     
