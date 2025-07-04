@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -555,9 +554,8 @@ const Administratif = () => {
                   Importez d'abord votre fichier Excel dans cette section pour voir apparaître la check-list.
                 </p>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
         )}
 
         {/* Rapport Infirmerie */}
