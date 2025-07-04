@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
@@ -71,7 +71,7 @@ const PlanningTableGenerator = () => {
   const loadPlanning = async (sessionId: string) => {
     if (!isInitialized) return;
     try {
-      const storedPlanning = await db.get('plannings', sessionId);
+      const storedPlanning = await db.getById('plannings', sessionId);
       if (storedPlanning && storedPlanning.data) {
         setPlanning(storedPlanning.data);
       } else {
@@ -148,7 +148,7 @@ const PlanningTableGenerator = () => {
             ...cell,
             event: {
               id: Date.now().toString(),
-              name: newEvent.name,
+              name: newEvent.name || (newEvent.type === 'leave' ? 'Congé' : 'Repos récupérateur'),
               type: newEvent.type,
               assignedMember: newEvent.assignedMember,
             }
@@ -162,9 +162,10 @@ const PlanningTableGenerator = () => {
     setShowAddEvent(false);
     savePlanning(updatedPlanning);
 
+    const eventName = newEvent.name || (newEvent.type === 'leave' ? 'Congé' : 'Repos récupérateur');
     toast({
       title: "Événement ajouté",
-      description: `L'événement "${newEvent.name}" a été ajouté au planning`
+      description: `L'événement "${eventName}" a été ajouté au planning`
     });
   };
 
@@ -193,7 +194,7 @@ const PlanningTableGenerator = () => {
   const savePlanning = async (updatedPlanning: PlanningCell[][]) => {
     if (!isInitialized || !currentSession) return;
     try {
-      await db.put('plannings', {
+      await db.save('plannings', {
         id: currentSession.id,
         data: updatedPlanning
       });
@@ -357,22 +358,27 @@ const PlanningTableGenerator = () => {
 
             <div>
               <Label htmlFor="team-member">Membre de l'équipe *</Label>
-              <Select value={newEvent.assignedMember ? String(newEvent.assignedMember.id) : undefined} onValueChange={(value) => {
-                const member = teamMembers.find(m => String(m.id) === value);
-                setNewEvent(prev => ({
-                  ...prev,
-                  assignedMember: member ? {
-                    id: member.id,
-                    nom: member.nom,
-                    prenom: member.prenom,
-                    role: member.role
-                  } : null
-                }));
+              <Select value={newEvent.assignedMember ? String(newEvent.assignedMember.id) : "none"} onValueChange={(value) => {
+                if (value === "none") {
+                  setNewEvent(prev => ({ ...prev, assignedMember: null }));
+                } else {
+                  const member = teamMembers.find(m => String(m.id) === value);
+                  setNewEvent(prev => ({
+                    ...prev,
+                    assignedMember: member ? {
+                      id: member.id,
+                      nom: member.nom,
+                      prenom: member.prenom,
+                      role: member.role
+                    } : null
+                  }));
+                }
               }}>
                 <SelectTrigger>
                   <SelectValue placeholder="Sélectionner un membre" />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="none">Sélectionner un membre</SelectItem>
                   {teamMembers.map(member => (
                     <SelectItem key={member.id} value={String(member.id)}>
                       {member.prenom} {member.nom} ({member.role})
