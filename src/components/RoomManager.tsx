@@ -10,6 +10,8 @@ import { Home, Users, Shuffle, Plus, Trash2, Edit, FileDown, UserX } from "lucid
 import { useToast } from "@/hooks/use-toast";
 import { Youngster } from "@/types/youngster";
 import { useJeunes } from "@/hooks/useJeunes";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import { useSession } from "@/hooks/useSession";
 import jsPDF from 'jspdf';
 
 interface Room {
@@ -26,6 +28,15 @@ interface RoomConfig {
   gender: 'male' | 'female';
 }
 
+interface RoomData {
+  id: string;
+  sessionId?: string;
+  configs: RoomConfig[];
+  rooms: Room[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 const RoomManager = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomConfigs, setRoomConfigs] = useState<RoomConfig[]>([]);
@@ -37,9 +48,55 @@ const RoomManager = () => {
   const [newRoomName, setNewRoomName] = useState('');
   const { toast } = useToast();
   const { jeunes } = useJeunes();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
+
+  // Charger les données sauvegardées
+  useEffect(() => {
+    const loadRoomData = async () => {
+      if (!isInitialized || !currentSession) return;
+      
+      try {
+        const roomDataId = `room_data_${currentSession.id}`;
+        const savedData = await db.getById('plannings', roomDataId) as RoomData | undefined;
+        
+        if (savedData) {
+          setRoomConfigs(savedData.configs || []);
+          setRooms(savedData.rooms || []);
+          console.log('Données de répartition des chambres chargées:', savedData);
+        }
+      } catch (error) {
+        console.error('Erreur lors du chargement des données de chambres:', error);
+      }
+    };
+
+    loadRoomData();
+  }, [isInitialized, currentSession, db]);
+
+  // Sauvegarder automatiquement les données
+  const saveRoomData = async (configs: RoomConfig[], roomsData: Room[]) => {
+    if (!isInitialized || !currentSession) return;
+    
+    try {
+      const roomDataId = `room_data_${currentSession.id}`;
+      const roomData: RoomData = {
+        id: roomDataId,
+        sessionId: currentSession.id,
+        configs,
+        rooms: roomsData,
+        createdAt: Date.now().toString(),
+        updatedAt: Date.now().toString()
+      };
+
+      await db.save('plannings', roomData);
+      console.log('Données de répartition des chambres sauvegardées');
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des données de chambres:', error);
+    }
+  };
 
   // Génération aléatoire des chambres avec séparation stricte
-  const generateRandomRooms = () => {
+  const generateRandomRooms = async () => {
     if (roomConfigs.length === 0) {
       toast({
         title: "Configuration requise",
@@ -49,7 +106,6 @@ const RoomManager = () => {
       return;
     }
 
-    // Séparer garçons et filles strictement
     const boys = jeunes.filter(j => 
       j.genre?.toLowerCase() === 'masculin' || 
       j.genre?.toLowerCase() === 'garçon' || 
@@ -63,7 +119,6 @@ const RoomManager = () => {
       j.genre?.toLowerCase() === 'femme'
     );
 
-    // Trier par âge
     const sortByAge = (a: Youngster, b: Youngster) => a.age - b.age;
     boys.sort(sortByAge);
     girls.sort(sortByAge);
@@ -71,7 +126,6 @@ const RoomManager = () => {
     const newRooms: Room[] = [];
     let roomIndex = 1;
 
-    // Créer les chambres selon la configuration
     roomConfigs.forEach(config => {
       const genderLabel = config.gender === 'male' ? 'Garçons' : 'Filles';
       for (let i = 0; i < config.count; i++) {
@@ -86,7 +140,6 @@ const RoomManager = () => {
       }
     });
 
-    // Répartir les garçons
     const maleRooms = newRooms.filter(room => room.gender === 'male');
     let currentMaleRoomIndex = 0;
     boys.forEach(boy => {
@@ -101,7 +154,6 @@ const RoomManager = () => {
       }
     });
 
-    // Répartir les filles
     const femaleRooms = newRooms.filter(room => room.gender === 'female');
     let currentFemaleRoomIndex = 0;
     girls.forEach(girl => {
@@ -117,18 +169,19 @@ const RoomManager = () => {
     });
 
     setRooms(newRooms);
+    await saveRoomData(roomConfigs, newRooms);
     
     const totalCapacity = newRooms.reduce((sum, room) => sum + room.capacity, 0);
     const totalOccupants = newRooms.reduce((sum, room) => sum + room.occupants.length, 0);
     
     toast({
-      title: "Répartition générée",
+      title: "Répartition générée et sauvegardée",
       description: `${totalOccupants} jeunes répartis dans ${newRooms.length} chambres (capacité totale: ${totalCapacity})`
     });
   };
 
   // Ajouter une configuration de chambre
-  const addRoomConfig = () => {
+  const addRoomConfig = async () => {
     if (newConfig.capacity < 1 || newConfig.count < 1) {
       toast({
         title: "Erreur",
@@ -138,40 +191,45 @@ const RoomManager = () => {
       return;
     }
 
-    setRoomConfigs([...roomConfigs, { ...newConfig }]);
+    const updatedConfigs = [...roomConfigs, { ...newConfig }];
+    setRoomConfigs(updatedConfigs);
+    await saveRoomData(updatedConfigs, rooms);
+    
     setNewConfig({ capacity: 6, count: 1, gender: 'male' });
     setShowConfigDialog(false);
   };
 
   // Supprimer une configuration
-  const removeRoomConfig = (index: number) => {
-    setRoomConfigs(roomConfigs.filter((_, i) => i !== index));
+  const removeRoomConfig = async (index: number) => {
+    const updatedConfigs = roomConfigs.filter((_, i) => i !== index);
+    setRoomConfigs(updatedConfigs);
+    await saveRoomData(updatedConfigs, rooms);
   };
 
   // Supprimer une chambre
-  const deleteRoom = (roomId: string) => {
+  const deleteRoom = async (roomId: string) => {
     const room = rooms.find(r => r.id === roomId);
     if (!room) return;
 
-    // Si la chambre a des occupants, les remettre dans la liste des non-assignés
     const updatedRooms = rooms.filter(r => r.id !== roomId);
     setRooms(updatedRooms);
+    await saveRoomData(roomConfigs, updatedRooms);
     
     if (room.occupants.length > 0) {
       toast({
-        title: "Chambre supprimée",
+        title: "Chambre supprimée et sauvegardée",
         description: `${room.name} supprimée. ${room.occupants.length} jeune(s) remis dans la liste des non-assignés.`
       });
     } else {
       toast({
-        title: "Chambre supprimée",
+        title: "Chambre supprimée et sauvegardée",
         description: `${room.name} a été supprimée`
       });
     }
   };
 
   // Modifier le nom d'une chambre
-  const updateRoomName = () => {
+  const updateRoomName = async () => {
     if (!editingRoom || !newRoomName.trim()) return;
     
     const updatedRooms = rooms.map(room => 
@@ -180,25 +238,26 @@ const RoomManager = () => {
         : room
     );
     setRooms(updatedRooms);
+    await saveRoomData(roomConfigs, updatedRooms);
+    
     setShowEditDialog(false);
     setEditingRoom(null);
     setNewRoomName('');
     
     toast({
-      title: "Chambre modifiée",
+      title: "Chambre modifiée et sauvegardée",
       description: "Le nom de la chambre a été mis à jour"
     });
   };
 
   // Déplacer un jeune vers une autre chambre
-  const moveYoungster = (youngsterId: string, fromRoomId: string, toRoomId: string) => {
+  const moveYoungster = async (youngsterId: string, fromRoomId: string, toRoomId: string) => {
     const fromRoom = rooms.find(r => r.id === fromRoomId);
     const toRoom = rooms.find(r => r.id === toRoomId);
     const youngster = fromRoom?.occupants.find(y => y.id === youngsterId);
     
     if (!fromRoom || !toRoom || !youngster) return;
 
-    // Vérifier la compatibilité de genre
     const youngsterGender = youngster.genre?.toLowerCase();
     const isYoungsterMale = youngsterGender === 'masculin' || youngsterGender === 'garçon' || youngsterGender === 'm';
     const isYoungsterFemale = youngsterGender === 'féminin' || youngsterGender === 'fille' || youngsterGender === 'f';
@@ -213,7 +272,6 @@ const RoomManager = () => {
       return;
     }
 
-    // Vérifier la capacité
     if (toRoom.occupants.length >= toRoom.capacity) {
       toast({
         title: "Chambre pleine",
@@ -234,25 +292,28 @@ const RoomManager = () => {
     });
 
     setRooms(updatedRooms);
+    await saveRoomData(roomConfigs, updatedRooms);
+    
     toast({
-      title: "Jeune déplacé",
+      title: "Jeune déplacé et sauvegardé",
       description: `${youngster.prenom} ${youngster.nom} a été déplacé vers ${toRoom.name}`
     });
   };
 
   // Retirer un jeune d'une chambre
-  const removeYoungsterFromRoom = (youngsterId: string, roomId: string) => {
+  const removeYoungsterFromRoom = async (youngsterId: string, roomId: string) => {
     const updatedRooms = rooms.map(room => 
       room.id === roomId 
         ? { ...room, occupants: room.occupants.filter(y => y.id !== youngsterId) }
         : room
     );
     setRooms(updatedRooms);
+    await saveRoomData(roomConfigs, updatedRooms);
     
     const youngster = rooms.find(r => r.id === roomId)?.occupants.find(y => y.id === youngsterId);
     if (youngster) {
       toast({
-        title: "Jeune retiré",
+        title: "Jeune retiré et sauvegardé",
         description: `${youngster.prenom} ${youngster.nom} a été retiré de la chambre`
       });
     }
@@ -264,17 +325,14 @@ const RoomManager = () => {
     const pageHeight = doc.internal.pageSize.height;
     let yPosition = 20;
 
-    // Titre
     doc.setFontSize(18);
     doc.text('Répartition des Chambres', 20, yPosition);
     yPosition += 15;
 
-    // Date
     doc.setFontSize(10);
     doc.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 20, yPosition);
     yPosition += 20;
 
-    // Statistiques générales
     doc.setFontSize(12);
     const totalOccupants = rooms.reduce((sum, room) => sum + room.occupants.length, 0);
     const totalCapacity = rooms.reduce((sum, room) => sum + room.capacity, 0);
@@ -284,25 +342,20 @@ const RoomManager = () => {
     doc.text(`Chambres: ${rooms.length}`, 160, yPosition);
     yPosition += 15;
 
-    // Chambres
     rooms.forEach((room) => {
-      // Vérifier si on a assez de place sur la page
       if (yPosition > pageHeight - 50) {
         doc.addPage();
         yPosition = 20;
       }
 
-      // Nom de la chambre
       doc.setFontSize(14);
       doc.text(room.name, 20, yPosition);
       
-      // Info chambre
       doc.setFontSize(10);
       const genderLabel = room.gender === 'male' ? 'Garçons' : 'Filles';
       doc.text(`${genderLabel} - ${room.occupants.length}/${room.capacity}`, 20, yPosition + 5);
       yPosition += 15;
 
-      // Occupants
       if (room.occupants.length === 0) {
         doc.setFontSize(10);
         doc.text('- Chambre vide', 25, yPosition);
@@ -327,8 +380,14 @@ const RoomManager = () => {
   };
 
   // Vider toutes les chambres
-  const clearAllRooms = () => {
+  const clearAllRooms = async () => {
     setRooms([]);
+    await saveRoomData(roomConfigs, []);
+    
+    toast({
+      title: "Chambres vidées et sauvegardées",
+      description: "Toutes les chambres ont été supprimées"
+    });
   };
 
   const totalCapacity = roomConfigs.reduce((sum, config) => sum + (config.capacity * config.count), 0);
@@ -339,7 +398,6 @@ const RoomManager = () => {
 
   return (
     <div className="space-y-6">
-      {/* Configuration des chambres */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -480,7 +538,6 @@ const RoomManager = () => {
         </CardContent>
       </Card>
 
-      {/* Jeunes non assignés */}
       {unassignedYoungsters.length > 0 && (
         <Card>
           <CardHeader>
@@ -511,7 +568,6 @@ const RoomManager = () => {
         </Card>
       )}
 
-      {/* Affichage des chambres */}
       {rooms.length > 0 && (
         <Card>
           <CardHeader>
@@ -608,7 +664,6 @@ const RoomManager = () => {
         </Card>
       )}
 
-      {/* Dialog pour modifier le nom de la chambre */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
         <DialogContent>
           <DialogHeader>
