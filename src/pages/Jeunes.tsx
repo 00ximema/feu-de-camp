@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
 import GroupsManager from "@/components/GroupsManager";
+import QuartiersLibres from "@/components/QuartiersLibres";
 import { parseExcel } from "@/utils/excelParser";
 import { Youngster } from "@/types/youngster";
 import { useJeunes } from "@/hooks/useJeunes";
@@ -203,11 +204,11 @@ const Jeunes = () => {
             <TabsTrigger value="jeunes">Liste des jeunes</TabsTrigger>
             <TabsTrigger value="groupes">Groupes</TabsTrigger>
             <TabsTrigger value="chambres">Chambres</TabsTrigger>
+            <TabsTrigger value="quartiers-libres">Quartiers libres</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jeunes" className="space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              {/* Section principale - Liste des jeunes */}
               <div className="lg:col-span-2 space-y-6">
                 <Card>
                   <CardHeader>
@@ -408,7 +409,6 @@ const Jeunes = () => {
                 </Card>
               </div>
 
-              {/* Section latérale - Journal des événements */}
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -452,6 +452,10 @@ const Jeunes = () => {
 
           <TabsContent value="chambres">
             <RoomManager />
+          </TabsContent>
+
+          <TabsContent value="quartiers-libres">
+            <QuartiersLibres />
           </TabsContent>
         </Tabs>
 
