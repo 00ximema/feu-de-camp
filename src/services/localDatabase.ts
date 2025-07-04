@@ -115,6 +115,54 @@ interface DatabaseSchema {
     createdAt: string;
   };
 
+  // Room data - New dedicated table for room configurations and assignments
+  roomData: {
+    id: string;
+    sessionId?: string;
+    configs: Array<{
+      capacity: number;
+      count: number;
+      gender: 'male' | 'female';
+    }>;
+    rooms: Array<{
+      id: string;
+      name: string;
+      capacity: number;
+      occupants: Array<{
+        id: string;
+        nom: string;
+        prenom: string;
+        age: number;
+        genre?: string;
+        responsable?: string;
+        transport?: string;
+        dateNaissance?: string;
+        adresse?: string;
+        ville?: string;
+        codePostal?: string;
+        telephone?: string;
+        email?: string;
+        etablissementScolaire?: string;
+        niveauScolaire?: string;
+        nomParent1?: string;
+        telephoneParent1?: string;
+        nomParent2?: string;
+        telephoneParent2?: string;
+        allergies?: string[];
+        medicaments?: string[];
+        regime?: string[];
+        problemesSante?: string[];
+        contactUrgence?: string;
+        remarques?: string;
+        notes?: string;
+        dateInscription?: string;
+      }>;
+      gender: 'male' | 'female' | 'mixed';
+    }>;
+    createdAt: string;
+    updatedAt: string;
+  };
+
   // Traitements médicaux
   traitements: {
     id: string;
@@ -153,7 +201,7 @@ interface DatabaseSchema {
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 4; // Augmenter la version pour forcer la mise à jour
+  private version = 5; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -200,6 +248,11 @@ class LocalDatabase {
           const planningsStore = db.createObjectStore('plannings', { keyPath: 'id' });
           planningsStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table plannings créée');
+        }
+        if (!db.objectStoreNames.contains('roomData')) {
+          const roomDataStore = db.createObjectStore('roomData', { keyPath: 'id' });
+          roomDataStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table roomData créée');
         }
         if (!db.objectStoreNames.contains('traitements')) {
           const traitementsStore = db.createObjectStore('traitements', { keyPath: 'id' });

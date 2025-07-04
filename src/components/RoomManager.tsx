@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,15 +28,6 @@ interface RoomConfig {
   gender: 'male' | 'female';
 }
 
-interface RoomData {
-  id: string;
-  sessionId?: string;
-  configs: RoomConfig[];
-  rooms: Room[];
-  createdAt: string;
-  updatedAt: string;
-}
-
 const RoomManager = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [roomConfigs, setRoomConfigs] = useState<RoomConfig[]>([]);
@@ -59,16 +49,12 @@ const RoomManager = () => {
       
       try {
         const roomDataId = `room_data_${currentSession.id}`;
-        const savedData = await db.getById('plannings', roomDataId);
+        const savedData = await db.getById('roomData', roomDataId);
         
         if (savedData) {
-          // Vérifier que les données ont la structure correcte pour RoomData
-          if (savedData.configs && savedData.rooms) {
-            const roomData = savedData as RoomData;
-            setRoomConfigs(roomData.configs || []);
-            setRooms(roomData.rooms || []);
-            console.log('Données de répartition des chambres chargées:', roomData);
-          }
+          setRoomConfigs(savedData.configs || []);
+          setRooms(savedData.rooms || []);
+          console.log('Données de répartition des chambres chargées:', savedData);
         }
       } catch (error) {
         console.error('Erreur lors du chargement des données de chambres:', error);
@@ -84,7 +70,7 @@ const RoomManager = () => {
     
     try {
       const roomDataId = `room_data_${currentSession.id}`;
-      const roomData: RoomData = {
+      const roomData = {
         id: roomDataId,
         sessionId: currentSession.id,
         configs,
@@ -93,7 +79,7 @@ const RoomManager = () => {
         updatedAt: Date.now().toString()
       };
 
-      await db.save('plannings', roomData);
+      await db.save('roomData', roomData);
       console.log('Données de répartition des chambres sauvegardées');
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des données de chambres:', error);
