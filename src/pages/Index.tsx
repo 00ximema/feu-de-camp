@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
@@ -9,6 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import ClickableLogo from "@/components/ClickableLogo";
 
 interface Animateur {
   id: number;
@@ -224,24 +224,17 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
-      {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
       <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
-                alt="Logo Fondation Maison de la Gendarmerie" 
-                className="h-16 w-auto"
-              />
+            <div className="flex items-center space-x-3">
+              <ClickableLogo />
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                <p className="text-gray-600">Système de gestion de colonie de vacances</p>
+                <h1 className="text-2xl font-bold text-gray-900">Gestion Centre de Vacances</h1>
+                <p className="text-sm text-gray-600">Plateforme complète de gestion</p>
               </div>
             </div>
-            
-            {/* Session Manager */}
             <SessionManager />
           </div>
         </div>

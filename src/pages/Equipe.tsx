@@ -51,6 +51,23 @@ const Equipe = () => {
     notes: ""
   });
 
+  // Gestionnaire pour le nom (automatiquement en majuscules)
+  const handleNomChange = (value: string) => {
+    setForm(prev => ({ ...prev, nom: value.toUpperCase() }));
+  };
+
+  // Gestionnaire pour l'âge (seulement des chiffres)
+  const handleAgeChange = (value: string) => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setForm(prev => ({ ...prev, age: numericValue }));
+  };
+
+  // Gestionnaire pour le téléphone (seulement des chiffres et espaces)
+  const handleTelephoneChange = (value: string) => {
+    const numericValue = value.replace(/[^0-9\s]/g, '');
+    setForm(prev => ({ ...prev, telephone: numericValue }));
+  };
+
   // Charger les animateurs depuis la base de données
   useEffect(() => {
     const loadAnimateurs = async () => {
@@ -236,10 +253,11 @@ const Equipe = () => {
                     <h3 className="font-medium mb-4">Nouveau membre de l'équipe</h3>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <Label>Nom</Label>
+                        <Label>Nom (automatiquement en majuscules)</Label>
                         <Input
                           value={form.nom}
-                          onChange={(e) => setForm(prev => ({ ...prev, nom: e.target.value }))}
+                          onChange={(e) => handleNomChange(e.target.value)}
+                          placeholder="DUPONT"
                         />
                       </div>
                       <div>
@@ -250,11 +268,12 @@ const Equipe = () => {
                         />
                       </div>
                       <div>
-                        <Label>Âge</Label>
+                        <Label>Âge (chiffres seulement)</Label>
                         <Input
-                          type="number"
                           value={form.age}
-                          onChange={(e) => setForm(prev => ({ ...prev, age: e.target.value }))}
+                          onChange={(e) => handleAgeChange(e.target.value)}
+                          placeholder="25"
+                          inputMode="numeric"
                         />
                       </div>
                       <div>
@@ -266,10 +285,12 @@ const Equipe = () => {
                         />
                       </div>
                       <div>
-                        <Label>Téléphone</Label>
+                        <Label>Téléphone (chiffres seulement)</Label>
                         <Input
                           value={form.telephone}
-                          onChange={(e) => setForm(prev => ({ ...prev, telephone: e.target.value }))}
+                          onChange={(e) => handleTelephoneChange(e.target.value)}
+                          placeholder="01 23 45 67 89"
+                          inputMode="numeric"
                         />
                       </div>
                       <div>

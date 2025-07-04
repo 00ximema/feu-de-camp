@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserCheck, FileDown, Trash2, Edit } from "lucide-react";
+import { UserCheck, FileDown, Trash2, Edit, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
@@ -329,27 +329,65 @@ const LeaveSignaturePlanning = () => {
 
   if (leaveEntries.length === 0) {
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <UserCheck className="h-5 w-5" />
-            <span>Repos des personnels</span>
-          </CardTitle>
-          <CardDescription>
-            Aucun congé ou repos récupérateur trouvé dans les plannings actuels
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <p className="text-gray-600">
-            Les congés et repos récupérateurs définis dans le planning principal apparaîtront ici pour signature.
-          </p>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        {/* Information sur les repos */}
+        <Card className="bg-blue-50 border-blue-200">
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2 text-blue-800">
+              <Info className="h-5 w-5" />
+              <span>Information importante - Repos du personnel</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-blue-700">
+              <strong>Les repos se prennent la veille au soir après le coucher des jeunes, jusqu'au lendemain à la même heure.</strong>
+            </p>
+            <p className="text-blue-600 text-sm mt-2">
+              Cette règle garantit la continuité du service et le respect de la réglementation en vigueur.
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <UserCheck className="h-5 w-5" />
+              <span>Repos des personnels</span>
+            </CardTitle>
+            <CardDescription>
+              Aucun congé ou repos récupérateur trouvé dans les plannings actuels
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">
+              Les congés et repos récupérateurs définis dans le planning principal apparaîtront ici pour signature.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Information sur les repos */}
+      <Card className="bg-blue-50 border-blue-200">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2 text-blue-800">
+            <Info className="h-5 w-5" />
+            <span>Information importante - Repos du personnel</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-blue-700">
+            <strong>Les repos se prennent la veille au soir après le coucher des jeunes, jusqu'au lendemain à la même heure.</strong>
+          </p>
+          <p className="text-blue-600 text-sm mt-2">
+            Cette règle garantit la continuité du service et le respect de la réglementation en vigueur.
+          </p>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
