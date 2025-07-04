@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -58,12 +59,16 @@ const RoomManager = () => {
       
       try {
         const roomDataId = `room_data_${currentSession.id}`;
-        const savedData = await db.getById('plannings', roomDataId) as RoomData | undefined;
+        const savedData = await db.getById('plannings', roomDataId);
         
         if (savedData) {
-          setRoomConfigs(savedData.configs || []);
-          setRooms(savedData.rooms || []);
-          console.log('Données de répartition des chambres chargées:', savedData);
+          // Vérifier que les données ont la structure correcte pour RoomData
+          if (savedData.configs && savedData.rooms) {
+            const roomData = savedData as RoomData;
+            setRoomConfigs(roomData.configs || []);
+            setRooms(roomData.rooms || []);
+            console.log('Données de répartition des chambres chargées:', roomData);
+          }
         }
       } catch (error) {
         console.error('Erreur lors du chargement des données de chambres:', error);
