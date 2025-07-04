@@ -5,12 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Download, Plus, Trash2 } from "lucide-react";
+import { Calendar, Download, Plus, Trash2, Edit } from "lucide-react";
 import { format, addDays, startOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
+import EventDialog from './EventDialog';
 
 interface TeamMember {
   id: number;
@@ -54,6 +54,8 @@ const PlanningTableGenerator = () => {
     { id: 2, nom: 'Martin', prenom: 'Marie', role: 'Animateur' },
     { id: 3, nom: 'Bernard', prenom: 'Paul', role: 'Animateur' },
   ]);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const planningRef = useRef<HTMLDivElement>(null);
 
   // Generate 7 days from start date
@@ -98,21 +100,32 @@ const PlanningTableGenerator = () => {
     setPlanningData(initialData);
   }, [startDate]);
 
-  const updateCell = (rowIndex: number, cellIndex: number, eventName: string, memberId?: number) => {
+  const handleCellClick = (rowIndex: number, cellIndex: number) => {
+    setSelectedCell({ rowIndex, cellIndex });
+    setDialogOpen(true);
+  };
+
+  const handleSaveEvent = (eventName: string, memberId?: number, type?: string) => {
+    if (!selectedCell) return;
+    
+    const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
     const member = memberId ? teamMembers.find(m => m.id === memberId) : undefined;
     
-    if (eventName) {
-      newData[rowIndex][cellIndex].event = {
-        id: `${rowIndex}-${cellIndex}`,
-        name: eventName,
-        type: SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity',
-        assignedMember: member
-      };
-    } else {
-      delete newData[rowIndex][cellIndex].event;
-    }
+    newData[rowIndex][cellIndex].event = {
+      id: `${rowIndex}-${cellIndex}`,
+      name: eventName,
+      type: (type as any) || (SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity'),
+      assignedMember: member
+    };
     
+    setPlanningData(newData);
+  };
+
+  const handleDeleteEvent = (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const newData = [...planningData];
+    delete newData[rowIndex][cellIndex].event;
     setPlanningData(newData);
   };
 
@@ -135,7 +148,7 @@ const PlanningTableGenerator = () => {
       
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(20);
-      pdf.text('MG', 15, 17);
+      pdf.text('CVJ MG', 15, 17);
       
       pdf.setFontSize(16);
       pdf.text('Planning Équipe', 50, 17);
@@ -146,7 +159,7 @@ const PlanningTableGenerator = () => {
       pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
       
       // Add planning table
-      const imgWidth = 267; // A4 landscape width minus margins
+      const imgWidth = 267;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
@@ -165,10 +178,10 @@ const PlanningTableGenerator = () => {
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5" />
-            <span>Générateur de planning</span>
+            <span>Planning interactif</span>
           </CardTitle>
           <CardDescription>
-            Créez et gérez le planning de votre équipe
+            Cliquez sur une case pour ajouter ou modifier un événement
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -212,37 +225,35 @@ const PlanningTableGenerator = () => {
                         {row[0]?.timeSlot}
                       </TableCell>
                       {row.map((cell, cellIndex) => (
-                        <TableCell key={cellIndex} className="p-2 border min-h-16">
-                          <div className="space-y-2">
-                            <Input
-                              placeholder={isSpecialRow(cell.timeSlot) ? "Nom du membre" : "Activité"}
-                              value={cell.event?.name || ''}
-                              onChange={(e) => updateCell(rowIndex, cellIndex, e.target.value, cell.event?.assignedMember?.id)}
-                              className="text-xs"
-                            />
-                            {isSpecialRow(cell.timeSlot) && (
-                              <Select
-                                value={cell.event?.assignedMember?.id?.toString() || ''}
-                                onValueChange={(value) => updateCell(rowIndex, cellIndex, cell.event?.name || '', parseInt(value))}
-                              >
-                                <SelectTrigger className="text-xs">
-                                  <SelectValue placeholder="Membre" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {teamMembers.map((member) => (
-                                    <SelectItem key={member.id} value={member.id.toString()}>
-                                      {member.prenom} {member.nom}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-                            {cell.event?.assignedMember && !isSpecialRow(cell.timeSlot) && (
-                              <div className="text-xs text-gray-600">
-                                {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                        <TableCell 
+                          key={cellIndex} 
+                          className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
+                          onClick={() => handleCellClick(rowIndex, cellIndex)}
+                        >
+                          {cell.event ? (
+                            <div className="space-y-1">
+                              <div className="font-medium text-sm text-gray-900">
+                                {cell.event.name}
                               </div>
-                            )}
-                          </div>
+                              {cell.event.assignedMember && (
+                                <div className="text-xs text-gray-600">
+                                  {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                </div>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 h-6 w-6 p-0"
+                                onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, e)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="h-12 flex items-center justify-center text-gray-400 group-hover:text-gray-600">
+                              <Plus className="h-4 w-4" />
+                            </div>
+                          )}
                         </TableCell>
                       ))}
                     </TableRow>
@@ -253,9 +264,21 @@ const PlanningTableGenerator = () => {
           </div>
         </CardContent>
       </Card>
+
+      <EventDialog
+        isOpen={dialogOpen}
+        onClose={() => {
+          setDialogOpen(false);
+          setSelectedCell(null);
+        }}
+        onSave={handleSaveEvent}
+        timeSlot={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.timeSlot || '' : ''}
+        date={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.date || '' : ''}
+        teamMembers={teamMembers}
+        currentEvent={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.event : undefined}
+      />
     </div>
   );
 };
 
 export default PlanningTableGenerator;
-
