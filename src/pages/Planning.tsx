@@ -1,4 +1,5 @@
 
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -36,7 +37,7 @@ const Planning = () => {
             </TabsTrigger>
             <TabsTrigger value="leaves" className="flex items-center space-x-2">
               <UserCheck className="h-4 w-4" />
-              <span>Congés & RR</span>
+              <span>Repos des personnels</span>
             </TabsTrigger>
           </TabsList>
           
@@ -58,3 +59,4 @@ const Planning = () => {
 };
 
 export default Planning;
+

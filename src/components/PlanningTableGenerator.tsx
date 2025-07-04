@@ -1,1001 +1,395 @@
-
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Plus, Trash2, Users, Save, FileDown, Edit } from "lucide-react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
-import { useGroups } from "@/hooks/useGroups";
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-interface Animateur {
-  id: number;
-  nom: string;
-  prenom: string;
-  role: string;
-}
 
 interface PlanningEvent {
   id: string;
   name: string;
-  description?: string;
-  color: string;
-  assignedMember?: Animateur;
-  assignedGroup?: {
-    id: string;
+  type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'other';
+  assignedMember: {
+    id: number;
     nom: string;
-    couleur: string;
-  };
-  type: 'activity' | 'duty' | 'leave' | 'recovery';
+    prenom: string;
+    role: string;
+  } | null;
 }
 
 interface PlanningCell {
   date: string;
   timeSlot: string;
-  event?: PlanningEvent;
-}
-
-interface PlanningConfig {
-  name: string;
-  startDate: string;
-  endDate: string;
-}
-
-interface SavedPlanning {
-  id: string;
-  sessionId?: string;
-  name: string;
-  startDate: string;
-  endDate: string;
-  data: PlanningCell[];
-  createdAt: string;
+  event: PlanningEvent | null;
 }
 
 const PlanningTableGenerator = () => {
-  console.log('PlanningTableGenerator rendering');
-  
-  const [config, setConfig] = useState<PlanningConfig>({
+  const [startDate, setStartDate] = useState<Date>(new Date());
+  const [timeSlots, setTimeSlots] = useState<string[]>([
+    "8h-9h", "9h-10h", "10h-11h", "11h-12h",
+    "12h-13h", "13h-14h", "14h-15h", "15h-16h",
+    "16h-17h", "17h-18h", "18h-19h", "19h-20h"
+  ]);
+  const [teamMembers, setTeamMembers] = useState<any[]>([]);
+  const [planning, setPlanning] = useState<PlanningCell[][]>([]);
+  const [selectedCell, setSelectedCell] = useState<PlanningCell | null>(null);
+  const [showAddEvent, setShowAddEvent] = useState(false);
+  const [newEvent, setNewEvent] = useState<PlanningEvent>({
+    id: '',
     name: '',
-    startDate: '',
-    endDate: ''
+    type: 'activity',
+    assignedMember: null,
   });
-  const [planningData, setPlanningData] = useState<PlanningCell[]>([]);
-  const [showTable, setShowTable] = useState(false);
-  const [selectedCell, setSelectedCell] = useState<{ date: string; timeSlot: string } | null>(null);
-  const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
-  const [planningId, setPlanningId] = useState<string | null>(null);
-  const [existingPlannings, setExistingPlannings] = useState<SavedPlanning[]>([]);
-  const [isLoadingPlannings, setIsLoadingPlannings] = useState(false);
-  const [newEvent, setNewEvent] = useState({ 
-    name: '', 
-    description: '', 
-    color: 'bg-green-100 text-green-800',
-    type: 'activity' as 'activity' | 'duty' | 'leave' | 'recovery',
-    assignedMember: null as Animateur | null,
-    assignedGroup: null as { id: string; nom: string; couleur: string } | null
-  });
-  const [isExporting, setIsExporting] = useState(false);
-  const planningTableRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
-  const { groupes } = useGroups();
 
-  console.log('PlanningTableGenerator - isInitialized:', isInitialized);
-  console.log('PlanningTableGenerator - currentSession:', currentSession);
-  console.log('PlanningTableGenerator - groupes:', groupes);
-
-  const timeSlots = [
-    'Matin',
-    'Déjeuner', 
-    'Après-midi',
-    'Dîner',
-    'Veillées',
-    'Astreintes',
-    'Congés',
-    'Repos récupérateurs'
-  ];
-
-  const eventColors = [
-    'bg-green-100 text-green-800',
-    'bg-blue-100 text-blue-800',
-    'bg-purple-100 text-purple-800',
-    'bg-yellow-100 text-yellow-800',
-    'bg-red-100 text-red-800',
-    'bg-pink-100 text-pink-800',
-    'bg-orange-100 text-orange-800',
-    'bg-gray-100 text-gray-800'
-  ];
-
-  const eventTypes = [
-    { value: 'activity', label: 'Activité' },
-    { value: 'duty', label: 'Astreinte' },
-    { value: 'leave', label: 'Congé' },
-    { value: 'recovery', label: 'Repos récupérateur' }
-  ];
-
-  // Charger les plannings existants pour la session courante
   useEffect(() => {
-    console.log('PlanningTableGenerator - useEffect loadExistingPlannings triggered');
-    const loadExistingPlannings = async () => {
-      if (!isInitialized || !currentSession) {
-        console.log('PlanningTableGenerator - loadExistingPlannings skipped, not initialized or no session');
-        return;
-      }
-      
-      setIsLoadingPlannings(true);
-      try {
-        console.log('PlanningTableGenerator - loading plannings for session:', currentSession.id);
-        const dbPlannings = await db.getAll('plannings', currentSession.id);
-        setExistingPlannings(dbPlannings);
-        console.log('Plannings chargés pour la session:', dbPlannings);
-        
-        // Si il y a un planning existant, le charger automatiquement
-        if (dbPlannings.length > 0) {
-          const latestPlanning = dbPlannings[0]; // Le plus récent
-          loadPlanning(latestPlanning);
-        }
-      } catch (error) {
-        console.error('Erreur lors du chargement des plannings:', error);
-        toast({
-          title: "Erreur",
-          description: "Impossible de charger les plannings existants",
-          variant: "destructive"
-        });
-      } finally {
-        setIsLoadingPlannings(false);
-      }
-    };
-
-    loadExistingPlannings();
-  }, [isInitialized, db, currentSession]);
-
-  // Charger les animateurs depuis la base de données
-  useEffect(() => {
-    const loadAnimateurs = async () => {
-      if (!isInitialized) return;
-      
-      try {
-        const dbAnimateurs = await db.getAll('animateurs', currentSession?.id);
-        setAnimateurs(dbAnimateurs);
-        console.log('Animateurs chargés depuis la base de données:', dbAnimateurs);
-      } catch (error) {
-        console.error('Erreur lors du chargement des animateurs:', error);
-      }
-    };
-
-    loadAnimateurs();
-  }, [isInitialized, db, currentSession]);
-
-  // Mettre à jour le nom du séjour avec celui de la session courante
-  useEffect(() => {
-    if (currentSession && !config.name) {
-      setConfig(prev => ({ ...prev, name: currentSession.name }));
+    if (currentSession) {
+      loadTeamMembers(currentSession.id);
+      loadPlanning(currentSession.id);
     }
-  }, [currentSession, config.name]);
+  }, [currentSession, isInitialized]);
 
-  const loadPlanning = (planning: SavedPlanning) => {
-    console.log('Chargement du planning:', planning);
-    setConfig({
-      name: planning.name,
-      startDate: planning.startDate,
-      endDate: planning.endDate
-    });
-    setPlanningData(planning.data);
-    setPlanningId(planning.id);
-    setShowTable(true);
-    
-    toast({
-      title: "Planning chargé",
-      description: `Planning "${planning.name}" chargé avec succès`
-    });
+  const loadTeamMembers = async (sessionId: string) => {
+    if (!isInitialized) return;
+    try {
+      const members = await db.getAll('animateurs', sessionId);
+      setTeamMembers(members);
+    } catch (error) {
+      console.error("Erreur lors du chargement des membres de l'équipe:", error);
+    }
   };
 
-  const generateDates = (start: string, end: string) => {
-    const startDate = new Date(start);
-    const endDate = new Date(end);
-    const dates = [];
-    
-    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
-      dates.push(new Date(d));
+  const loadPlanning = async (sessionId: string) => {
+    if (!isInitialized) return;
+    try {
+      const storedPlanning = await db.get('plannings', sessionId);
+      if (storedPlanning && storedPlanning.data) {
+        setPlanning(storedPlanning.data);
+      } else {
+        generatePlanning();
+      }
+    } catch (error) {
+      console.error("Erreur lors du chargement du planning:", error);
+      generatePlanning();
     }
-    
-    return dates;
   };
+
+  useEffect(() => {
+    generatePlanning();
+  }, [startDate, timeSlots, teamMembers]);
 
   const generatePlanning = () => {
-    if (!config.name || !config.startDate || !config.endDate) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive"
-      });
-      return;
-    }
+    const newPlanning: PlanningCell[][] = [];
+    const numDays = 7;
 
-    const dates = generateDates(config.startDate, config.endDate);
-    const cells: PlanningCell[] = [];
+    for (let i = 0; i < numDays; i++) {
+      const day: PlanningCell[] = [];
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      const dateString = currentDate.toISOString().split('T')[0];
 
-    dates.forEach(date => {
-      timeSlots.forEach(timeSlot => {
-        cells.push({
-          date: date.toISOString().split('T')[0],
-          timeSlot: timeSlot
+      for (const timeSlot of timeSlots) {
+        day.push({
+          date: dateString,
+          timeSlot: timeSlot,
+          event: null,
         });
-      });
-    });
-
-    setPlanningData(cells);
-    setShowTable(true);
-    
-    // Générer un nouvel ID ou utiliser l'existant si on modifie
-    const newPlanningId = planningId || `planning_${Date.now()}`;
-    setPlanningId(newPlanningId);
-    
-    // Sauvegarder automatiquement le nouveau planning
-    savePlanningToDatabase(cells, newPlanningId);
-    
-    toast({
-      title: "Planning généré",
-      description: `Planning "${config.name}" créé avec succès`
-    });
-  };
-
-  const savePlanningToDatabase = async (data: PlanningCell[], id: string) => {
-    if (!isInitialized || !currentSession) return;
-
-    try {
-      const planningToSave: SavedPlanning = {
-        id: id,
-        sessionId: currentSession.id,
-        name: config.name,
-        startDate: config.startDate,
-        endDate: config.endDate,
-        data: data,
-        createdAt: new Date().toISOString()
-      };
-
-      await db.save('plannings', planningToSave);
-      console.log('Planning sauvegardé:', planningToSave);
-      
-      // Recharger la liste des plannings
-      const updatedPlannings = await db.getAll('plannings', currentSession.id);
-      setExistingPlannings(updatedPlannings);
-      
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde automatique:', error);
+      }
+      newPlanning.push(day);
     }
+    setPlanning(newPlanning);
   };
 
-  const savePlanning = async () => {
-    if (!planningId) return;
-    
-    await savePlanningToDatabase(planningData, planningId);
-    
-    toast({
-      title: "Planning sauvegardé",
-      description: "Le planning a été enregistré avec succès"
-    });
+  const handleCellClick = (cell: PlanningCell) => {
+    setSelectedCell(cell);
+    setNewEvent({ id: '', name: '', type: 'activity', assignedMember: null });
+    setShowAddEvent(true);
   };
 
-  // Sauvegarder automatiquement à chaque modification des données du planning
-  useEffect(() => {
-    if (planningData.length > 0 && planningId && isInitialized && currentSession) {
-      const timeoutId = setTimeout(() => {
-        savePlanningToDatabase(planningData, planningId);
-      }, 1000); // Sauvegarder après 1 seconde d'inactivité
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [planningData, planningId, isInitialized, currentSession]);
-
-  const exportToPDF = async () => {
-    console.log('Export PDF appelé');
+  const handleAddEvent = () => {
+    console.log('handleAddEvent called with:', newEvent);
     
-    if (!planningTableRef.current || !showTable) {
-      console.log('Pas de tableau à exporter');
+    // Pour les congés et repos récupérateurs, le nom n'est pas obligatoire
+    const isLeaveOrRecovery = newEvent.type === 'leave' || newEvent.type === 'recovery';
+    
+    if (!newEvent.type || (!isLeaveOrRecovery && !newEvent.name.trim()) || !newEvent.assignedMember) {
       toast({
-        title: "Erreur",
-        description: "Aucun planning à exporter",
+        title: "Champs requis",
+        description: isLeaveOrRecovery 
+          ? "Veuillez sélectionner un type et un membre de l'équipe"
+          : "Veuillez remplir le nom de l'événement, sélectionner un type et un membre de l'équipe",
         variant: "destructive"
       });
       return;
     }
 
-    setIsExporting(true);
-    console.log('Début de l\'export PDF');
-    
-    try {
-      const uniqueDates = [...new Set(planningData.map(cell => cell.date))].sort();
-      const totalDays = uniqueDates.length;
-      
-      console.log(`Export PDF - ${totalDays} jours détectés`);
-      
-      // Si plus de 7 jours, découper en chunks de 7 jours maximum
-      if (totalDays > 7) {
-        console.log('Export multi-pages');
-        await exportMultiPagePDF(uniqueDates);
-      } else {
-        console.log('Export page unique');
-        await exportSinglePagePDF();
-      }
-
+    if (!selectedCell) {
       toast({
-        title: "Export réussi",
-        description: `Le planning a été exporté en PDF`
-      });
-    } catch (error) {
-      console.error('Erreur lors de l\'export PDF:', error);
-      toast({
-        title: "Erreur d'export",
-        description: "Impossible d'exporter le planning en PDF",
-        variant: "destructive"
-      });
-    } finally {
-      setIsExporting(false);
-    }
-  };
-
-  const exportSinglePagePDF = async () => {
-    console.log('Début export page unique');
-    const element = planningTableRef.current!;
-    
-    try {
-      console.log('Capture de l\'élément avec html2canvas');
-      const canvas = await html2canvas(element, {
-        scale: 1.5,
-        useCORS: true,
-        logging: true,
-        backgroundColor: '#ffffff',
-        allowTaint: true,
-        foreignObjectRendering: true
-      });
-
-      console.log('Canvas créé, génération du PDF');
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('landscape', 'mm', 'a4');
-      
-      // Calcul des dimensions
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 30; // Marges de 15mm de chaque côté
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      // Titre
-      pdf.setFontSize(16);
-      pdf.text(`Planning - ${config.name}`, 15, 15);
-      pdf.setFontSize(12);
-      pdf.text(`Du ${new Date(config.startDate).toLocaleDateString('fr-FR')} au ${new Date(config.endDate).toLocaleDateString('fr-FR')}`, 15, 25);
-
-      // Image du planning
-      const yPosition = 35;
-      const maxImageHeight = pdfHeight - yPosition - 15; // Laisser 15mm en bas
-      
-      if (imgHeight > maxImageHeight) {
-        // Si l'image est trop haute, la redimensionner
-        const scaledHeight = maxImageHeight;
-        const scaledWidth = (canvas.width * scaledHeight) / canvas.height;
-        pdf.addImage(imgData, 'PNG', 15, yPosition, scaledWidth, scaledHeight);
-      } else {
-        pdf.addImage(imgData, 'PNG', 15, yPosition, imgWidth, imgHeight);
-      }
-
-      const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-      console.log('Sauvegarde du PDF:', fileName);
-      pdf.save(fileName);
-    } catch (error) {
-      console.error('Erreur dans exportSinglePagePDF:', error);
-      throw error;
-    }
-  };
-
-  const exportMultiPagePDF = async (allDates: string[]) => {
-    console.log('Début export multi-pages');
-    const pdf = new jsPDF('landscape', 'mm', 'a4');
-    const daysPerPage = 7;
-    const chunks = [];
-    
-    // Découper les dates en chunks de 7 jours
-    for (let i = 0; i < allDates.length; i += daysPerPage) {
-      chunks.push(allDates.slice(i, i + daysPerPage));
-    }
-
-    console.log(`${chunks.length} pages à générer`);
-
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
-      const chunk = chunks[chunkIndex];
-      console.log(`Génération page ${chunkIndex + 1}/${chunks.length}`);
-      
-      // Créer un tableau temporaire pour cette page
-      const tempTable = createTemporaryTable(chunk);
-      document.body.appendChild(tempTable);
-      
-      try {
-        const canvas = await html2canvas(tempTable, {
-          scale: 1.5,
-          useCORS: true,
-          logging: false,
-          backgroundColor: '#ffffff',
-          allowTaint: true
-        });
-
-        const imgData = canvas.toDataURL('image/png');
-        
-        if (chunkIndex > 0) {
-          pdf.addPage();
-        }
-        
-        // Titre pour chaque page
-        pdf.setFontSize(16);
-        pdf.text(`Planning - ${config.name} (Page ${chunkIndex + 1}/${chunks.length})`, 15, 15);
-        pdf.setFontSize(12);
-        const startDate = new Date(chunk[0]).toLocaleDateString('fr-FR');
-        const endDate = new Date(chunk[chunk.length - 1]).toLocaleDateString('fr-FR');
-        pdf.text(`Du ${startDate} au ${endDate}`, 15, 25);
-
-        // Image
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        const imgWidth = pdfWidth - 30;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-        const maxImageHeight = pdfHeight - 50;
-        
-        if (imgHeight > maxImageHeight) {
-          const scaledHeight = maxImageHeight;
-          const scaledWidth = (canvas.width * scaledHeight) / canvas.height;
-          pdf.addImage(imgData, 'PNG', 15, 35, scaledWidth, scaledHeight);
-        } else {
-          pdf.addImage(imgData, 'PNG', 15, 35, imgWidth, imgHeight);
-        }
-        
-      } finally {
-        document.body.removeChild(tempTable);
-      }
-    }
-
-    const fileName = `Planning_${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
-    console.log('Sauvegarde du PDF multi-pages:', fileName);
-    pdf.save(fileName);
-  };
-
-  const createTemporaryTable = (dates: string[]) => {
-    const table = document.createElement('div');
-    table.style.position = 'absolute';
-    table.style.left = '-9999px';
-    table.style.backgroundColor = 'white';
-    table.style.padding = '20px';
-    table.style.width = '800px';
-    
-    const tableHTML = `
-      <table style="border-collapse: collapse; width: 100%; font-family: Arial, sans-serif; font-size: 12px;">
-        <thead>
-          <tr>
-            <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; font-weight: bold; width: 100px;">
-              Créneaux
-            </th>
-            ${dates.map(date => {
-              const dateObj = new Date(date);
-              const dayName = dateObj.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
-              const dateDisplay = dateObj.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-              return `
-                <th style="border: 1px solid #000; padding: 8px; background-color: #f0f0f0; text-align: center; width: 100px; font-weight: bold;">
-                  <div>${dayName}.</div>
-                  <div style="font-size: 10px; color: #666;">${dateDisplay}</div>
-                </th>
-              `;
-            }).join('')}
-          </tr>
-        </thead>
-        <tbody>
-          ${timeSlots.map(timeSlot => `
-            <tr>
-              <td style="border: 1px solid #000; padding: 8px; background-color: #f9f9f9; font-weight: bold; vertical-align: top;">
-                ${timeSlot}
-              </td>
-              ${dates.map(date => {
-                const cell = planningData.find(c => c.date === date && c.timeSlot === timeSlot);
-                if (cell?.event) {
-                  return `
-                    <td style="border: 1px solid #000; padding: 6px; vertical-align: top; height: 50px;">
-                      <div style="background-color: #e6ffe6; color: #006600; padding: 3px 6px; border-radius: 3px; font-size: 10px; margin-bottom: 3px; font-weight: bold;">
-                        ${cell.event.name}
-                      </div>
-                      ${cell.event.assignedMember ? `
-                        <div style="font-size: 9px; color: #666;">
-                          👤 ${cell.event.assignedMember.prenom} ${cell.event.assignedMember.nom}
-                        </div>
-                      ` : ''}
-                      ${cell.event.assignedGroup ? `
-                        <div style="font-size: 9px; color: #666;">
-                          👤 ${cell.event.assignedGroup.nom}
-                        </div>
-                      ` : ''}
-                    </td>
-                  `;
-                }
-                return `<td style="border: 1px solid #000; height: 50px; padding: 6px;"></td>`;
-              }).join('')}
-            </tr>
-          `).join('')}
-        </tbody>
-      </table>
-    `;
-    
-    table.innerHTML = tableHTML;
-    return table;
-  };
-
-  const getDayName = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { weekday: 'short' }).replace('.', '');
-  };
-
-  const getDateDisplay = (dateStr: string) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
-  };
-
-  const uniqueDates = [...new Set(planningData.map(cell => cell.date))].sort();
-
-  const addEvent = () => {
-    if (!selectedCell || !newEvent.name) return;
-
-    const requiresMember = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(selectedCell.timeSlot);
-    if (requiresMember && !newEvent.assignedMember) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez sélectionner un membre de l'équipe pour ce créneau",
+        title: "Aucune case sélectionnée",
+        description: "Veuillez sélectionner une case du planning",
         variant: "destructive"
       });
       return;
     }
 
-    const updatedData = planningData.map(cell => {
-      if (cell.date === selectedCell.date && cell.timeSlot === selectedCell.timeSlot) {
-        return {
-          ...cell,
-          event: {
-            id: Date.now().toString(),
-            name: newEvent.name,
-            description: newEvent.description,
-            color: newEvent.color,
-            type: newEvent.type,
-            assignedMember: newEvent.assignedMember,
-            assignedGroup: newEvent.assignedGroup
-          }
-        };
-      }
-      return cell;
-    });
+    const updatedPlanning = planning.map(day =>
+      day.map(cell => {
+        if (cell.date === selectedCell.date && cell.timeSlot === selectedCell.timeSlot) {
+          return {
+            ...cell,
+            event: {
+              id: Date.now().toString(),
+              name: newEvent.name,
+              type: newEvent.type,
+              assignedMember: newEvent.assignedMember,
+            }
+          };
+        }
+        return cell;
+      })
+    );
 
-    setPlanningData(updatedData);
-    setSelectedCell(null);
-    setNewEvent({ 
-      name: '', 
-      description: '', 
-      color: 'bg-green-100 text-green-800',
-      type: 'activity',
-      assignedMember: null,
-      assignedGroup: null
-    });
-    
+    setPlanning(updatedPlanning);
+    setShowAddEvent(false);
+    savePlanning(updatedPlanning);
+
     toast({
       title: "Événement ajouté",
-      description: `"${newEvent.name}" a été ajouté au planning`
+      description: `L'événement "${newEvent.name}" a été ajouté au planning`
     });
   };
 
-  const removeEvent = (date: string, timeSlot: string) => {
-    const updatedData = planningData.map(cell => {
-      if (cell.date === date && cell.timeSlot === timeSlot) {
-        const { event, ...cellWithoutEvent } = cell;
-        return cellWithoutEvent;
-      }
-      return cell;
+  const handleRemoveEvent = (date: string, timeSlot: string) => {
+    const updatedPlanning = planning.map(day =>
+      day.map(cell => {
+        if (cell.date === date && cell.timeSlot === timeSlot) {
+          return {
+            ...cell,
+            event: null,
+          };
+        }
+        return cell;
+      })
+    );
+
+    setPlanning(updatedPlanning);
+    savePlanning(updatedPlanning);
+
+    toast({
+      title: "Événement supprimé",
+      description: "L'événement a été supprimé du planning"
     });
-
-    setPlanningData(updatedData);
   };
 
-  const isSpecialTimeSlot = (timeSlot: string) => {
-    return ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
+  const savePlanning = async (updatedPlanning: PlanningCell[][]) => {
+    if (!isInitialized || !currentSession) return;
+    try {
+      await db.put('plannings', {
+        id: currentSession.id,
+        data: updatedPlanning
+      });
+      console.log('Planning enregistré avec succès dans la base de données locale');
+    } catch (error) {
+      console.error("Erreur lors de l'enregistrement du planning:", error);
+      toast({
+        title: "Erreur lors de l'enregistrement",
+        description: "Impossible d'enregistrer le planning",
+        variant: "destructive"
+      });
+    }
   };
 
-  if (!isInitialized) {
-    console.log('PlanningTableGenerator - not initialized, showing loading');
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p>Initialisation de la base de données...</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  if (!currentSession) {
-    console.log('PlanningTableGenerator - no current session');
-    return (
-      <Card>
-        <CardContent className="p-6">
-          <p>Aucune session active. Veuillez créer ou sélectionner une session.</p>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  console.log('PlanningTableGenerator - rendering main content');
+  const getDayName = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const options: Intl.DateTimeFormatOptions = { weekday: 'long' };
+    return date.toLocaleDateString('fr-FR', options);
+  };
 
   return (
     <div className="space-y-6">
-      {/* Liste des plannings existants */}
-      {existingPlannings.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Plannings existants</CardTitle>
-            <CardDescription>Plannings sauvegardés pour cette session</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-3">
-              {existingPlannings.map((planning) => (
-                <div key={planning.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <h4 className="font-medium">{planning.name}</h4>
-                    <p className="text-sm text-gray-600">
-                      Du {new Date(planning.startDate).toLocaleDateString('fr-FR')} au {new Date(planning.endDate).toLocaleDateString('fr-FR')}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      Créé le {new Date(planning.createdAt).toLocaleDateString('fr-FR')}
-                    </p>
-                  </div>
-                  <Button
-                    onClick={() => loadPlanning(planning)}
-                    variant="outline"
-                    size="sm"
-                    className="flex items-center space-x-2"
-                    disabled={planningId === planning.id}
-                  >
-                    <Edit className="h-4 w-4" />
-                    <span>{planningId === planning.id ? 'Actuel' : 'Charger'}</span>
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Configuration du séjour */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <Calendar className="h-5 w-5" />
-            <span>Configuration du séjour</span>
+            <span>Planning de la semaine</span>
           </CardTitle>
           <CardDescription>
-            Définir les dates de début et fin pour générer automatiquement le planning
+            Visualisation et gestion du planning hebdomadaire
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div>
-              <Label>Nom du séjour</Label>
-              <Input
-                value={config.name}
-                onChange={(e) => setConfig(prev => ({ ...prev, name: e.target.value }))}
-                placeholder={currentSession?.name || "ex: Robillard"}
-              />
-            </div>
-            <div>
-              <Label>Date de début</Label>
-              <Input
-                type="date"
-                value={config.startDate}
-                onChange={(e) => setConfig(prev => ({ ...prev, startDate: e.target.value }))}
-              />
-            </div>
-            <div>
-              <Label>Date de fin</Label>
-              <Input
-                type="date"
-                value={config.endDate}
-                onChange={(e) => setConfig(prev => ({ ...prev, endDate: e.target.value }))}
-              />
-            </div>
-            <Button onClick={generatePlanning} className="bg-blue-600 hover:bg-blue-700">
-              {showTable ? 'Mettre à jour' : 'Générer planning complet'}
-            </Button>
+        <CardContent className="space-y-4">
+          <div className="flex items-center space-x-4">
+            <Label htmlFor="start-date">Date de début de la semaine:</Label>
+            <Input
+              type="date"
+              id="start-date"
+              value={startDate.toISOString().split('T')[0]}
+              onChange={(e) => setStartDate(new Date(e.target.value))}
+            />
+          </div>
+          <Separator />
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead>
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Heure
+                  </th>
+                  {planning.map((day, index) => (
+                    <th key={index} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      {getDayName(day[0].date)} <br />
+                      {new Date(day[0].date).toLocaleDateString('fr-FR')}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {timeSlots.map((timeSlot, index) => (
+                  <tr key={index}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{timeSlot}</td>
+                    {planning.map((day) => {
+                      const cell = day.find(c => c.timeSlot === timeSlot);
+                      return (
+                        <td
+                          key={`${cell?.date}-${cell?.timeSlot}`}
+                          className="px-6 py-4 whitespace-nowrap text-sm font-medium"
+                        >
+                          <Button
+                            variant="outline"
+                            className="w-full h-12 justify-start"
+                            onClick={() => cell && handleCellClick(cell)}
+                          >
+                            {cell?.event ? (
+                              <div className="flex items-center justify-between w-full">
+                                <div>
+                                  <p className="font-semibold">{cell.event.name}</p>
+                                  <p className="text-xs text-gray-500">{cell.event.assignedMember?.prenom} {cell.event.assignedMember?.nom}</p>
+                                </div>
+                                <Badge variant="secondary">{cell.event.type}</Badge>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">Ajouter un événement</span>
+                            )}
+                          </Button>
+                          {cell?.event && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="absolute top-2 right-2"
+                              onClick={() => handleRemoveEvent(cell.date, cell.timeSlot)}
+                            >
+                              Supprimer
+                            </Button>
+                          )}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </CardContent>
       </Card>
 
-      {/* Planning Tableau */}
-      {showTable && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Planning Tableau - {config.name}</CardTitle>
-                <CardDescription>Cliquez sur les cases pour ajouter des événements • Sauvegarde automatique</CardDescription>
-              </div>
-              <div className="flex space-x-2">
-                <Button 
-                  onClick={exportToPDF} 
-                  disabled={isExporting}
-                  className="bg-red-600 hover:bg-red-700"
-                >
-                  <FileDown className="h-4 w-4 mr-2" />
-                  {isExporting ? 'Export...' : 'Exporter PDF'}
-                </Button>
-                <Button onClick={savePlanning} className="bg-green-600 hover:bg-green-700">
-                  <Save className="h-4 w-4 mr-2" />
-                  Sauvegarder maintenant
-                </Button>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div ref={planningTableRef} className="overflow-x-auto">
-              <table className="w-full border-collapse border border-gray-300">
-                <thead>
-                  <tr>
-                    <th className="border border-gray-300 p-2 bg-gray-50 text-left font-medium">
-                      Créneaux
-                    </th>
-                    {uniqueDates.map(date => (
-                      <th key={date} className="border border-gray-300 p-2 bg-gray-50 text-center min-w-[120px]">
-                        <div className="text-sm">
-                          <div className="font-medium">{getDayName(date)}.</div>
-                          <div className="text-gray-600">{getDateDisplay(date)}</div>
-                        </div>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {timeSlots.map(timeSlot => (
-                    <tr key={timeSlot}>
-                      <td className="border border-gray-300 p-3 bg-gray-50 font-medium">
-                        {timeSlot}
-                      </td>
-                      {uniqueDates.map(date => {
-                        const cell = planningData.find(c => c.date === date && c.timeSlot === timeSlot);
-                        return (
-                          <td key={`${date}-${timeSlot}`} className="border border-gray-300 p-1 h-16 relative">
-                            {cell?.event ? (
-                              <div className="h-full flex flex-col justify-between p-2">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <Badge className={cell.event.color} variant="secondary">
-                                      {cell.event.name}
-                                    </Badge>
-                                    {cell.event.assignedMember && (
-                                      <div className="text-xs text-gray-600 mt-1 flex items-center">
-                                        <Users className="h-3 w-3 mr-1" />
-                                        <span className="truncate">
-                                          {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
-                                        </span>
-                                      </div>
-                                    )}
-                                    {cell.event.assignedGroup && (
-                                      <div className="text-xs text-gray-600 mt-1 flex items-center">
-                                        <Users className="h-3 w-3 mr-1" />
-                                        <Badge className={cell.event.assignedGroup.couleur} variant="outline" style={{ fontSize: '0.65rem', padding: '0 4px' }}>
-                                          {cell.event.assignedGroup.nom}
-                                        </Badge>
-                                      </div>
-                                    )}
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeEvent(date, timeSlot)}
-                                    className="h-6 w-6 p-0 hover:bg-red-100 ml-1 flex-shrink-0"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <Button
-                                variant="ghost"
-                                className="w-full h-full flex items-center justify-center hover:bg-gray-100"
-                                onClick={() => setSelectedCell({ date, timeSlot })}
-                              >
-                                <Plus className="h-4 w-4 text-gray-400" />
-                              </Button>
-                            )}
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Dialog pour ajouter un événement */}
-      {selectedCell && (
-        <Dialog open={true} onOpenChange={() => {
-          setSelectedCell(null);
-          setNewEvent({ 
-            name: '', 
-            description: '', 
-            color: 'bg-green-100 text-green-800',
-            type: 'activity',
-            assignedMember: null,
-            assignedGroup: null
-          });
-        }}>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>Ajouter un événement</DialogTitle>
-              <DialogDescription>
-                Ajoutez un événement à votre planning pour le {new Date(selectedCell.date).toLocaleDateString('fr-FR')} - {selectedCell.timeSlot}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <Label htmlFor="event-type">Type d'événement</Label>
-                <Select 
-                  value={newEvent.type} 
-                  onValueChange={(value: 'activity' | 'duty' | 'leave' | 'recovery') => 
-                    setNewEvent(prev => ({ ...prev, type: value }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {eventTypes.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+      <Dialog open={showAddEvent} onOpenChange={setShowAddEvent}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Ajouter un événement</DialogTitle>
+            <DialogDescription>
+              Ajouter un événement à une case spécifique du planning
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            {selectedCell && (
+              <div className="bg-blue-50 p-3 rounded-lg">
+                <p className="text-sm font-medium text-blue-800">
+                  Case sélectionnée: {new Date(selectedCell.date).toLocaleDateString('fr-FR')} - {selectedCell.timeSlot}
+                </p>
               </div>
-
-              <div>
-                <Label htmlFor="event-name">Nom de l'événement</Label>
-                <Input
-                  id="event-name"
-                  value={newEvent.name}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="ex: Randonnées à poney"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="event-description">Description (optionnelle)</Label>
-                <Input
-                  id="event-description"
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent(prev => ({ ...prev, description: e.target.value }))}
-                  placeholder="Détails de l'activité..."
-                />
-              </div>
-
-              {/* Sélection du membre de l'équipe pour les créneaux spéciaux */}
-              {isSpecialTimeSlot(selectedCell.timeSlot) && (
-                <div>
-                  <Label htmlFor="assigned-member">Membre de l'équipe *</Label>
-                  <Select 
-                    value={newEvent.assignedMember?.id.toString() || 'none'} 
-                    onValueChange={(value) => {
-                      if (value === 'none') {
-                        setNewEvent(prev => ({ ...prev, assignedMember: null }));
-                      } else {
-                        const member = animateurs.find(a => a.id.toString() === value);
-                        setNewEvent(prev => ({ ...prev, assignedMember: member || null }));
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un membre" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Aucun membre sélectionné</SelectItem>
-                      {animateurs.map(animateur => (
-                        <SelectItem key={animateur.id} value={animateur.id.toString()}>
-                          {animateur.prenom} {animateur.nom} ({animateur.role})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              {/* Sélection du groupe pour les activités */}
-              {newEvent.type === 'activity' && (
-                <div>
-                  <Label htmlFor="assigned-group">Groupe de jeunes (optionnel)</Label>
-                  <Select 
-                    value={newEvent.assignedGroup?.id || 'none'} 
-                    onValueChange={(value) => {
-                      if (value === 'none') {
-                        setNewEvent(prev => ({ ...prev, assignedGroup: null }));
-                      } else {
-                        const group = groupes.find(g => g.id === value);
-                        if (group) {
-                          setNewEvent(prev => ({ 
-                            ...prev, 
-                            assignedGroup: {
-                              id: group.id,
-                              nom: group.nom,
-                              couleur: group.couleur
-                            }
-                          }));
-                        }
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner un groupe" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Aucun groupe</SelectItem>
-                      {groupes.map(groupe => (
-                        <SelectItem key={groupe.id} value={groupe.id}>
-                          <div className="flex items-center space-x-2">
-                            <Badge className={groupe.couleur} variant="secondary" style={{ fontSize: '0.7rem', padding: '0 4px' }}>
-                              {groupe.nom}
-                            </Badge>
-                            <span>({groupe.jeunesIds.length} jeunes)</span>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
-
-              <div>
-                <Label>Couleur</Label>
-                <div className="flex gap-2 mt-2 flex-wrap">
-                  {eventColors.map(color => (
-                    <button
-                      key={color}
-                      className={`w-8 h-8 rounded border-2 ${color} ${
-                        newEvent.color === color ? 'border-gray-800' : 'border-gray-300'
-                      }`}
-                      onClick={() => setNewEvent(prev => ({ ...prev, color }))}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex space-x-2 pt-4">
-                <Button onClick={addEvent} disabled={!newEvent.name}>
-                  Ajouter
-                </Button>
-                <Button variant="outline" onClick={() => {
-                  setSelectedCell(null);
-                  setNewEvent({ 
-                    name: '', 
-                    description: '', 
-                    color: 'bg-green-100 text-green-800',
-                    type: 'activity',
-                    assignedMember: null,
-                    assignedGroup: null
-                  });
-                }}>
-                  Annuler
-                </Button>
-              </div>
+            )}
+            
+            <div>
+              <Label htmlFor="event-type">Type d'événement *</Label>
+              <Select value={newEvent.type} onValueChange={(value: any) => setNewEvent(prev => ({ ...prev, type: value }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="activity">Activité</SelectItem>
+                  <SelectItem value="meal">Repas</SelectItem>
+                  <SelectItem value="meeting">Réunion</SelectItem>
+                  <SelectItem value="leave">Congé</SelectItem>
+                  <SelectItem value="recovery">Repos récupérateur</SelectItem>
+                  <SelectItem value="other">Autre</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+
+            <div>
+              <Label htmlFor="event-name">
+                Nom de l'événement {(newEvent.type === 'leave' || newEvent.type === 'recovery') ? '' : '*'}
+              </Label>
+              <Input
+                id="event-name"
+                value={newEvent.name}
+                onChange={(e) => setNewEvent(prev => ({ ...prev, name: e.target.value }))}
+                placeholder={
+                  newEvent.type === 'leave' 
+                    ? "Congé (optionnel)" 
+                    : newEvent.type === 'recovery' 
+                    ? "Repos récupérateur (optionnel)"
+                    : "Nom de l'événement"
+                }
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="team-member">Membre de l'équipe *</Label>
+              <Select value={newEvent.assignedMember ? String(newEvent.assignedMember.id) : undefined} onValueChange={(value) => {
+                const member = teamMembers.find(m => String(m.id) === value);
+                setNewEvent(prev => ({
+                  ...prev,
+                  assignedMember: member ? {
+                    id: member.id,
+                    nom: member.nom,
+                    prenom: member.prenom,
+                    role: member.role
+                  } : null
+                }));
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner un membre" />
+                </SelectTrigger>
+                <SelectContent>
+                  {teamMembers.map(member => (
+                    <SelectItem key={member.id} value={String(member.id)}>
+                      {member.prenom} {member.nom} ({member.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={() => setShowAddEvent(false)}>
+              Annuler
+            </Button>
+            <Button type="submit" onClick={handleAddEvent}>Ajouter</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
