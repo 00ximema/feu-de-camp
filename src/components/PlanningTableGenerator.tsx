@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
@@ -72,8 +73,10 @@ const PlanningTableGenerator = () => {
     if (!isInitialized) return;
     try {
       const storedPlanning = await db.getById('plannings', sessionId);
-      if (storedPlanning && storedPlanning.data) {
-        setPlanning(storedPlanning.data);
+      if (storedPlanning && storedPlanning.data && Array.isArray(storedPlanning.data)) {
+        // Vérifier que les données correspondent à la structure attendue
+        const validPlanning = storedPlanning.data as PlanningCell[][];
+        setPlanning(validPlanning);
       } else {
         generatePlanning();
       }
