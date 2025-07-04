@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -35,11 +34,11 @@ interface Soin {
   description: string;
   date: string;
   heure: string;
-  soignant?: string;
-  symptomes?: string;
-  diagnostic?: string;
-  traitement?: string;
-  suivi?: boolean;
+  soignant: string;
+  symptomes: string;
+  diagnostic: string;
+  traitement: string;
+  suivi: boolean;
   dateCreation: string;
 }
 
@@ -124,6 +123,29 @@ const Infirmerie = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const addSoin = (soin: Omit<Soin, 'id' | 'dateCreation'> & { sessionId?: string; soignant?: string; symptomes?: string; diagnostic?: string; traitement?: string; suivi?: boolean }) => {
+    const newSoin: Soin = {
+      id: Date.now().toString(),
+      dateCreation: new Date().toISOString(),
+      sessionId: getCurrentSession()?.id || '',
+      soignant: soin.soignant || '',
+      symptomes: soin.symptomes || '',
+      diagnostic: soin.diagnostic || '',
+      traitement: soin.traitement || '',
+      suivi: soin.suivi || false,
+      ...soin
+    };
+    
+    setSoins(prev => [...prev, newSoin]);
+    
+    // Sauvegarder dans localStorage
+    const updatedSoins = [...soins, newSoin];
+    localStorage.setItem('infirmerie-data', JSON.stringify({
+      soins: updatedSoins,
+      traitements: traitements
+    }));
   };
 
   const getTraitementsActifs = () => {

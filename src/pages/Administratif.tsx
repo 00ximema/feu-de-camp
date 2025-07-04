@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Download, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FileText, Download, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2, Edit } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Youngster } from "@/types/youngster";
@@ -39,6 +40,10 @@ const Administratif = () => {
     { id: 7, label: "Mairie", number: "", description: "Services municipaux" },
     { id: 8, label: "Taxi local", number: "", description: "Transport" }
   ]);
+
+  const [selectedContactId, setSelectedContactId] = useState<string>("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingContact, setEditingContact] = useState<{id: number, label: string, number: string, description: string} | null>(null);
 
   const [hospitalDetails, setHospitalDetails] = useState({
     nom: "",
@@ -98,16 +103,45 @@ const Administratif = () => {
 
   const addEmergencyContact = () => {
     const newId = Math.max(...emergencyContacts.map(c => c.id)) + 1;
-    setEmergencyContacts(prev => [...prev, {
+    const newContact = {
       id: newId,
-      label: "",
+      label: "Nouveau contact",
       number: "",
       description: ""
-    }]);
+    };
+    setEmergencyContacts(prev => [...prev, newContact]);
+    setSelectedContactId(newId.toString());
+    setEditingContact(newContact);
+    setIsEditing(true);
   };
 
   const removeEmergencyContact = (id: number) => {
     setEmergencyContacts(prev => prev.filter(contact => contact.id !== id));
+    if (editingContact?.id === id) {
+      setEditingContact(null);
+      setIsEditing(false);
+    }
+  };
+
+  const startEditingContact = (contact: typeof emergencyContacts[0]) => {
+    setEditingContact({...contact});
+    setIsEditing(true);
+    setSelectedContactId(contact.id.toString());
+  };
+
+  const saveEditingContact = () => {
+    if (editingContact) {
+      handleEmergencyContactChange(editingContact.id, 'label', editingContact.label);
+      handleEmergencyContactChange(editingContact.id, 'number', editingContact.number);
+      handleEmergencyContactChange(editingContact.id, 'description', editingContact.description);
+    }
+    setIsEditing(false);
+    setEditingContact(null);
+  };
+
+  const cancelEditing = () => {
+    setIsEditing(false);
+    setEditingContact(null);
   };
 
   const handleHospitalDetailsChange = (field: string, value: string) => {
@@ -340,48 +374,83 @@ const Administratif = () => {
                     Ajouter un contact
                   </Button>
                 </div>
-                <div className="grid gap-4">
-                  {emergencyContacts.map((contact) => (
-                    <div key={contact.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border rounded-lg bg-gray-50">
-                      <div>
-                        <Label htmlFor={`label-${contact.id}`}>Libellé</Label>
-                        <Input
-                          id={`label-${contact.id}`}
-                          value={contact.label}
-                          onChange={(e) => handleEmergencyContactChange(contact.id, 'label', e.target.value)}
-                          placeholder="Ex: Urgences médicales"
-                        />
+                
+                <div className="space-y-4">
+                  {/* Liste compacte des contacts */}
+                  <div className="grid gap-3">
+                    {emergencyContacts.map((contact) => (
+                      <div key={contact.id} className="flex items-center justify-between p-3 border rounded-lg bg-gray-50">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-3">
+                            <span className="font-medium">{contact.label}</span>
+                            <span className="text-sm text-gray-500">-</span>
+                            <span className="font-mono">{contact.number || "Non renseigné"}</span>
+                            <span className="text-sm text-gray-500">({contact.description})</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => startEditingContact(contact)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => removeEmergencyContact(contact.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor={`number-${contact.id}`}>Numéro</Label>
-                        <Input
-                          id={`number-${contact.id}`}
-                          value={contact.number}
-                          onChange={(e) => handleEmergencyContactChange(contact.id, 'number', e.target.value)}
-                          placeholder="Ex: 15"
-                        />
+                    ))}
+                  </div>
+
+                  {/* Formulaire d'édition */}
+                  {isEditing && editingContact && (
+                    <div className="p-4 border rounded-lg bg-white">
+                      <h4 className="font-medium mb-3">Modifier le contact</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+                        <div>
+                          <Label htmlFor="edit-label">Libellé</Label>
+                          <Input
+                            id="edit-label"
+                            value={editingContact.label}
+                            onChange={(e) => setEditingContact(prev => prev ? {...prev, label: e.target.value} : null)}
+                            placeholder="Ex: Urgences médicales"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-number">Numéro</Label>
+                          <Input
+                            id="edit-number"
+                            value={editingContact.number}
+                            onChange={(e) => setEditingContact(prev => prev ? {...prev, number: e.target.value} : null)}
+                            placeholder="Ex: 15"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="edit-description">Description</Label>
+                          <Input
+                            id="edit-description"
+                            value={editingContact.description}
+                            onChange={(e) => setEditingContact(prev => prev ? {...prev, description: e.target.value} : null)}
+                            placeholder="Ex: SAMU"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <Label htmlFor={`description-${contact.id}`}>Description</Label>
-                        <Input
-                          id={`description-${contact.id}`}
-                          value={contact.description}
-                          onChange={(e) => handleEmergencyContactChange(contact.id, 'description', e.target.value)}
-                          placeholder="Ex: SAMU"
-                        />
-                      </div>
-                      <div className="flex items-end">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => removeEmergencyContact(contact.id)}
-                          className="w-full"
-                        >
-                          <Trash2 className="h-4 w-4" />
+                      <div className="flex space-x-2">
+                        <Button onClick={saveEditingContact} size="sm">
+                          Sauvegarder
+                        </Button>
+                        <Button onClick={cancelEditing} variant="outline" size="sm">
+                          Annuler
                         </Button>
                       </div>
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
 
