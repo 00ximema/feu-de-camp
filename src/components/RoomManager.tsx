@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -147,6 +146,28 @@ const RoomManager = () => {
   // Supprimer une configuration
   const removeRoomConfig = (index: number) => {
     setRoomConfigs(roomConfigs.filter((_, i) => i !== index));
+  };
+
+  // Supprimer une chambre
+  const deleteRoom = (roomId: string) => {
+    const room = rooms.find(r => r.id === roomId);
+    if (!room) return;
+
+    // Si la chambre a des occupants, les remettre dans la liste des non-assignés
+    const updatedRooms = rooms.filter(r => r.id !== roomId);
+    setRooms(updatedRooms);
+    
+    if (room.occupants.length > 0) {
+      toast({
+        title: "Chambre supprimée",
+        description: `${room.name} supprimée. ${room.occupants.length} jeune(s) remis dans la liste des non-assignés.`
+      });
+    } else {
+      toast({
+        title: "Chambre supprimée",
+        description: `${room.name} a été supprimée`
+      });
+    }
   };
 
   // Modifier le nom d'une chambre
@@ -520,6 +541,13 @@ const RoomManager = () => {
                           }}
                         >
                           <Edit className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => deleteRoom(room.id)}
+                        >
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                         <Badge variant={room.occupants.length > room.capacity ? "destructive" : "secondary"}>
                           {room.occupants.length}/{room.capacity}
