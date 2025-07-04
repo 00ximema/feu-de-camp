@@ -17,6 +17,7 @@ import { parseExcel } from "@/utils/excelParser";
 import { Youngster } from "@/types/youngster";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
+import RoomManager from "@/components/RoomManager";
 
 const Jeunes = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -201,6 +202,7 @@ const Jeunes = () => {
           <TabsList>
             <TabsTrigger value="jeunes">Liste des jeunes</TabsTrigger>
             <TabsTrigger value="groupes">Groupes</TabsTrigger>
+            <TabsTrigger value="chambres">Chambres</TabsTrigger>
           </TabsList>
 
           <TabsContent value="jeunes" className="space-y-6">
@@ -447,9 +449,12 @@ const Jeunes = () => {
           <TabsContent value="groupes">
             <GroupsManager />
           </TabsContent>
+
+          <TabsContent value="chambres">
+            <RoomManager />
+          </TabsContent>
         </Tabs>
 
-        {/* Dialog pour ajouter un événement */}
         <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
           <DialogContent>
             <DialogHeader>
