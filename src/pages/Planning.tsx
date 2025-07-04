@@ -6,8 +6,11 @@ import { Calendar, Table, UserCheck } from "lucide-react";
 import { Link } from "react-router-dom";
 import PlanningTableGenerator from "@/components/PlanningTableGenerator";
 import LeaveSignaturePlanning from "@/components/LeaveSignaturePlanning";
+import ErrorBoundary from "@/components/ErrorBoundary";
 
 const Planning = () => {
+  console.log('Planning component rendering');
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
@@ -38,11 +41,15 @@ const Planning = () => {
           </TabsList>
           
           <TabsContent value="planning">
-            <PlanningTableGenerator />
+            <ErrorBoundary>
+              <PlanningTableGenerator />
+            </ErrorBoundary>
           </TabsContent>
           
           <TabsContent value="leaves">
-            <LeaveSignaturePlanning />
+            <ErrorBoundary>
+              <LeaveSignaturePlanning />
+            </ErrorBoundary>
           </TabsContent>
         </Tabs>
       </main>

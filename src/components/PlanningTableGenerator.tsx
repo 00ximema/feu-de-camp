@@ -58,6 +58,8 @@ interface SavedPlanning {
 }
 
 const PlanningTableGenerator = () => {
+  console.log('PlanningTableGenerator rendering');
+  
   const [config, setConfig] = useState<PlanningConfig>({
     name: '',
     startDate: '',
@@ -84,6 +86,10 @@ const PlanningTableGenerator = () => {
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
   const { groupes } = useGroups();
+
+  console.log('PlanningTableGenerator - isInitialized:', isInitialized);
+  console.log('PlanningTableGenerator - currentSession:', currentSession);
+  console.log('PlanningTableGenerator - groupes:', groupes);
 
   const timeSlots = [
     'Matin',
@@ -116,11 +122,16 @@ const PlanningTableGenerator = () => {
 
   // Charger les plannings existants pour la session courante
   useEffect(() => {
+    console.log('PlanningTableGenerator - useEffect loadExistingPlannings triggered');
     const loadExistingPlannings = async () => {
-      if (!isInitialized || !currentSession) return;
+      if (!isInitialized || !currentSession) {
+        console.log('PlanningTableGenerator - loadExistingPlannings skipped, not initialized or no session');
+        return;
+      }
       
       setIsLoadingPlannings(true);
       try {
+        console.log('PlanningTableGenerator - loading plannings for session:', currentSession.id);
         const dbPlannings = await db.getAll('plannings', currentSession.id);
         setExistingPlannings(dbPlannings);
         console.log('Plannings chargés pour la session:', dbPlannings);
@@ -132,6 +143,11 @@ const PlanningTableGenerator = () => {
         }
       } catch (error) {
         console.error('Erreur lors du chargement des plannings:', error);
+        toast({
+          title: "Erreur",
+          description: "Impossible de charger les plannings existants",
+          variant: "destructive"
+        });
       } finally {
         setIsLoadingPlannings(false);
       }
@@ -590,6 +606,30 @@ const PlanningTableGenerator = () => {
   const isSpecialTimeSlot = (timeSlot: string) => {
     return ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
   };
+
+  if (!isInitialized) {
+    console.log('PlanningTableGenerator - not initialized, showing loading');
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p>Initialisation de la base de données...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (!currentSession) {
+    console.log('PlanningTableGenerator - no current session');
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <p>Aucune session active. Veuillez créer ou sélectionner une session.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  console.log('PlanningTableGenerator - rendering main content');
 
   return (
     <div className="space-y-6">
