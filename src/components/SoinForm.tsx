@@ -104,23 +104,25 @@ const SoinForm: React.FC<SoinFormProps> = ({
     }
 
     try {
-      const soin = {
+      const soin: any = {
         id: `soin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sessionId: currentSession.id,
         jeuneId: jeune.id,
         jeuneNom: `${jeune.prenom} ${jeune.nom}`,
-        type: type as 'soin' | 'consultation' | 'autre',
+        type: type,
         titre,
         description,
         date,
         heure,
-        ...(soignant && { soignant }),
-        ...(symptomes && { symptomes }),
-        ...(diagnostic && { diagnostic }),
-        ...(traitement && { traitement }),
-        suivi,
         dateCreation: new Date().toISOString()
       };
+
+      // Add optional fields only if they have values
+      if (soignant) soin.soignant = soignant;
+      if (symptomes) soin.symptomes = symptomes;
+      if (diagnostic) soin.diagnostic = diagnostic;
+      if (traitement) soin.traitement = traitement;
+      if (suivi) soin.suivi = suivi;
 
       await db.save('soins', soin);
       
