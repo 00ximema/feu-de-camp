@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
@@ -244,9 +245,15 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <ClickableLogo />
+              <img 
+                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                alt="Logo Fondation Maison de la Gendarmerie" 
+                className="h-12 w-auto cursor-pointer transition-opacity hover:opacity-80"
+                onClick={() => window.open('https://fondationmg.fr/', '_blank')}
+                title="Visiter fondationmg.fr"
+              />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestion Centre de Vacances</h1>
+                <h1 className="text-2xl font-bold text-gray-900">Gestion CVJ MG</h1>
                 <p className="text-sm text-gray-600">Plateforme complète de gestion</p>
               </div>
             </div>
