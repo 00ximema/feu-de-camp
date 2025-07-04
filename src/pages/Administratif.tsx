@@ -67,8 +67,9 @@ const Administratif = () => {
             ficheSanitaire: false,
             copieCNI: false,
             copieVaccins: false,
-            autorisationSortie: false,
-            copieCNIParents: false
+            autorisationSortieTerritory: false,
+            copieCNIParents: false,
+            autorisationQL: false
           };
         });
         setChecklistData(initialChecklistData);
@@ -605,8 +606,9 @@ const Administratif = () => {
                       <TableHead className="text-center">Fiche sanitaire de liaison</TableHead>
                       <TableHead className="text-center">Copie CNI</TableHead>
                       <TableHead className="text-center">Copie des vaccins</TableHead>
-                      <TableHead className="text-center">Autorisation de sortie</TableHead>
+                      <TableHead className="text-center">Autorisation de sortie de territoire</TableHead>
                       <TableHead className="text-center">Copie CNI parents</TableHead>
+                      <TableHead className="text-center">Autorisation QL</TableHead>
                       <TableHead className="text-center">Progression</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -653,9 +655,9 @@ const Administratif = () => {
                         </TableCell>
                         <TableCell className="text-center">
                           <Checkbox
-                            checked={checklistData[youngster.id]?.autorisationSortie || false}
+                            checked={checklistData[youngster.id]?.autorisationSortieTerritory || false}
                             onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'autorisationSortie', checked as boolean)
+                              handleCheckboxChange(youngster.id, 'autorisationSortieTerritory', checked as boolean)
                             }
                           />
                         </TableCell>
@@ -664,6 +666,14 @@ const Administratif = () => {
                             checked={checklistData[youngster.id]?.copieCNIParents || false}
                             onCheckedChange={(checked) => 
                               handleCheckboxChange(youngster.id, 'copieCNIParents', checked as boolean)
+                            }
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Checkbox
+                            checked={checklistData[youngster.id]?.autorisationQL || false}
+                            onCheckedChange={(checked) => 
+                              handleCheckboxChange(youngster.id, 'autorisationQL', checked as boolean)
                             }
                           />
                         </TableCell>
