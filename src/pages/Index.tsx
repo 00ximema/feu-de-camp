@@ -86,37 +86,52 @@ const Index = () => {
   }, [isInitialized, db, currentSession]);
 
   const today = new Date().toISOString().split('T')[0];
-  const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-
-  const getTodayPlanning = () => {
-    return plannings.find(p => 
-      p.data.some(day => day.some(slot => slot.date === today && slot.event))
-    );
-  };
-
-  const getTomorrowPlanning = () => {
-    return plannings.find(p => 
-      p.data.some(day => day.some(slot => slot.date === tomorrow && slot.event))
-    );
-  };
-
-  const getTodayEvents = () => {
-    return events.filter(event => event.date === new Date().toLocaleDateString('fr-FR'));
-  };
 
   const getTraitementsActifs = () => {
     return traitements.filter(t => t.dateDebut <= today && t.dateFin >= today);
   };
 
-  const getAnimateurName = (id: number) => {
-    const animateur = animateurs.find(a => a.id === id);
-    return animateur ? `${animateur.prenom} ${animateur.nom}` : 'Inconnu';
+  const getJoursRestants = () => {
+    // Calculer les jours restants jusqu'à la fin du séjour
+    // Pour l'exemple, on suppose une durée de séjour de 21 jours à partir de la création de la session
+    if (!currentSession) return 0;
+    const sessionStart = new Date(currentSession.createdAt || Date.now());
+    const sessionEnd = new Date(sessionStart.getTime() + 21 * 24 * 60 * 60 * 1000); // 21 jours
+    const now = new Date();
+    const diffTime = sessionEnd.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return Math.max(0, diffDays);
   };
 
-  const todayPlanning = getTodayPlanning();
-  const tomorrowPlanning = getTomorrowPlanning();
-  const todayEvents = getTodayEvents();
+  const getAstreintes = () => {
+    return plannings
+      .flatMap(p => p.data.flat())
+      .filter(slot => slot.date === today && slot.timeSlot === 'Astreintes' && slot.event?.assignedMember)
+      .map(slot => slot.event?.assignedMember)
+      .filter(member => member !== null);
+  };
+
+  const getConges = () => {
+    return plannings
+      .flatMap(p => p.data.flat())
+      .filter(slot => slot.date === today && slot.timeSlot === 'Congés' && slot.event?.assignedMember)
+      .map(slot => slot.event?.assignedMember)
+      .filter(member => member !== null);
+  };
+
+  const getReposRecuperateurs = () => {
+    return plannings
+      .flatMap(p => p.data.flat())
+      .filter(slot => slot.date === today && slot.timeSlot === 'Repos récupérateurs' && slot.event?.assignedMember)
+      .map(slot => slot.event?.assignedMember)
+      .filter(member => member !== null);
+  };
+
   const traitementsActifs = getTraitementsActifs();
+  const joursRestants = getJoursRestants();
+  const astreintes = getAstreintes();
+  const conges = getConges();
+  const reposRecuperateurs = getReposRecuperateurs();
 
   const modules = [
     {
@@ -145,7 +160,7 @@ const Index = () => {
     },
     {
       id: 4,
-      title: "Planning",
+      title: "Gestion du planning",
       description: "Repos animateurs, astreintes, planning personnalisé",
       icon: Calendar,
       route: "/planning",
@@ -153,7 +168,7 @@ const Index = () => {
     },
     {
       id: 5,
-      title: "Comptabilité",
+      title: "Gestion comptable",
       description: "Gestion financière, import Excel, budgets",
       icon: Calculator,
       route: "/comptabilite",
@@ -291,8 +306,8 @@ const Index = () => {
               <div className="text-sm text-gray-600">Animateurs</div>
             </div>
             <div className="text-center">
-              <div className="text-2xl font-bold text-purple-600">0</div>
-              <div className="text-sm text-gray-600">Documents</div>
+              <div className="text-2xl font-bold text-purple-600">{joursRestants}</div>
+              <div className="text-sm text-gray-600">Jours restants</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-orange-600">0</div>
@@ -304,108 +319,71 @@ const Index = () => {
             </div>
           </div>
 
-          {/* Planning et événements du jour */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Aujourd'hui */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                <Clock className="h-4 w-4 mr-2 text-blue-600" />
-                Aujourd'hui ({new Date().toLocaleDateString('fr-FR')})
-              </h4>
-              {todayPlanning ? (
-                <div className="space-y-2">
-                  {todayPlanning.data
-                    .flat()
-                    .filter(slot => slot.date === today && slot.event)
-                    .map((slot, index) => (
-                      <div key={index} className="text-sm p-2 bg-gray-50 rounded">
-                        <div className="font-medium">{slot.event?.name}</div>
-                        <div className="text-gray-600">
-                          {slot.timeSlot} • {slot.event?.assignedMember ? 
-                            `${slot.event.assignedMember.prenom} ${slot.event.assignedMember.nom}` : 
-                            'Non assigné'
-                          }
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">Aucun planning défini</div>
-              )}
-            </div>
-
-            {/* Demain */}
-            <div>
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                <Calendar className="h-4 w-4 mr-2 text-orange-600" />
-                Demain ({new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('fr-FR')})
-              </h4>
-              {tomorrowPlanning ? (
-                <div className="space-y-2">
-                  {tomorrowPlanning.data
-                    .flat()
-                    .filter(slot => slot.date === tomorrow && slot.event)
-                    .map((slot, index) => (
-                      <div key={index} className="text-sm p-2 bg-gray-50 rounded">
-                        <div className="font-medium">{slot.event?.name}</div>
-                        <div className="text-gray-600">
-                          {slot.timeSlot} • {slot.event?.assignedMember ? 
-                            `${slot.event.assignedMember.prenom} ${slot.event.assignedMember.nom}` : 
-                            'Non assigné'
-                          }
-                        </div>
-                      </div>
-                    ))
-                  }
-                </div>
-              ) : (
-                <div className="text-sm text-gray-500">Aucun planning défini</div>
-              )}
-            </div>
-
-            {/* Événements du jour */}
+          {/* Informations sur le personnel */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Astreintes */}
             <div>
               <h4 className="font-medium text-gray-900 mb-3 flex items-center">
                 <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
-                Événements du jour
+                Astreintes aujourd'hui
               </h4>
-              {todayEvents.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {todayEvents.map((event, index) => (
+              {astreintes.length > 0 ? (
+                <div className="space-y-2">
+                  {astreintes.map((member, index) => (
                     <div key={index} className="text-sm p-2 bg-red-50 rounded border-l-2 border-red-200">
-                      <div className="font-medium text-red-900">{event.youngsterName}</div>
-                      <div className="text-red-700">{event.type}</div>
-                      <div className="text-red-600 text-xs">{event.description}</div>
+                      <div className="font-medium text-red-900">
+                        {member?.prenom} {member?.nom}
+                      </div>
+                      <div className="text-red-600 text-xs">{member?.role}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">Aucun événement enregistré</div>
+                <div className="text-sm text-gray-500">Aucune astreinte définie</div>
               )}
             </div>
 
-            {/* Traitements en cours */}
+            {/* Congés */}
             <div>
               <h4 className="font-medium text-gray-900 mb-3 flex items-center">
-                <Pill className="h-4 w-4 mr-2 text-teal-600" />
-                Traitements en cours
+                <Calendar className="h-4 w-4 mr-2 text-blue-600" />
+                Congés aujourd'hui
               </h4>
-              {traitementsActifs.length > 0 ? (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {traitementsActifs.map((traitement, index) => (
-                    <div key={index} className="text-sm p-2 bg-teal-50 rounded border-l-2 border-teal-200">
-                      <div className="font-medium text-teal-900">{traitement.jeuneNom}</div>
-                      <div className="text-teal-700">{traitement.medicament}</div>
-                      <div className="text-teal-600 text-xs">{traitement.posologie}</div>
-                      {traitement.ordonnance && (
-                        <div className="text-xs text-green-700 mt-1">📄 Avec ordonnance</div>
-                      )}
+              {conges.length > 0 ? (
+                <div className="space-y-2">
+                  {conges.map((member, index) => (
+                    <div key={index} className="text-sm p-2 bg-blue-50 rounded border-l-2 border-blue-200">
+                      <div className="font-medium text-blue-900">
+                        {member?.prenom} {member?.nom}
+                      </div>
+                      <div className="text-blue-600 text-xs">{member?.role}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">Aucun traitement en cours</div>
+                <div className="text-sm text-gray-500">Aucun congé défini</div>
+              )}
+            </div>
+
+            {/* Repos récupérateurs */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <Clock className="h-4 w-4 mr-2 text-green-600" />
+                Repos récupérateurs
+              </h4>
+              {reposRecuperateurs.length > 0 ? (
+                <div className="space-y-2">
+                  {reposRecuperateurs.map((member, index) => (
+                    <div key={index} className="text-sm p-2 bg-green-50 rounded border-l-2 border-green-200">
+                      <div className="font-medium text-green-900">
+                        {member?.prenom} {member?.nom}
+                      </div>
+                      <div className="text-green-600 text-xs">{member?.role}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">Aucun repos récupérateur défini</div>
               )}
             </div>
           </div>
