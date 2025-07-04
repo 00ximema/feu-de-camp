@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,11 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { FileText, Download, Upload, ArrowLeft, CheckSquare, Phone, AlertTriangle } from "lucide-react";
+import { FileText, Download, ArrowLeft, CheckSquare, Phone, AlertTriangle } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Youngster } from "@/types/youngster";
 import { useEvents } from "@/hooks/useEvents";
+import jsPDF from 'jspdf';
 
 const Administratif = () => {
   const [youngsters, setYoungsters] = useState<Youngster[]>([]);
@@ -62,7 +64,22 @@ const Administratif = () => {
         console.error('Erreur lors du chargement des jeunes:', error);
       }
     }
+
+    // Charger les numéros d'urgence
+    const savedEmergencyNumbers = localStorage.getItem('emergency-numbers');
+    if (savedEmergencyNumbers) {
+      try {
+        setEmergencyNumbers(JSON.parse(savedEmergencyNumbers));
+      } catch (error) {
+        console.error('Erreur lors du chargement des numéros d\'urgence:', error);
+      }
+    }
   }, []);
+
+  // Sauvegarder les numéros d'urgence
+  useEffect(() => {
+    localStorage.setItem('emergency-numbers', JSON.stringify(emergencyNumbers));
+  }, [emergencyNumbers]);
 
   const handleCheckboxChange = (youngesterId: string, documentType: string, checked: boolean) => {
     setChecklistData(prev => ({
@@ -98,40 +115,102 @@ const Administratif = () => {
     return Math.round((completedItems / totalItems) * 100);
   };
 
-  const exportInfirmerieReport = () => {
+  const exportInfirmerieReportToPDF = () => {
+    const pdf = new jsPDF();
+    
+    // Header avec logo
+    pdf.setFillColor(147, 51, 234);
+    pdf.rect(0, 0, 210, 25, 'F');
+    
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.text('MG', 15, 17);
+    
+    pdf.setFontSize(16);
+    pdf.text('Rapport Infirmerie et Événements', 50, 17);
+    
+    // Date
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(10);
+    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
+    
+    let yPosition = 50;
+    
     // Récupérer les données d'infirmerie depuis le localStorage
     const infirmerieData = localStorage.getItem('infirmerie-data');
-    let reportData = "Rapport Infirmerie et Événements\n\n";
     
     if (infirmerieData) {
       const data = JSON.parse(infirmerieData);
-      reportData += "=== DONNÉES INFIRMERIE ===\n\n";
       
-      // Ajouter les données d'infirmerie au rapport
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('DONNÉES INFIRMERIE', 15, yPosition);
+      yPosition += 15;
+      
+      // Ajouter les soins dispensés
       if (data.soins && data.soins.length > 0) {
-        reportData += "SOINS DISPENSÉS:\n";
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('SOINS DISPENSÉS:', 15, yPosition);
+        yPosition += 10;
+        
         data.soins.forEach((soin: any, index: number) => {
-          reportData += `${index + 1}. ${soin.date} - ${soin.youngsterName}\n`;
-          reportData += `   Symptômes: ${soin.symptomes}\n`;
-          reportData += `   Traitement: ${soin.traitement}\n`;
-          reportData += `   Animateur: ${soin.animateur}\n\n`;
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${index + 1}. ${soin.date} - ${soin.youngsterName}`, 20, yPosition);
+          yPosition += 6;
+          
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Symptômes: ${soin.symptomes}`, 25, yPosition);
+          yPosition += 5;
+          pdf.text(`Traitement: ${soin.traitement}`, 25, yPosition);
+          yPosition += 5;
+          pdf.text(`Animateur: ${soin.animateur}`, 25, yPosition);
+          yPosition += 8;
+          
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
         });
       }
       
+      // Ajouter les traitements en cours
       if (data.traitements && data.traitements.length > 0) {
-        reportData += "TRAITEMENTS EN COURS:\n";
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('TRAITEMENTS EN COURS:', 15, yPosition);
+        yPosition += 10;
+        
         data.traitements.forEach((traitement: any, index: number) => {
-          reportData += `${index + 1}. ${traitement.youngsterName}\n`;
-          reportData += `   Médicament: ${traitement.medicament}\n`;
-          reportData += `   Posologie: ${traitement.posologie}\n`;
-          reportData += `   Fréquence: ${traitement.frequence}\n\n`;
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${index + 1}. ${traitement.youngsterName}`, 20, yPosition);
+          yPosition += 6;
+          
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`Médicament: ${traitement.medicament}`, 25, yPosition);
+          yPosition += 5;
+          pdf.text(`Posologie: ${traitement.posologie}`, 25, yPosition);
+          yPosition += 5;
+          pdf.text(`Fréquence: ${traitement.frequence}`, 25, yPosition);
+          yPosition += 8;
+          
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
         });
       }
     }
     
-    // Ajouter les événements des jeunes en utilisant les events du hook
+    // Ajouter les événements des jeunes
     if (events.length > 0) {
-      reportData += "=== ÉVÉNEMENTS JEUNES ===\n\n";
+      yPosition += 10;
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('ÉVÉNEMENTS JEUNES', 15, yPosition);
+      yPosition += 15;
       
       // Grouper les événements par jeune
       const eventsByYoungster: { [key: string]: any[] } = {};
@@ -144,23 +223,39 @@ const Administratif = () => {
       
       // Ajouter les événements groupés au rapport
       Object.entries(eventsByYoungster).forEach(([youngsterName, youngsterEvents]) => {
-        reportData += `JEUNE: ${youngsterName}\n`;
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`JEUNE: ${youngsterName}`, 15, yPosition);
+        yPosition += 8;
+        
         youngsterEvents.forEach((event: any, index: number) => {
-          reportData += `  ${index + 1}. ${event.date} - ${event.type}\n`;
-          reportData += `     Description: ${event.description}\n`;
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          pdf.text(`${index + 1}. ${event.date} - ${event.type}`, 20, yPosition);
+          yPosition += 5;
+          pdf.text(`Description: ${event.description}`, 25, yPosition);
+          yPosition += 7;
+          
+          if (yPosition > 250) {
+            pdf.addPage();
+            yPosition = 20;
+          }
         });
-        reportData += "\n";
+        yPosition += 5;
       });
     }
     
-    // Créer et télécharger le fichier
-    const blob = new Blob([reportData], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Rapport_Infirmerie_Evenements_${new Date().toISOString().split('T')[0]}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    // Footer
+    const pageCount = pdf.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(128, 128, 128);
+      pdf.text(`Page ${i}/${pageCount}`, 180, 285);
+      pdf.text('Fondation MG - Rapport Administratif', 15, 285);
+    }
+    
+    pdf.save(`Rapport_Infirmerie_Evenements_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -170,7 +265,7 @@ const Administratif = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <FileText className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Administratif</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Gestion administrative</h1>
             </div>
             <Link to="/">
               <Button variant="outline">
@@ -460,76 +555,35 @@ const Administratif = () => {
                   Importez d'abord votre fichier Excel dans cette section pour voir apparaître la check-list.
                 </p>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </CardContent>
+        </Card>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5" />
-                <span>Documents</span>
-              </CardTitle>
-              <CardDescription>
-                Gérer les documents administratifs
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="file-upload">Importer un fichier</Label>
-                  <Input
-                    id="file-upload"
-                    type="file"
-                    accept=".pdf,.doc,.docx"
-                    className="mt-1"
-                  />
-                </div>
-                
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                  <Upload className="mx-auto h-12 w-12 text-gray-400" />
-                  <div className="mt-4">
-                    <p className="text-sm font-medium text-gray-900">Importer un fichier</p>
-                    <p className="text-sm text-gray-500">ou glisser-déposer</p>
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2">PDF, DOC, DOCX jusqu'à 10MB</p>
-                </div>
-
-                <Button className="w-full">
-                  <Upload className="h-4 w-4 mr-2" />
-                  Téléverser
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Rapport Infirmerie */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Download className="h-5 w-5" />
-                <span>Rapport</span>
-              </CardTitle>
-              <CardDescription>
-                Générer le rapport infirmerie et événements
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button 
-                onClick={exportInfirmerieReport}
-                className="w-full justify-start"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Rapport infirmerie et événements
-              </Button>
-              <p className="text-xs text-gray-500 mt-2">
-                Exporte tous les soins dispensés, traitements en cours et événements enregistrés pour les jeunes
-              </p>
-            </CardContent>
-          </Card>
-        </div>
+        {/* Rapport Infirmerie */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2">
+              <Download className="h-5 w-5" />
+              <span>Rapport infirmerie et événements</span>
+            </CardTitle>
+            <CardDescription>
+              Générer le rapport complet au format PDF
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={exportInfirmerieReportToPDF}
+              className="w-full justify-start"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Télécharger le rapport PDF
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Exporte tous les soins dispensés, traitements en cours et événements enregistrés pour les jeunes
+            </p>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

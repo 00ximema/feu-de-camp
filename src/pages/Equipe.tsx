@@ -1,215 +1,242 @@
+
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { UserCheck, Plus, Upload, FileText, Calendar, Phone, Mail, Trash2 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import { useLocalDatabase } from "@/hooks/useLocalDatabase";
-import { useSession } from "@/hooks/useSession";
+import jsPDF from 'jspdf';
 
-interface Animateur {
-  id: number;
-  sessionId?: string;
+interface TeamMember {
+  id: string;
   nom: string;
   prenom: string;
   age: number;
   telephone: string;
   email: string;
   role: string;
-  formations: string[];
-  documents: Document[];
+  diplomes: string[];
   notes: string;
-}
-
-interface Document {
-  id: number;
-  nom: string;
-  type: string;
-  dateUpload: string;
-  url: string;
+  createdAt: string;
 }
 
 const Equipe = () => {
-  const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
-  const [selectedAnimateur, setSelectedAnimateur] = useState<number | null>(null);
-  const [showForm, setShowForm] = useState(false);
+  const [team, setTeam] = useState<TeamMember[]>([]);
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const { toast } = useToast();
-  const { isInitialized, db } = useLocalDatabase();
-  const { currentSession } = useSession();
 
-  const [form, setForm] = useState({
+  const [newMember, setNewMember] = useState({
     nom: "",
     prenom: "",
     age: "",
     telephone: "",
     email: "",
     role: "",
-    formations: "",
+    diplomes: "",
     notes: ""
   });
 
-  // Gestionnaire pour le nom (automatiquement en majuscules)
-  const handleNomChange = (value: string) => {
-    setForm(prev => ({ ...prev, nom: value.toUpperCase() }));
-  };
+  const roles = [
+    "Directeur",
+    "Directeur adjoint",
+    "Animateur",
+    "Animateur stagiaire",
+    "Assistant sanitaire",
+    "Cuisinier",
+    "Personnel de service",
+    "Autre"
+  ];
 
-  // Gestionnaire pour l'âge (seulement des chiffres)
-  const handleAgeChange = (value: string) => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    setForm(prev => ({ ...prev, age: numericValue }));
-  };
-
-  // Gestionnaire pour le téléphone (seulement des chiffres et espaces)
-  const handleTelephoneChange = (value: string) => {
-    const numericValue = value.replace(/[^0-9\s]/g, '');
-    setForm(prev => ({ ...prev, telephone: numericValue }));
-  };
-
-  // Charger les animateurs depuis la base de données
+  // Charger l'équipe depuis le localStorage
   useEffect(() => {
-    const loadAnimateurs = async () => {
-      if (!isInitialized || !currentSession) {
-        setAnimateurs([]);
-        return;
-      }
-      
+    const savedTeam = localStorage.getItem('team-members');
+    if (savedTeam) {
       try {
-        const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
-        // S'assurer qu'on ne charge que les animateurs de la session courante
-        const sessionAnimateurs = dbAnimateurs.filter(a => a.sessionId === currentSession.id);
-        setAnimateurs(sessionAnimateurs);
-        console.log('Animateurs chargés pour la session', currentSession.id, ':', sessionAnimateurs);
+        setTeam(JSON.parse(savedTeam));
       } catch (error) {
-        console.error('Erreur lors du chargement des animateurs:', error);
-        setAnimateurs([]);
+        console.error('Erreur lors du chargement de l\'équipe:', error);
       }
-    };
+    }
+  }, []);
 
-    loadAnimateurs();
-  }, [isInitialized, db, currentSession]);
+  // Sauvegarder l'équipe dans le localStorage
+  const saveTeam = (updatedTeam: TeamMember[]) => {
+    localStorage.setItem('team-members', JSON.stringify(updatedTeam));
+    setTeam(updatedTeam);
+  };
 
-  const addAnimateur = async () => {
-    if (!isInitialized) return;
-    
-    const newAnimateur: Animateur = {
-      id: Date.now(),
-      sessionId: currentSession?.id,
-      nom: form.nom,
-      prenom: form.prenom,
-      age: parseInt(form.age),
-      telephone: form.telephone,
-      email: form.email,
-      role: form.role,
-      formations: form.formations.split(',').map(f => f.trim()).filter(f => f),
-      documents: [],
-      notes: form.notes
-    };
-
-    try {
-      await db.save('animateurs', newAnimateur);
-      const updatedAnimateurs = [...animateurs, newAnimateur];
-      setAnimateurs(updatedAnimateurs);
-      
-      setForm({
-        nom: "",
-        prenom: "",
-        age: "",
-        telephone: "",
-        email: "",
-        role: "",
-        formations: "",
-        notes: ""
-      });
-      setShowForm(false);
-      
-      toast({
-        title: "Animateur ajouté",
-        description: `${form.prenom} ${form.nom} a été ajouté à l'équipe et enregistré en base de données`
-      });
-      
-      console.log('Animateur enregistré en base de données');
-    } catch (error) {
-      console.error('Erreur lors de l\'enregistrement de l\'animateur:', error);
+  const handleAddMember = () => {
+    if (!newMember.nom || !newMember.prenom || !newMember.age || !newMember.role) {
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer l'animateur",
+        description: "Veuillez remplir au moins le nom, prénom, âge et rôle",
         variant: "destructive"
       });
+      return;
     }
+
+    const member: TeamMember = {
+      id: Date.now().toString(),
+      nom: newMember.nom.toUpperCase(),
+      prenom: newMember.prenom,
+      age: parseInt(newMember.age),
+      telephone: newMember.telephone,
+      email: newMember.email,
+      role: newMember.role,
+      diplomes: newMember.diplomes.split(',').map(d => d.trim()).filter(d => d),
+      notes: newMember.notes,
+      createdAt: new Date().toISOString()
+    };
+
+    const updatedTeam = [...team, member];
+    saveTeam(updatedTeam);
+
+    toast({
+      title: "Membre ajouté",
+      description: `${newMember.prenom} ${newMember.nom} a été ajouté à l'équipe`
+    });
+
+    setNewMember({
+      nom: "",
+      prenom: "",
+      age: "",
+      telephone: "",
+      email: "",
+      role: "",
+      diplomes: "",
+      notes: ""
+    });
+    setShowAddForm(false);
   };
 
-  const deleteAnimateur = async (animateurId: number) => {
-    if (!isInitialized) return;
+  const handleDeleteMember = (id: string) => {
+    const updatedTeam = team.filter(member => member.id !== id);
+    saveTeam(updatedTeam);
+    toast({
+      title: "Membre supprimé",
+      description: "Le membre a été supprimé de l'équipe"
+    });
+  };
+
+  const handleUpdateMember = () => {
+    if (!editingMember) return;
+
+    const updatedTeam = team.map(member => 
+      member.id === editingMember.id ? editingMember : member
+    );
+    saveTeam(updatedTeam);
+    setEditingMember(null);
+    toast({
+      title: "Membre mis à jour",
+      description: "Les informations ont été mises à jour avec succès"
+    });
+  };
+
+  const exportTeamToPDF = () => {
+    if (team.length === 0) {
+      toast({
+        title: "Aucune donnée",
+        description: "Aucun membre d'équipe à exporter",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const pdf = new jsPDF();
     
-    const animateurToDelete = animateurs.find(a => a.id === animateurId);
-    if (!animateurToDelete) return;
-
-    try {
-      await db.delete('animateurs', animateurId);
-      const updatedAnimateurs = animateurs.filter(a => a.id !== animateurId);
-      setAnimateurs(updatedAnimateurs);
+    // Header avec logo
+    pdf.setFillColor(147, 51, 234);
+    pdf.rect(0, 0, 210, 25, 'F');
+    
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(20);
+    pdf.text('MG', 15, 17);
+    
+    pdf.setFontSize(16);
+    pdf.text('Liste de l\'Équipe', 50, 17);
+    
+    // Date et stats
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(10);
+    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
+    pdf.text(`Total: ${team.length} membre${team.length > 1 ? 's' : ''}`, 15, 42);
+    
+    let yPosition = 55;
+    
+    team.forEach((member, index) => {
+      // Titre du membre
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(`${index + 1}. ${member.prenom} ${member.nom}`, 15, yPosition);
+      yPosition += 7;
       
-      // Si l'animateur supprimé était sélectionné, désélectionner
-      if (selectedAnimateur === animateurId) {
-        setSelectedAnimateur(null);
+      // Informations principales
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Rôle: ${member.role}`, 20, yPosition);
+      yPosition += 5;
+      pdf.text(`Âge: ${member.age} ans`, 20, yPosition);
+      yPosition += 5;
+      
+      if (member.telephone) {
+        pdf.text(`Téléphone: ${member.telephone}`, 20, yPosition);
+        yPosition += 5;
       }
       
-      toast({
-        title: "Animateur supprimé",
-        description: `${animateurToDelete.prenom} ${animateurToDelete.nom} a été supprimé de l'équipe`
-      });
-      
-      console.log('Animateur supprimé de la base de données');
-    } catch (error) {
-      console.error('Erreur lors de la suppression de l\'animateur:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer l'animateur",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (files && selectedAnimateur && isInitialized) {
-      const updatedAnimateurs = [...animateurs];
-      const animateurIndex = updatedAnimateurs.findIndex(a => a.id === selectedAnimateur);
-      
-      if (animateurIndex !== -1) {
-        Array.from(files).forEach(file => {
-          const newDoc: Document = {
-            id: Date.now() + Math.random(),
-            nom: file.name,
-            type: file.type,
-            dateUpload: new Date().toLocaleDateString('fr-FR'),
-            url: URL.createObjectURL(file)
-          };
-
-          updatedAnimateurs[animateurIndex].documents.push(newDoc);
-        });
-
-        try {
-          await db.save('animateurs', updatedAnimateurs[animateurIndex]);
-          setAnimateurs(updatedAnimateurs);
-
-          toast({
-            title: "Documents uploadés",
-            description: `${files.length} document(s) ajouté(s) et enregistré(s) en base de données`
-          });
-          
-          console.log('Documents enregistrés en base de données');
-        } catch (error) {
-          console.error('Erreur lors de l\'enregistrement des documents:', error);
-        }
+      if (member.email) {
+        pdf.text(`Email: ${member.email}`, 20, yPosition);
+        yPosition += 5;
       }
+      
+      if (member.diplomes.length > 0) {
+        pdf.text(`Diplômes: ${member.diplomes.join(', ')}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      if (member.notes) {
+        pdf.text(`Notes: ${member.notes}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      yPosition += 8;
+      
+      // Nouvelle page si nécessaire
+      if (yPosition > 250) {
+        pdf.addPage();
+        yPosition = 20;
+      }
+    });
+    
+    // Footer
+    const pageCount = pdf.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setTextColor(128, 128, 128);
+      pdf.text(`Page ${i}/${pageCount}`, 180, 285);
+      pdf.text('Fondation MG - Gestion de l\'Équipe', 15, 285);
     }
+    
+    pdf.save(`Equipe_${new Date().toISOString().split('T')[0]}.pdf`);
+    
+    toast({
+      title: "Export réussi",
+      description: "Le fichier PDF a été téléchargé avec succès"
+    });
   };
 
-  const selectedAnimateurData = animateurs.find(a => a.id === selectedAnimateur);
+  // Fonction pour ne permettre que les chiffres
+  const handleNumericInput = (value: string, field: 'age' | 'telephone') => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setNewMember({ ...newMember, [field]: numericValue });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -217,284 +244,320 @@ const Equipe = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <UserCheck className="h-6 w-6 text-green-600" />
+              <Users className="h-6 w-6 text-purple-600" />
               <h1 className="text-2xl font-bold text-gray-900">Gestion de l'équipe</h1>
             </div>
             <Link to="/">
-              <Button variant="outline">Retour accueil</Button>
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour accueil
+              </Button>
             </Link>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Liste de l'équipe */}
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Équipe d'animation</CardTitle>
-                    <CardDescription>
-                      {animateurs.length} animateur(s) dans l'équipe
-                      {!isInitialized && <span className="text-orange-500 ml-2">(Base de données en cours d'initialisation...)</span>}
-                    </CardDescription>
-                  </div>
-                  <Button onClick={() => setShowForm(true)} disabled={showForm || !isInitialized}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Nouvel animateur
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Équipe ({team.length})</span>
+                </CardTitle>
+                <CardDescription>Gérez les membres de votre équipe d'animation</CardDescription>
+              </div>
+              <div className="flex gap-2">
+                {team.length > 0 && (
+                  <Button variant="outline" onClick={exportTeamToPDF}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Exporter PDF
                   </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {showForm && (
-                  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                    <h3 className="font-medium mb-4">Nouveau membre de l'équipe</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label>Nom (automatiquement en majuscules)</Label>
-                        <Input
-                          value={form.nom}
-                          onChange={(e) => handleNomChange(e.target.value)}
-                          placeholder="DUPONT"
-                        />
-                      </div>
-                      <div>
-                        <Label>Prénom</Label>
-                        <Input
-                          value={form.prenom}
-                          onChange={(e) => setForm(prev => ({ ...prev, prenom: e.target.value }))}
-                        />
-                      </div>
-                      <div>
-                        <Label>Âge (chiffres seulement)</Label>
-                        <Input
-                          value={form.age}
-                          onChange={(e) => handleAgeChange(e.target.value)}
-                          placeholder="25"
-                          inputMode="numeric"
-                        />
-                      </div>
-                      <div>
-                        <Label>Rôle</Label>
-                        <Input
-                          value={form.role}
-                          onChange={(e) => setForm(prev => ({ ...prev, role: e.target.value }))}
-                          placeholder="Animateur, Directeur, Cuisinier..."
-                        />
-                      </div>
-                      <div>
-                        <Label>Téléphone (chiffres seulement)</Label>
-                        <Input
-                          value={form.telephone}
-                          onChange={(e) => handleTelephoneChange(e.target.value)}
-                          placeholder="01 23 45 67 89"
-                          inputMode="numeric"
-                        />
-                      </div>
-                      <div>
-                        <Label>Email</Label>
-                        <Input
-                          type="email"
-                          value={form.email}
-                          onChange={(e) => setForm(prev => ({ ...prev, email: e.target.value }))}
-                        />
-                      </div>
-                    </div>
-                    <div className="mt-4">
-                      <Label>Formations (séparées par des virgules)</Label>
-                      <Input
-                        value={form.formations}
-                        onChange={(e) => setForm(prev => ({ ...prev, formations: e.target.value }))}
-                        placeholder="BAFA, PSC1, Surveillance baignade..."
-                      />
-                    </div>
-                    <div className="mt-4">
-                      <Label>Notes</Label>
-                      <Textarea
-                        value={form.notes}
-                        onChange={(e) => setForm(prev => ({ ...prev, notes: e.target.value }))}
-                        placeholder="Informations complémentaires..."
-                      />
-                    </div>
-                    <div className="flex space-x-2 mt-4">
-                      <Button onClick={addAnimateur}>Ajouter</Button>
-                      <Button variant="outline" onClick={() => setShowForm(false)}>Annuler</Button>
-                    </div>
-                  </div>
                 )}
-
-                {animateurs.length === 0 ? (
-                  <div className="text-center text-gray-500 py-8">
-                    <UserCheck className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Aucun animateur dans l'équipe pour cette session</p>
-                    <p className="text-sm">Cliquez sur "Nouvel animateur" pour ajouter le premier membre</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {animateurs.map((animateur) => (
-                      <div
-                        key={animateur.id}
-                        className={`p-4 border rounded-lg cursor-pointer transition-colors ${
-                          selectedAnimateur === animateur.id 
-                            ? 'border-green-500 bg-green-50' 
-                            : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                        onClick={() => setSelectedAnimateur(animateur.id)}
+                <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Ajouter un membre
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-2xl">
+                    <DialogHeader>
+                      <DialogTitle>Ajouter un membre d'équipe</DialogTitle>
+                      <DialogDescription>
+                        Ajoutez un nouveau membre à votre équipe
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="nom">Nom de famille</Label>
+                          <Input
+                            id="nom"
+                            value={newMember.nom}
+                            onChange={(e) => setNewMember({ ...newMember, nom: e.target.value.toUpperCase() })}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="prenom">Prénom</Label>
+                          <Input
+                            id="prenom"
+                            value={newMember.prenom}
+                            onChange={(e) => setNewMember({ ...newMember, prenom: e.target.value })}
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="age">Âge</Label>
+                          <Input
+                            id="age"
+                            value={newMember.age}
+                            onChange={(e) => handleNumericInput(e.target.value, 'age')}
+                            placeholder="25"
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="telephone">Téléphone</Label>
+                          <Input
+                            id="telephone"
+                            value={newMember.telephone}
+                            onChange={(e) => handleNumericInput(e.target.value, 'telephone')}
+                            placeholder="0123456789"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newMember.email}
+                          onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="role">Rôle</Label>
+                        <Select value={newMember.role} onValueChange={(value) => setNewMember({ ...newMember, role: value })}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sélectionnez un rôle" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {roles.map(role => (
+                              <SelectItem key={role} value={role}>{role}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="diplomes">Diplômes</Label>
+                        <Input
+                          id="diplomes"
+                          value={newMember.diplomes}
+                          onChange={(e) => setNewMember({ ...newMember, diplomes: e.target.value })}
+                          placeholder="BAFA, BAFD... (séparés par des virgules)"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="notes">Notes</Label>
+                        <Input
+                          id="notes"
+                          value={newMember.notes}
+                          onChange={(e) => setNewMember({ ...newMember, notes: e.target.value })}
+                          placeholder="Informations complémentaires..."
+                        />
+                      </div>
+                      <Button 
+                        className="w-full"
+                        disabled={!newMember.nom || !newMember.prenom || !newMember.age || !newMember.role}
+                        onClick={handleAddMember}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="font-medium text-lg">
-                              {animateur.prenom} {animateur.nom}
-                            </div>
-                            <div className="text-gray-600">
-                              {animateur.role} • {animateur.age} ans
-                              {animateur.age < 18 && (
-                                <span className="ml-2 px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded">
-                                  Mineur
-                                </span>
-                              )}
-                            </div>
-                            <div className="flex items-center space-x-4 mt-1 text-sm text-gray-500">
-                              <div className="flex items-center space-x-1">
-                                <Phone className="h-3 w-3" />
-                                <span>{animateur.telephone}</span>
-                              </div>
-                              <div className="flex items-center space-x-1">
-                                <Mail className="h-3 w-3" />
-                                <span>{animateur.email}</span>
-                              </div>
-                            </div>
+                        Ajouter le membre
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {team.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun membre d'équipe</h3>
+                <p className="text-gray-500 mb-4">Commencez par ajouter des membres à votre équipe</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Rôle</TableHead>
+                      <TableHead>Âge</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Diplômes</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {team.map((member) => (
+                      <TableRow key={member.id}>
+                        <TableCell className="font-medium">
+                          {member.prenom} {member.nom}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="secondary">{member.role}</Badge>
+                        </TableCell>
+                        <TableCell>{member.age} ans</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {member.telephone && <div>{member.telephone}</div>}
+                            {member.email && <div className="text-gray-500">{member.email}</div>}
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <div className="text-right">
-                              <div className="text-sm font-medium">
-                                {animateur.formations.length} formation(s)
-                              </div>
-                              <div className="text-sm text-gray-500">
-                                {animateur.documents.length} document(s)
-                              </div>
-                            </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {member.diplomes.length > 0 
+                              ? member.diplomes.join(', ') 
+                              : 'Aucun diplôme renseigné'
+                            }
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
                             <Button
-                              variant="ghost"
                               size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                deleteAnimateur(animateur.id);
-                              }}
-                              className="h-8 w-8 p-0 hover:bg-red-100 text-red-600"
+                              variant="ghost"
+                              onClick={() => setEditingMember(member)}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteMember(member.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
                             </Button>
                           </div>
-                        </div>
-                        {animateur.formations.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {animateur.formations.map((formation, index) => (
-                              <span
-                                key={index}
-                                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-                              >
-                                {formation}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Dialog d'édition */}
+        <Dialog open={!!editingMember} onOpenChange={() => setEditingMember(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Modifier le membre d'équipe</DialogTitle>
+              <DialogDescription>
+                Modifiez les informations du membre
+              </DialogDescription>
+            </DialogHeader>
+            {editingMember && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-nom">Nom de famille</Label>
+                    <Input
+                      id="edit-nom"
+                      value={editingMember.nom}
+                      onChange={(e) => setEditingMember({ ...editingMember, nom: e.target.value.toUpperCase() })}
+                    />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Fiche détaillée */}
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <FileText className="h-5 w-5" />
-                  <span>Fiche détaillée</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedAnimateurData ? (
-                  <div className="space-y-4">
-                    <div className="p-3 bg-green-50 rounded-lg">
-                      <div className="font-medium text-lg">
-                        {selectedAnimateurData.prenom} {selectedAnimateurData.nom}
-                      </div>
-                      <div className="text-gray-600">{selectedAnimateurData.role}</div>
-                    </div>
-
-                    {/* Upload de documents */}
-                    <div>
-                      <Label htmlFor="documents">Documents</Label>
-                      <Input
-                        id="documents"
-                        type="file"
-                        multiple
-                        onChange={handleFileUpload}
-                        className="mt-1"
-                        disabled={!isInitialized}
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Diplômes, certificats, pièces d'identité...
-                      </p>
-                    </div>
-
-                    {/* Liste des documents */}
-                    {selectedAnimateurData.documents.length > 0 && (
-                      <div>
-                        <h4 className="font-medium mb-2">Documents uploadés</h4>
-                        <div className="space-y-2 max-h-40 overflow-y-auto">
-                          {selectedAnimateurData.documents.map((doc) => (
-                            <div key={doc.id} className="flex items-center space-x-2 p-2 border rounded text-sm">
-                              <FileText className="h-4 w-4 text-blue-600" />
-                              <div className="flex-1">
-                                <div className="font-medium">{doc.nom}</div>
-                                <div className="text-gray-500">Ajouté le {doc.dateUpload}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Notes */}
-                    {selectedAnimateurData.notes && (
-                      <div>
-                        <h4 className="font-medium mb-2">Notes</h4>
-                        <div className="p-3 bg-gray-50 rounded text-sm">
-                          {selectedAnimateurData.notes}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Statut spécial pour mineurs */}
-                    {selectedAnimateurData.age < 18 && (
-                      <div className="p-3 bg-orange-50 border border-orange-200 rounded-lg">
-                        <div className="flex items-center space-x-2 text-orange-800">
-                          <Calendar className="h-4 w-4" />
-                          <span className="font-medium">Animateur mineur</span>
-                        </div>
-                        <p className="text-sm text-orange-700 mt-1">
-                          Droit à 2 jours de repos consécutifs le week-end selon la réglementation.
-                        </p>
-                      </div>
-                    )}
+                  <div>
+                    <Label htmlFor="edit-prenom">Prénom</Label>
+                    <Input
+                      id="edit-prenom"
+                      value={editingMember.prenom}
+                      onChange={(e) => setEditingMember({ ...editingMember, prenom: e.target.value })}
+                    />
                   </div>
-                ) : (
-                  <div className="text-center text-gray-500 py-8">
-                    <UserCheck className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>Sélectionnez un animateur pour voir sa fiche</p>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-age">Âge</Label>
+                    <Input
+                      id="edit-age"
+                      value={editingMember.age.toString()}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        setEditingMember({ ...editingMember, age: parseInt(numericValue) || 0 });
+                      }}
+                    />
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
+                  <div>
+                    <Label htmlFor="edit-telephone">Téléphone</Label>
+                    <Input
+                      id="edit-telephone"
+                      value={editingMember.telephone}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        setEditingMember({ ...editingMember, telephone: numericValue });
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-email">Email</Label>
+                  <Input
+                    id="edit-email"
+                    type="email"
+                    value={editingMember.email}
+                    onChange={(e) => setEditingMember({ ...editingMember, email: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-role">Rôle</Label>
+                  <Select value={editingMember.role} onValueChange={(value) => setEditingMember({ ...editingMember, role: value })}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {roles.map(role => (
+                        <SelectItem key={role} value={role}>{role}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="edit-diplomes">Diplômes</Label>
+                  <Input
+                    id="edit-diplomes"
+                    value={editingMember.diplomes.join(', ')}
+                    onChange={(e) => setEditingMember({ 
+                      ...editingMember, 
+                      diplomes: e.target.value.split(',').map(d => d.trim()).filter(d => d)
+                    })}
+                    placeholder="BAFA, BAFD... (séparés par des virgules)"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-notes">Notes</Label>
+                  <Input
+                    id="edit-notes"
+                    value={editingMember.notes}
+                    onChange={(e) => setEditingMember({ ...editingMember, notes: e.target.value })}
+                    placeholder="Informations complémentaires..."
+                  />
+                </div>
+                <Button 
+                  className="w-full"
+                  onClick={handleUpdateMember}
+                >
+                  Mettre à jour
+                </Button>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
