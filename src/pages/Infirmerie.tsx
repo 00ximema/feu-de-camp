@@ -30,7 +30,7 @@ interface Soin {
   id: string;
   jeuneId: string;
   jeuneNom: string;
-  type: 'soin' | 'consultation';
+  type: 'soin' | 'consultation' | 'autre';
   titre: string;
   description: string;
   date: string;
