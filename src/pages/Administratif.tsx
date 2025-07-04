@@ -29,13 +29,21 @@ const Administratif = () => {
     conventionsPartenaires: false
   });
   
-  const [emergencyNumbers, setEmergencyNumbers] = useState({
-    urgencesMedicales: "15",
-    pompiers: "18",
-    hopitalNom: "",
-    hopitalAdresse: "",
-    hopitalTelephone: "",
-    autresNumeros: ""
+  const [emergencyContacts, setEmergencyContacts] = useState([
+    { id: 1, label: "Urgences médicales", number: "15", description: "SAMU" },
+    { id: 2, label: "Pompiers", number: "18", description: "Pompiers/Secours" },
+    { id: 3, label: "Police/Gendarmerie", number: "17", description: "Police nationale/Gendarmerie" },
+    { id: 4, label: "Numéro d'urgence européen", number: "112", description: "Urgences" },
+    { id: 5, label: "Hôpital le plus proche", number: "", description: "Centre Hospitalier" },
+    { id: 6, label: "Pharmacie de garde", number: "", description: "Pharmacie" },
+    { id: 7, label: "Mairie", number: "", description: "Services municipaux" },
+    { id: 8, label: "Taxi local", number: "", description: "Transport" }
+  ]);
+
+  const [hospitalDetails, setHospitalDetails] = useState({
+    nom: "",
+    adresse: "",
+    telephone: ""
   });
 
   // Charger les jeunes depuis le localStorage au montage du composant
@@ -63,22 +71,7 @@ const Administratif = () => {
         console.error('Erreur lors du chargement des jeunes:', error);
       }
     }
-
-    // Charger les numéros d'urgence
-    const savedEmergencyNumbers = localStorage.getItem('emergency-numbers');
-    if (savedEmergencyNumbers) {
-      try {
-        setEmergencyNumbers(JSON.parse(savedEmergencyNumbers));
-      } catch (error) {
-        console.error('Erreur lors du chargement des numéros d\'urgence:', error);
-      }
-    }
   }, []);
-
-  // Sauvegarder les numéros d'urgence
-  useEffect(() => {
-    localStorage.setItem('emergency-numbers', JSON.stringify(emergencyNumbers));
-  }, [emergencyNumbers]);
 
   const handleCheckboxChange = (youngesterId: string, documentType: string, checked: boolean) => {
     setChecklistData(prev => ({
@@ -97,12 +90,60 @@ const Administratif = () => {
     }));
   };
 
-  const handleEmergencyNumberChange = (field: string, value: string) => {
-    setEmergencyNumbers(prev => ({
+  const handleEmergencyContactChange = (id: number, field: 'label' | 'number' | 'description', value: string) => {
+    setEmergencyContacts(prev => prev.map(contact => 
+      contact.id === id ? { ...contact, [field]: value } : contact
+    ));
+  };
+
+  const addEmergencyContact = () => {
+    const newId = Math.max(...emergencyContacts.map(c => c.id)) + 1;
+    setEmergencyContacts(prev => [...prev, {
+      id: newId,
+      label: "",
+      number: "",
+      description: ""
+    }]);
+  };
+
+  const removeEmergencyContact = (id: number) => {
+    setEmergencyContacts(prev => prev.filter(contact => contact.id !== id));
+  };
+
+  const handleHospitalDetailsChange = (field: string, value: string) => {
+    setHospitalDetails(prev => ({
       ...prev,
       [field]: value
     }));
   };
+
+  // Save emergency contacts to localStorage
+  useEffect(() => {
+    localStorage.setItem('emergency-contacts', JSON.stringify(emergencyContacts));
+    localStorage.setItem('hospital-details', JSON.stringify(hospitalDetails));
+  }, [emergencyContacts, hospitalDetails]);
+
+  // Load emergency contacts from localStorage
+  useEffect(() => {
+    const savedContacts = localStorage.getItem('emergency-contacts');
+    const savedHospital = localStorage.getItem('hospital-details');
+    
+    if (savedContacts) {
+      try {
+        setEmergencyContacts(JSON.parse(savedContacts));
+      } catch (error) {
+        console.error('Erreur lors du chargement des contacts d\'urgence:', error);
+      }
+    }
+    
+    if (savedHospital) {
+      try {
+        setHospitalDetails(JSON.parse(savedHospital));
+      } catch (error) {
+        console.error('Erreur lors du chargement des détails hôpital:', error);
+      }
+    }
+  }, []);
 
   const getCompletionPercentage = (youngesterId: string) => {
     const youngsterChecklist = checklistData[youngesterId];
@@ -285,65 +326,98 @@ const Administratif = () => {
               <span>Numéros d'urgence du séjour</span>
             </CardTitle>
             <CardDescription>
-              Renseignez les contacts importants pour votre séjour
+              Personnalisez et complétez les contacts importants pour votre séjour
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-6">
+              {/* Contacts d'urgence */}
               <div>
-                <Label htmlFor="urgences">Urgences médicales</Label>
-                <Input
-                  id="urgences"
-                  value={emergencyNumbers.urgencesMedicales}
-                  onChange={(e) => handleEmergencyNumberChange('urgencesMedicales', e.target.value)}
-                  placeholder="15"
-                />
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold">Contacts d'urgence</h3>
+                  <Button onClick={addEmergencyContact} size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter un contact
+                  </Button>
+                </div>
+                <div className="grid gap-4">
+                  {emergencyContacts.map((contact) => (
+                    <div key={contact.id} className="grid grid-cols-1 md:grid-cols-4 gap-3 p-4 border rounded-lg bg-gray-50">
+                      <div>
+                        <Label htmlFor={`label-${contact.id}`}>Libellé</Label>
+                        <Input
+                          id={`label-${contact.id}`}
+                          value={contact.label}
+                          onChange={(e) => handleEmergencyContactChange(contact.id, 'label', e.target.value)}
+                          placeholder="Ex: Urgences médicales"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`number-${contact.id}`}>Numéro</Label>
+                        <Input
+                          id={`number-${contact.id}`}
+                          value={contact.number}
+                          onChange={(e) => handleEmergencyContactChange(contact.id, 'number', e.target.value)}
+                          placeholder="Ex: 15"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor={`description-${contact.id}`}>Description</Label>
+                        <Input
+                          id={`description-${contact.id}`}
+                          value={contact.description}
+                          onChange={(e) => handleEmergencyContactChange(contact.id, 'description', e.target.value)}
+                          placeholder="Ex: SAMU"
+                        />
+                      </div>
+                      <div className="flex items-end">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => removeEmergencyContact(contact.id)}
+                          className="w-full"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
+
+              {/* Détails hôpital */}
               <div>
-                <Label htmlFor="pompiers">Pompiers</Label>
-                <Input
-                  id="pompiers"
-                  value={emergencyNumbers.pompiers}
-                  onChange={(e) => handleEmergencyNumberChange('pompiers', e.target.value)}
-                  placeholder="18"
-                />
-              </div>
-              <div>
-                <Label htmlFor="hopital-nom">Hôpital le plus proche - Nom</Label>
-                <Input
-                  id="hopital-nom"
-                  value={emergencyNumbers.hopitalNom}
-                  onChange={(e) => handleEmergencyNumberChange('hopitalNom', e.target.value)}
-                  placeholder="Centre Hospitalier..."
-                />
-              </div>
-              <div>
-                <Label htmlFor="hopital-tel">Hôpital - Téléphone</Label>
-                <Input
-                  id="hopital-tel"
-                  value={emergencyNumbers.hopitalTelephone}
-                  onChange={(e) => handleEmergencyNumberChange('hopitalTelephone', e.target.value)}
-                  placeholder="01 23 45 67 89"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="hopital-adresse">Hôpital - Adresse</Label>
-                <Input
-                  id="hopital-adresse"
-                  value={emergencyNumbers.hopitalAdresse}
-                  onChange={(e) => handleEmergencyNumberChange('hopitalAdresse', e.target.value)}
-                  placeholder="Adresse complète de l'hôpital"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <Label htmlFor="autres-numeros">Autres numéros importants</Label>
-                <Textarea
-                  id="autres-numeros"
-                  value={emergencyNumbers.autresNumeros}
-                  onChange={(e) => handleEmergencyNumberChange('autresNumeros', e.target.value)}
-                  placeholder="Mairie, Police locale, Taxi, autres contacts utiles..."
-                  rows={3}
-                />
+                <h3 className="text-lg font-semibold mb-4">Hôpital le plus proche</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="hopital-nom">Nom de l'établissement</Label>
+                    <Input
+                      id="hopital-nom"
+                      value={hospitalDetails.nom}
+                      onChange={(e) => handleHospitalDetailsChange('nom', e.target.value)}
+                      placeholder="Centre Hospitalier..."
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="hopital-tel">Téléphone</Label>
+                    <Input
+                      id="hopital-tel"
+                      value={hospitalDetails.telephone}
+                      onChange={(e) => handleHospitalDetailsChange('telephone', e.target.value)}
+                      placeholder="01 23 45 67 89"
+                    />
+                  </div>
+                  <div className="md:col-span-2">
+                    <Label htmlFor="hopital-adresse">Adresse complète</Label>
+                    <Textarea
+                      id="hopital-adresse"
+                      value={hospitalDetails.adresse}
+                      onChange={(e) => handleHospitalDetailsChange('adresse', e.target.value)}
+                      placeholder="Adresse complète de l'hôpital avec code postal et ville"
+                      rows={2}
+                    />
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
