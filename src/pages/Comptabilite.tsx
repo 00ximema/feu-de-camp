@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Calculator, Upload, FileSpreadsheet, TrendingUp, TrendingDown, Euro, Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
+import SimpleCalculator from "@/components/SimpleCalculator";
 
 interface FichierComptable {
   id: number;
@@ -20,7 +20,7 @@ interface FichierComptable {
   totalCalcule?: number;
 }
 
-interface Transaction {
+interface PieceComptable {
   id: number;
   date: string;
   libelle: string;
@@ -32,11 +32,11 @@ interface Transaction {
 
 const Comptabilite = () => {
   const [fichiers, setFichiers] = useState<FichierComptable[]>([]);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [piecesComptables, setPiecesComptables] = useState<PieceComptable[]>([]);
   const [selectedFichier, setSelectedFichier] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [showTransactionForm, setShowTransactionForm] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [showPieceForm, setShowPieceForm] = useState(false);
+  const [editingPiece, setEditingPiece] = useState<PieceComptable | null>(null);
   const { toast } = useToast();
 
   const [form, setForm] = useState({
@@ -44,7 +44,7 @@ const Comptabilite = () => {
     type: "" as 'recettes' | 'depenses' | 'budget' | 'bilan' | ""
   });
 
-  const [transactionForm, setTransactionForm] = useState({
+  const [pieceForm, setPieceForm] = useState({
     date: new Date().toISOString().split('T')[0],
     libelle: "",
     montant: "",
@@ -74,19 +74,19 @@ const Comptabilite = () => {
 
           setFichiers(prev => [...prev, newFichier]);
           
-          // Ajouter aux transactions si c'est recettes ou dépenses
+          // Ajouter aux pièces comptables si c'est recettes ou dépenses
           if (form.type === 'recettes' || form.type === 'depenses') {
-            const newTransactions = donneesMock.map((ligne: any, index: number) => ({
+            const newPieces = donneesMock.map((ligne: any, index: number) => ({
               id: Date.now() + index,
               date: ligne.date || new Date().toISOString().split('T')[0],
-              libelle: ligne.libelle || ligne.description || `Transaction ${index + 1}`,
+              libelle: ligne.libelle || ligne.description || `Pièce comptable ${index + 1}`,
               montant: parseFloat(ligne.montant) || 0,
               categorie: ligne.categorie || 'Général',
               type: form.type === 'recettes' ? 'recette' as const : 'depense' as const,
               pieceIntegree: false
             }));
             
-            setTransactions(prev => [...prev, ...newTransactions]);
+            setPiecesComptables(prev => [...prev, ...newPieces]);
           }
         };
         reader.readAsText(file);
@@ -136,13 +136,13 @@ const Comptabilite = () => {
   };
 
   const calculerBilan = () => {
-    const totalRecettes = transactions
-      .filter(t => t.type === 'recette')
-      .reduce((sum, t) => sum + t.montant, 0);
+    const totalRecettes = piecesComptables
+      .filter(p => p.type === 'recette')
+      .reduce((sum, p) => sum + p.montant, 0);
     
-    const totalDepenses = transactions
-      .filter(t => t.type === 'depense')
-      .reduce((sum, t) => sum + t.montant, 0);
+    const totalDepenses = piecesComptables
+      .filter(p => p.type === 'depense')
+      .reduce((sum, p) => sum + p.montant, 0);
     
     return {
       recettes: totalRecettes,
@@ -151,8 +151,8 @@ const Comptabilite = () => {
     };
   };
 
-  const handleAddTransaction = () => {
-    if (!transactionForm.libelle || !transactionForm.montant) {
+  const handleAddPiece = () => {
+    if (!pieceForm.libelle || !pieceForm.montant) {
       toast({
         title: "Erreur",
         description: "Veuillez remplir tous les champs obligatoires",
@@ -161,31 +161,31 @@ const Comptabilite = () => {
       return;
     }
 
-    const newTransaction: Transaction = {
-      id: editingTransaction ? editingTransaction.id : Date.now(),
-      date: transactionForm.date,
-      libelle: transactionForm.libelle,
-      montant: parseFloat(transactionForm.montant),
-      categorie: transactionForm.categorie || "Général",
-      type: transactionForm.type,
-      pieceIntegree: transactionForm.pieceIntegree
+    const newPiece: PieceComptable = {
+      id: editingPiece ? editingPiece.id : Date.now(),
+      date: pieceForm.date,
+      libelle: pieceForm.libelle,
+      montant: parseFloat(pieceForm.montant),
+      categorie: pieceForm.categorie || "Général",
+      type: pieceForm.type,
+      pieceIntegree: pieceForm.pieceIntegree
     };
 
-    if (editingTransaction) {
-      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? newTransaction : t));
+    if (editingPiece) {
+      setPiecesComptables(prev => prev.map(p => p.id === editingPiece.id ? newPiece : p));
       toast({
-        title: "Transaction modifiée",
-        description: "La transaction a été mise à jour avec succès"
+        title: "Pièce comptable modifiée",
+        description: "La pièce comptable a été mise à jour avec succès"
       });
     } else {
-      setTransactions(prev => [...prev, newTransaction]);
+      setPiecesComptables(prev => [...prev, newPiece]);
       toast({
-        title: "Transaction ajoutée",
-        description: "La nouvelle transaction a été enregistrée"
+        title: "Pièce comptable ajoutée",
+        description: "La nouvelle pièce comptable a été enregistrée"
       });
     }
 
-    setTransactionForm({
+    setPieceForm({
       date: new Date().toISOString().split('T')[0],
       libelle: "",
       montant: "",
@@ -193,34 +193,34 @@ const Comptabilite = () => {
       type: "recette",
       pieceIntegree: false
     });
-    setShowTransactionForm(false);
-    setEditingTransaction(null);
+    setShowPieceForm(false);
+    setEditingPiece(null);
   };
 
-  const handleEditTransaction = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
-    setTransactionForm({
-      date: transaction.date,
-      libelle: transaction.libelle,
-      montant: transaction.montant.toString(),
-      categorie: transaction.categorie,
-      type: transaction.type,
-      pieceIntegree: transaction.pieceIntegree
+  const handleEditPiece = (piece: PieceComptable) => {
+    setEditingPiece(piece);
+    setPieceForm({
+      date: piece.date,
+      libelle: piece.libelle,
+      montant: piece.montant.toString(),
+      categorie: piece.categorie,
+      type: piece.type,
+      pieceIntegree: piece.pieceIntegree
     });
-    setShowTransactionForm(true);
+    setShowPieceForm(true);
   };
 
-  const handleDeleteTransaction = (id: number) => {
-    setTransactions(prev => prev.filter(t => t.id !== id));
+  const handleDeletePiece = (id: number) => {
+    setPiecesComptables(prev => prev.filter(p => p.id !== id));
     toast({
-      title: "Transaction supprimée",
-      description: "La transaction a été supprimée avec succès"
+      title: "Pièce comptable supprimée",
+      description: "La pièce comptable a été supprimée avec succès"
     });
   };
 
   const togglePieceIntegree = (id: number) => {
-    setTransactions(prev => prev.map(t => 
-      t.id === id ? { ...t, pieceIntegree: !t.pieceIntegree } : t
+    setPiecesComptables(prev => prev.map(p => 
+      p.id === id ? { ...p, pieceIntegree: !p.pieceIntegree } : p
     ));
   };
 
@@ -316,193 +316,203 @@ const Comptabilite = () => {
           </Card>
         </div>
 
-        {/* Gestion des transactions */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Transactions</CardTitle>
-                <CardDescription>
-                  Gérez vos recettes et dépenses avec suivi d'intégration
-                </CardDescription>
-              </div>
-              <Button 
-                onClick={() => {
-                  setShowTransactionForm(true);
-                  setEditingTransaction(null);
-                  setTransactionForm({
-                    date: new Date().toISOString().split('T')[0],
-                    libelle: "",
-                    montant: "",
-                    categorie: "",
-                    type: "recette",
-                    pieceIntegree: false
-                  });
-                }}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter transaction
-              </Button>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {showTransactionForm && (
-              <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                <h3 className="font-medium mb-4">
-                  {editingTransaction ? 'Modifier la transaction' : 'Nouvelle transaction'}
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div>
-                    <Label>Date</Label>
-                    <Input
-                      type="date"
-                      value={transactionForm.date}
-                      onChange={(e) => setTransactionForm(prev => ({ ...prev, date: e.target.value }))}
-                    />
-                  </div>
-                  
-                  <div>
-                    <Label>Type</Label>
-                    <Select 
-                      value={transactionForm.type} 
-                      onValueChange={(value: 'recette' | 'depense') => setTransactionForm(prev => ({ ...prev, type: value }))}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="recette">Recette</SelectItem>
-                        <SelectItem value="depense">Dépense</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+        {/* Calculatrice et gestion des pièces comptables */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          {/* Calculatrice */}
+          <div className="lg:col-span-1">
+            <SimpleCalculator />
+          </div>
 
+          {/* Gestion des pièces comptables */}
+          <div className="lg:col-span-3">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
                   <div>
-                    <Label>Libellé *</Label>
-                    <Input
-                      value={transactionForm.libelle}
-                      onChange={(e) => setTransactionForm(prev => ({ ...prev, libelle: e.target.value }))}
-                      placeholder="Description de la transaction"
-                    />
+                    <CardTitle>Pièces comptables</CardTitle>
+                    <CardDescription>
+                      Gérez vos recettes et dépenses avec suivi d'intégration
+                    </CardDescription>
                   </div>
-
-                  <div>
-                    <Label>Montant * (€)</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={transactionForm.montant}
-                      onChange={(e) => setTransactionForm(prev => ({ ...prev, montant: e.target.value }))}
-                      placeholder="0.00"
-                    />
-                  </div>
-
-                  <div>
-                    <Label>Catégorie</Label>
-                    <Input
-                      value={transactionForm.categorie}
-                      onChange={(e) => setTransactionForm(prev => ({ ...prev, categorie: e.target.value }))}
-                      placeholder="Ex: Alimentation, Activités..."
-                    />
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox 
-                      id="pieceIntegree"
-                      checked={transactionForm.pieceIntegree}
-                      onCheckedChange={(checked) => setTransactionForm(prev => ({ ...prev, pieceIntegree: checked as boolean }))}
-                    />
-                    <Label htmlFor="pieceIntegree">Pièce intégrée au document MG</Label>
-                  </div>
-                </div>
-
-                <div className="flex space-x-2 mt-4">
-                  <Button onClick={handleAddTransaction}>
-                    {editingTransaction ? 'Modifier' : 'Ajouter'}
-                  </Button>
                   <Button 
-                    variant="outline" 
                     onClick={() => {
-                      setShowTransactionForm(false);
-                      setEditingTransaction(null);
+                      setShowPieceForm(true);
+                      setEditingPiece(null);
+                      setPieceForm({
+                        date: new Date().toISOString().split('T')[0],
+                        libelle: "",
+                        montant: "",
+                        categorie: "",
+                        type: "recette",
+                        pieceIntegree: false
+                      });
                     }}
                   >
-                    Annuler
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter pièce comptable
                   </Button>
                 </div>
-              </div>
-            )}
-
-            {transactions.length > 0 ? (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Libellé</TableHead>
-                    <TableHead>Catégorie</TableHead>
-                    <TableHead className="text-right">Montant</TableHead>
-                    <TableHead className="text-center">Pièce intégrée</TableHead>
-                    <TableHead className="text-center">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {transactions.map((transaction) => (
-                    <TableRow key={transaction.id}>
-                      <TableCell>{new Date(transaction.date).toLocaleDateString('fr-FR')}</TableCell>
-                      <TableCell>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          transaction.type === 'recette' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {transaction.type === 'recette' ? 'Recette' : 'Dépense'}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-medium">{transaction.libelle}</TableCell>
-                      <TableCell>{transaction.categorie}</TableCell>
-                      <TableCell className={`text-right font-bold ${
-                        transaction.type === 'recette' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {transaction.type === 'recette' ? '+' : '-'}{transaction.montant.toFixed(2)} €
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Checkbox 
-                          checked={transaction.pieceIntegree}
-                          onCheckedChange={() => togglePieceIntegree(transaction.id)}
+              </CardHeader>
+              <CardContent>
+                {showPieceForm && (
+                  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                    <h3 className="font-medium mb-4">
+                      {editingPiece ? 'Modifier la pièce comptable' : 'Nouvelle pièce comptable'}
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div>
+                        <Label>Date</Label>
+                        <Input
+                          type="date"
+                          value={pieceForm.date}
+                          onChange={(e) => setPieceForm(prev => ({ ...prev, date: e.target.value }))}
                         />
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex justify-center space-x-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleEditTransaction(transaction)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteTransaction(transaction.id)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p>Aucune transaction enregistrée</p>
-                <p className="text-sm">Commencez par ajouter vos premières transactions</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                      </div>
+                      
+                      <div>
+                        <Label>Type</Label>
+                        <Select 
+                          value={pieceForm.type} 
+                          onValueChange={(value: 'recette' | 'depense') => setPieceForm(prev => ({ ...prev, type: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="recette">Recette</SelectItem>
+                            <SelectItem value="depense">Dépense</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div>
+                        <Label>Libellé *</Label>
+                        <Input
+                          value={pieceForm.libelle}
+                          onChange={(e) => setPieceForm(prev => ({ ...prev, libelle: e.target.value }))}
+                          placeholder="Description de la pièce comptable"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Montant * (€)</Label>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={pieceForm.montant}
+                          onChange={(e) => setPieceForm(prev => ({ ...prev, montant: e.target.value }))}
+                          placeholder="0.00"
+                        />
+                      </div>
+
+                      <div>
+                        <Label>Catégorie</Label>
+                        <Input
+                          value={pieceForm.categorie}
+                          onChange={(e) => setPieceForm(prev => ({ ...prev, categorie: e.target.value }))}
+                          placeholder="Ex: Alimentation, Activités..."
+                        />
+                      </div>
+
+                      <div className="flex items-center space-x-2">
+                        <Checkbox 
+                          id="pieceIntegree"
+                          checked={pieceForm.pieceIntegree}
+                          onCheckedChange={(checked) => setPieceForm(prev => ({ ...prev, pieceIntegree: checked as boolean }))}
+                        />
+                        <Label htmlFor="pieceIntegree">Pièce intégrée au document MG</Label>
+                      </div>
+                    </div>
+
+                    <div className="flex space-x-2 mt-4">
+                      <Button onClick={handleAddPiece}>
+                        {editingPiece ? 'Modifier' : 'Ajouter'}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => {
+                          setShowPieceForm(false);
+                          setEditingPiece(null);
+                        }}
+                      >
+                        Annuler
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {piecesComptables.length > 0 ? (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Libellé</TableHead>
+                        <TableHead>Catégorie</TableHead>
+                        <TableHead className="text-right">Montant</TableHead>
+                        <TableHead className="text-center">Pièce intégrée</TableHead>
+                        <TableHead className="text-center">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {piecesComptables.map((piece) => (
+                        <TableRow key={piece.id}>
+                          <TableCell>{new Date(piece.date).toLocaleDateString('fr-FR')}</TableCell>
+                          <TableCell>
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${
+                              piece.type === 'recette' 
+                                ? 'bg-green-100 text-green-800' 
+                                : 'bg-red-100 text-red-800'
+                            }`}>
+                              {piece.type === 'recette' ? 'Recette' : 'Dépense'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="font-medium">{piece.libelle}</TableCell>
+                          <TableCell>{piece.categorie}</TableCell>
+                          <TableCell className={`text-right font-bold ${
+                            piece.type === 'recette' ? 'text-green-600' : 'text-red-600'
+                          }`}>
+                            {piece.type === 'recette' ? '+' : '-'}{piece.montant.toFixed(2)} €
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Checkbox 
+                              checked={piece.pieceIntegree}
+                              onCheckedChange={() => togglePieceIntegree(piece.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex justify-center space-x-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleEditPiece(piece)}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleDeletePiece(piece.id)}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p>Aucune pièce comptable enregistrée</p>
+                    <p className="text-sm">Commencez par ajouter vos premières pièces comptables</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* Gestion des fichiers */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
