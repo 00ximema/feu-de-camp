@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +8,14 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit, FileText, Upload, Eye } from "lucide-react";
+import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit, Upload, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import jsPDF from 'jspdf';
+import { useTeamManagement } from "@/hooks/useTeamManagement";
+import { exportTeamToPDF } from "@/utils/teamPdfExporter";
+import TeamMemberForm from "@/components/team/TeamMemberForm";
+import DocumentManager from "@/components/team/DocumentManager";
+import DocumentUploader from "@/components/team/DocumentUploader";
 
 interface TeamMember {
   id: string;
@@ -23,19 +28,19 @@ interface TeamMember {
   diplomes: string[];
   notes: string;
   createdAt: string;
-  documents?: Document[];
+  documents?: TeamDocument[];
 }
 
-interface Document {
+interface TeamDocument {
   id: string;
   name: string;
   type: string;
   uploadDate: string;
-  data?: string; // Base64 data pour simuler le stockage
+  data?: string;
 }
 
 const Equipe = () => {
-  const [team, setTeam] = useState<TeamMember[]>([]);
+  const { team, addMember, updateMember, deleteMember, addDocument, deleteDocument, downloadDocument } = useTeamManagement();
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [showDocuments, setShowDocuments] = useState<string | null>(null);
@@ -64,24 +69,6 @@ const Equipe = () => {
     "Autre"
   ];
 
-  // Charger l'équipe depuis le localStorage
-  useEffect(() => {
-    const savedTeam = localStorage.getItem('team-members');
-    if (savedTeam) {
-      try {
-        setTeam(JSON.parse(savedTeam));
-      } catch (error) {
-        console.error('Erreur lors du chargement de l\'équipe:', error);
-      }
-    }
-  }, []);
-
-  // Sauvegarder l'équipe dans le localStorage
-  const saveTeam = (updatedTeam: TeamMember[]) => {
-    localStorage.setItem('team-members', JSON.stringify(updatedTeam));
-    setTeam(updatedTeam);
-  };
-
   const handleAddMember = () => {
     if (!newMember.nom || !newMember.prenom || !newMember.age || !newMember.role) {
       toast({
@@ -92,25 +79,15 @@ const Equipe = () => {
       return;
     }
 
-    const member: TeamMember = {
-      id: Date.now().toString(),
-      nom: newMember.nom.toUpperCase(),
+    addMember({
+      nom: newMember.nom,
       prenom: newMember.prenom,
       age: parseInt(newMember.age),
       telephone: newMember.telephone,
       email: newMember.email,
       role: newMember.role,
-      diplomes: newMember.diplomes.split(',').map(d => d.trim()).filter(d => d),
-      notes: newMember.notes,
-      createdAt: new Date().toISOString()
-    };
-
-    const updatedTeam = [...team, member];
-    saveTeam(updatedTeam);
-
-    toast({
-      title: "Membre ajouté",
-      description: `${newMember.prenom} ${newMember.nom} a été ajouté à l'équipe`
+      diplomes: newMember.diplomes,
+      notes: newMember.notes
     });
 
     setNewMember({
@@ -126,94 +103,18 @@ const Equipe = () => {
     setShowAddForm(false);
   };
 
-  const handleDeleteMember = (id: string) => {
-    const updatedTeam = team.filter(member => member.id !== id);
-    saveTeam(updatedTeam);
-    toast({
-      title: "Membre supprimé",
-      description: "Le membre a été supprimé de l'équipe"
-    });
-  };
-
   const handleUpdateMember = () => {
     if (!editingMember) return;
-
-    const updatedTeam = team.map(member => 
-      member.id === editingMember.id ? editingMember : member
-    );
-    saveTeam(updatedTeam);
+    updateMember(editingMember);
     setEditingMember(null);
-    toast({
-      title: "Membre mis à jour",
-      description: "Les informations ont été mises à jour avec succès"
-    });
   };
 
   const handleFileUpload = (memberId: string, file: File) => {
-    if (file.size > 5 * 1024 * 1024) { // 5MB limit
-      toast({
-        title: "Fichier trop volumineux",
-        description: "La taille du fichier ne doit pas dépasser 5MB",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const newDocument: Document = {
-        id: Date.now().toString(),
-        name: file.name,
-        type: file.type,
-        uploadDate: new Date().toISOString(),
-        data: e.target?.result as string
-      };
-
-      const updatedTeam = team.map(member => 
-        member.id === memberId 
-          ? { ...member, documents: [...(member.documents || []), newDocument] }
-          : member
-      );
-      
-      saveTeam(updatedTeam);
-      setShowUploadDialog(null);
-      
-      toast({
-        title: "Document ajouté",
-        description: `${file.name} a été ajouté avec succès`
-      });
-    };
-    
-    reader.readAsDataURL(file);
+    addDocument(memberId, file);
+    setShowUploadDialog(null);
   };
 
-  const handleDeleteDocument = (memberId: string, documentId: string) => {
-    const updatedTeam = team.map(member => 
-      member.id === memberId 
-        ? { ...member, documents: member.documents?.filter(doc => doc.id !== documentId) || [] }
-        : member
-    );
-    
-    saveTeam(updatedTeam);
-    
-    toast({
-      title: "Document supprimé",
-      description: "Le document a été supprimé avec succès"
-    });
-  };
-
-  const handleDownloadDocument = (document: Document) => {
-    if (document.data) {
-      const link = document.createElement('a');
-      link.href = document.data;
-      link.download = document.name;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    }
-  };
-
-  const exportTeamToPDF = () => {
+  const handleExportToPDF = () => {
     if (team.length === 0) {
       toast({
         title: "Aucune donnée",
@@ -223,82 +124,7 @@ const Equipe = () => {
       return;
     }
 
-    const pdf = new jsPDF();
-    
-    // Header avec logo
-    pdf.setFillColor(147, 51, 234);
-    pdf.rect(0, 0, 210, 25, 'F');
-    
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(20);
-    pdf.text('MG', 15, 17);
-    
-    pdf.setFontSize(16);
-    pdf.text('Liste de l\'Équipe', 50, 17);
-    
-    // Date et stats
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(10);
-    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
-    pdf.text(`Total: ${team.length} membre${team.length > 1 ? 's' : ''}`, 15, 42);
-    
-    let yPosition = 55;
-    
-    team.forEach((member, index) => {
-      // Titre du membre
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text(`${index + 1}. ${member.prenom} ${member.nom}`, 15, yPosition);
-      yPosition += 7;
-      
-      // Informations principales
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(`Rôle: ${member.role}`, 20, yPosition);
-      yPosition += 5;
-      pdf.text(`Âge: ${member.age} ans`, 20, yPosition);
-      yPosition += 5;
-      
-      if (member.telephone) {
-        pdf.text(`Téléphone: ${member.telephone}`, 20, yPosition);
-        yPosition += 5;
-      }
-      
-      if (member.email) {
-        pdf.text(`Email: ${member.email}`, 20, yPosition);
-        yPosition += 5;
-      }
-      
-      if (member.diplomes.length > 0) {
-        pdf.text(`Diplômes: ${member.diplomes.join(', ')}`, 20, yPosition);
-        yPosition += 5;
-      }
-      
-      if (member.notes) {
-        pdf.text(`Notes: ${member.notes}`, 20, yPosition);
-        yPosition += 5;
-      }
-      
-      yPosition += 8;
-      
-      // Nouvelle page si nécessaire
-      if (yPosition > 250) {
-        pdf.addPage();
-        yPosition = 20;
-      }
-    });
-    
-    // Footer
-    const pageCount = pdf.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(`Page ${i}/${pageCount}`, 180, 285);
-      pdf.text('Fondation MG - Gestion de l\'Équipe', 15, 285);
-    }
-    
-    pdf.save(`Equipe_${new Date().toISOString().split('T')[0]}.pdf`);
+    exportTeamToPDF(team);
     
     toast({
       title: "Export réussi",
@@ -306,11 +132,7 @@ const Equipe = () => {
     });
   };
 
-  // Fonction pour ne permettre que les chiffres
-  const handleNumericInput = (value: string, field: 'age' | 'telephone') => {
-    const numericValue = value.replace(/[^0-9]/g, '');
-    setNewMember({ ...newMember, [field]: numericValue });
-  };
+  const selectedMember = showDocuments ? team.find(m => m.id === showDocuments) : null;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -344,7 +166,7 @@ const Equipe = () => {
               </div>
               <div className="flex gap-2">
                 {team.length > 0 && (
-                  <Button variant="outline" onClick={exportTeamToPDF}>
+                  <Button variant="outline" onClick={handleExportToPDF}>
                     <Download className="h-4 w-4 mr-2" />
                     Exporter PDF
                   </Button>
@@ -363,93 +185,12 @@ const Equipe = () => {
                         Ajoutez un nouveau membre à votre équipe
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="nom">Nom de famille</Label>
-                          <Input
-                            id="nom"
-                            value={newMember.nom}
-                            onChange={(e) => setNewMember({ ...newMember, nom: e.target.value.toUpperCase() })}
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="prenom">Prénom</Label>
-                          <Input
-                            id="prenom"
-                            value={newMember.prenom}
-                            onChange={(e) => setNewMember({ ...newMember, prenom: e.target.value })}
-                          />
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <Label htmlFor="age">Âge</Label>
-                          <Input
-                            id="age"
-                            value={newMember.age}
-                            onChange={(e) => handleNumericInput(e.target.value, 'age')}
-                            placeholder="25"
-                          />
-                        </div>
-                        <div>
-                          <Label htmlFor="telephone">Téléphone</Label>
-                          <Input
-                            id="telephone"
-                            value={newMember.telephone}
-                            onChange={(e) => handleNumericInput(e.target.value, 'telephone')}
-                            placeholder="0123456789"
-                          />
-                        </div>
-                      </div>
-                      <div>
-                        <Label htmlFor="email">Email</Label>
-                        <Input
-                          id="email"
-                          type="email"
-                          value={newMember.email}
-                          onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="role">Rôle</Label>
-                        <Select value={newMember.role} onValueChange={(value) => setNewMember({ ...newMember, role: value })}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Sélectionnez un rôle" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {roles.map(role => (
-                              <SelectItem key={role} value={role}>{role}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div>
-                        <Label htmlFor="diplomes">Diplômes</Label>
-                        <Input
-                          id="diplomes"
-                          value={newMember.diplomes}
-                          onChange={(e) => setNewMember({ ...newMember, diplomes: e.target.value })}
-                          placeholder="BAFA, BAFD... (séparés par des virgules)"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="notes">Notes</Label>
-                        <Input
-                          id="notes"
-                          value={newMember.notes}
-                          onChange={(e) => setNewMember({ ...newMember, notes: e.target.value })}
-                          placeholder="Informations complémentaires..."
-                        />
-                      </div>
-                      <Button 
-                        className="w-full"
-                        disabled={!newMember.nom || !newMember.prenom || !newMember.age || !newMember.role}
-                        onClick={handleAddMember}
-                      >
-                        Ajouter le membre
-                      </Button>
-                    </div>
+                    <TeamMemberForm
+                      formData={newMember}
+                      onFormDataChange={setNewMember}
+                      onSubmit={handleAddMember}
+                      roles={roles}
+                    />
                   </DialogContent>
                 </Dialog>
               </div>
@@ -531,7 +272,7 @@ const Equipe = () => {
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleDeleteMember(member.id)}
+                              onClick={() => deleteMember(member.id)}
                             >
                               <Trash2 className="h-3 w-3" />
                             </Button>
@@ -653,85 +394,24 @@ const Equipe = () => {
           </DialogContent>
         </Dialog>
 
-        {/* Dialog de visualisation des documents */}
-        <Dialog open={!!showDocuments} onOpenChange={() => setShowDocuments(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Documents</DialogTitle>
-              <DialogDescription>
-                {showDocuments && `Documents de ${team.find(m => m.id === showDocuments)?.prenom} ${team.find(m => m.id === showDocuments)?.nom}`}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3">
-              {showDocuments && team.find(m => m.id === showDocuments)?.documents?.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <FileText className="h-4 w-4 text-blue-600" />
-                    <div>
-                      <p className="font-medium">{doc.name}</p>
-                      <p className="text-sm text-gray-500">
-                        Ajouté le {new Date(doc.uploadDate).toLocaleDateString('fr-FR')}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleDownloadDocument(doc)}
-                    >
-                      <Download className="h-3 w-3 mr-1" />
-                      Télécharger
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => showDocuments && handleDeleteDocument(showDocuments, doc.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </div>
-              )) || (
-                <div className="text-center py-8">
-                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-500">Aucun document</p>
-                </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Document Manager */}
+        {selectedMember && (
+          <DocumentManager
+            documents={selectedMember.documents || []}
+            onDeleteDocument={(docId) => deleteDocument(selectedMember.id, docId)}
+            onDownloadDocument={downloadDocument}
+            showDocuments={!!showDocuments}
+            onClose={() => setShowDocuments(null)}
+            memberName={`${selectedMember.prenom} ${selectedMember.nom}`}
+          />
+        )}
 
-        {/* Dialog d'upload de document */}
-        <Dialog open={!!showUploadDialog} onOpenChange={() => setShowUploadDialog(null)}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Ajouter un document</DialogTitle>
-              <DialogDescription>
-                Téléchargez un document pour ce membre (contrat, certificat, diplôme, etc.)
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="document">Sélectionner un fichier</Label>
-                <Input
-                  id="document"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file && showUploadDialog) {
-                      handleFileUpload(showUploadDialog, file);
-                    }
-                  }}
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Formats acceptés: PDF, DOC, DOCX, JPG, PNG (max 5MB)
-                </p>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+        {/* Document Uploader */}
+        <DocumentUploader
+          showUploadDialog={!!showUploadDialog}
+          onClose={() => setShowUploadDialog(null)}
+          onFileUpload={(file) => showUploadDialog && handleFileUpload(showUploadDialog, file)}
+        />
       </main>
     </div>
   );
