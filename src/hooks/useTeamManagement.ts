@@ -135,13 +135,37 @@ export const useTeamManagement = () => {
   };
 
   const downloadDocument = (document: TeamDocument) => {
-    if (document.data) {
-      const link = window.document.createElement('a');
-      link.href = document.data;
-      link.download = document.name;
-      window.document.body.appendChild(link);
-      link.click();
-      window.document.body.removeChild(link);
+    try {
+      if (document.data) {
+        // Créer un élément anchor temporaire pour le téléchargement
+        const link = document.createElement('a');
+        link.href = document.data;
+        link.download = document.name;
+        link.style.display = 'none';
+        
+        // Ajouter à la page, cliquer, puis supprimer
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast({
+          title: "Téléchargement démarré",
+          description: `${document.name} est en cours de téléchargement`
+        });
+      } else {
+        toast({
+          title: "Erreur",
+          description: "Aucune donnée disponible pour ce document",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error('Erreur lors du téléchargement:', error);
+      toast({
+        title: "Erreur de téléchargement",
+        description: "Impossible de télécharger le document",
+        variant: "destructive"
+      });
     }
   };
 
