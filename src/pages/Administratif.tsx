@@ -6,25 +6,30 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Download, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2, Edit } from "lucide-react";
+import { FileText, Download, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2, Edit, Shield } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Youngster } from "@/types/youngster";
 import { useEvents } from "@/hooks/useEvents";
 import jsPDF from 'jspdf';
+import { useToast } from "@/hooks/use-toast";
 
 const Administratif = () => {
   const [youngsters, setYoungsters] = useState<Youngster[]>([]);
   const { events } = useEvents();
+  const { toast } = useToast();
   const [checklistData, setChecklistData] = useState<{ [key: string]: { [key: string]: boolean } }>({});
+  const [exerciceEvacuationDone, setExerciceEvacuationDone] = useState(false);
   const [acmDocuments, setAcmDocuments] = useState<{ [key: string]: boolean }>({
     declarationACM: false,
     projetEducatif: false,
     projetPedagogique: false,
-    reglementInterieur: false,
     registrePresence: false,
-    planEvacuation: false,
-    trousseSecours: false,
+    planEvacuationConsignes: false,
+    panneauInterdictionFumer: false,
+    adressesUrgence: false,
+    tableauTemperatures: false,
+    menusSemaine: false,
     protocoleSanitaire: false,
     assurances: false,
     conventionsPartenaires: false
@@ -38,7 +43,9 @@ const Administratif = () => {
     { id: 5, label: "Hôpital le plus proche", number: "", description: "Centre Hospitalier" },
     { id: 6, label: "Pharmacie de garde", number: "", description: "Pharmacie" },
     { id: 7, label: "Mairie", number: "", description: "Services municipaux" },
-    { id: 8, label: "Taxi local", number: "", description: "Transport" }
+    { id: 8, label: "Taxi local", number: "", description: "Transport" },
+    { id: 9, label: "Centre Antipoison", number: "01 40 05 48 48", description: "Centre antipoison" },
+    { id: 10, label: "Allo enfance maltraitée", number: "119", description: "Enfance en danger" }
   ]);
 
   const [selectedContactId, setSelectedContactId] = useState<string>("");
@@ -158,10 +165,11 @@ const Administratif = () => {
     localStorage.setItem('hospital-details', JSON.stringify(hospitalDetails));
   }, [emergencyContacts, hospitalDetails]);
 
-  // Load emergency contacts from localStorage
+  // Load emergency contacts from localStorage and evacuation exercise state
   useEffect(() => {
     const savedContacts = localStorage.getItem('emergency-contacts');
     const savedHospital = localStorage.getItem('hospital-details');
+    const savedEvacuation = localStorage.getItem('evacuation-exercise-done');
     
     if (savedContacts) {
       try {
@@ -178,6 +186,10 @@ const Administratif = () => {
         console.error('Erreur lors du chargement des détails hôpital:', error);
       }
     }
+
+    if (savedEvacuation) {
+      setExerciceEvacuationDone(JSON.parse(savedEvacuation));
+    }
   }, []);
 
   const getCompletionPercentage = (youngesterId: string) => {
@@ -190,147 +202,170 @@ const Administratif = () => {
     return Math.round((completedItems / totalItems) * 100);
   };
 
+  const handleEvacuationExerciseValidation = () => {
+    setExerciceEvacuationDone(true);
+    localStorage.setItem('evacuation-exercise-done', JSON.stringify(true));
+    toast({
+      title: "Exercice validé",
+      description: "L'exercice d'évacuation a été marqué comme effectué"
+    });
+  };
+
   const exportInfirmerieReportToPDF = () => {
-    const pdf = new jsPDF();
-    
-    // Header avec logo
-    pdf.setFillColor(147, 51, 234);
-    pdf.rect(0, 0, 210, 25, 'F');
-    
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(20);
-    pdf.text('MG', 15, 17);
-    
-    pdf.setFontSize(16);
-    pdf.text('Rapport Infirmerie et Événements', 50, 17);
-    
-    // Date
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(10);
-    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
-    
-    let yPosition = 50;
-    
-    // Récupérer les données d'infirmerie depuis le localStorage
-    const infirmerieData = localStorage.getItem('infirmerie-data');
-    
-    if (infirmerieData) {
-      const data = JSON.parse(infirmerieData);
+    try {
+      const pdf = new jsPDF();
       
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('DONNÉES INFIRMERIE', 15, yPosition);
-      yPosition += 15;
+      // Header avec logo
+      pdf.setFillColor(147, 51, 234);
+      pdf.rect(0, 0, 210, 25, 'F');
       
-      // Ajouter les soins dispensés
-      if (data.soins && data.soins.length > 0) {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text('SOINS DISPENSÉS:', 15, yPosition);
-        yPosition += 10;
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(20);
+      pdf.text('CVJ MG', 15, 17);
+      
+      pdf.setFontSize(16);
+      pdf.text('Rapport Infirmerie et Événements', 50, 17);
+      
+      // Date
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(10);
+      pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
+      
+      let yPosition = 50;
+      
+      // Récupérer les données d'infirmerie depuis le localStorage
+      const infirmerieData = localStorage.getItem('infirmerie-data');
+      
+      if (infirmerieData) {
+        const data = JSON.parse(infirmerieData);
         
-        data.soins.forEach((soin: any, index: number) => {
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'bold');
-          pdf.text(`${index + 1}. ${soin.date} - ${soin.youngsterName}`, 20, yPosition);
-          yPosition += 6;
-          
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`Symptômes: ${soin.symptomes}`, 25, yPosition);
-          yPosition += 5;
-          pdf.text(`Traitement: ${soin.traitement}`, 25, yPosition);
-          yPosition += 5;
-          pdf.text(`Animateur: ${soin.animateur}`, 25, yPosition);
-          yPosition += 8;
-          
-          if (yPosition > 250) {
-            pdf.addPage();
-            yPosition = 20;
-          }
-        });
-      }
-      
-      // Ajouter les traitements en cours
-      if (data.traitements && data.traitements.length > 0) {
-        pdf.setFontSize(12);
+        pdf.setFontSize(14);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('TRAITEMENTS EN COURS:', 15, yPosition);
-        yPosition += 10;
+        pdf.text('DONNÉES INFIRMERIE', 15, yPosition);
+        yPosition += 15;
         
-        data.traitements.forEach((traitement: any, index: number) => {
-          pdf.setFontSize(10);
+        // Ajouter les soins dispensés
+        if (data.soins && data.soins.length > 0) {
+          pdf.setFontSize(12);
           pdf.setFont('helvetica', 'bold');
-          pdf.text(`${index + 1}. ${traitement.youngsterName}`, 20, yPosition);
-          yPosition += 6;
+          pdf.text('SOINS DISPENSÉS:', 15, yPosition);
+          yPosition += 10;
           
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`Médicament: ${traitement.medicament}`, 25, yPosition);
-          yPosition += 5;
-          pdf.text(`Posologie: ${traitement.posologie}`, 25, yPosition);
-          yPosition += 5;
-          pdf.text(`Fréquence: ${traitement.frequence}`, 25, yPosition);
-          yPosition += 8;
-          
-          if (yPosition > 250) {
-            pdf.addPage();
-            yPosition = 20;
-          }
-        });
-      }
-    }
-    
-    // Ajouter les événements des jeunes
-    if (events.length > 0) {
-      yPosition += 10;
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('ÉVÉNEMENTS JEUNES', 15, yPosition);
-      yPosition += 15;
-      
-      // Grouper les événements par jeune
-      const eventsByYoungster: { [key: string]: any[] } = {};
-      events.forEach(event => {
-        if (!eventsByYoungster[event.youngsterName]) {
-          eventsByYoungster[event.youngsterName] = [];
+          data.soins.forEach((soin: any, index: number) => {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`${index + 1}. ${soin.date} - ${soin.youngsterName}`, 20, yPosition);
+            yPosition += 6;
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Symptômes: ${soin.symptomes}`, 25, yPosition);
+            yPosition += 5;
+            pdf.text(`Traitement: ${soin.traitement}`, 25, yPosition);
+            yPosition += 5;
+            pdf.text(`Animateur: ${soin.animateur}`, 25, yPosition);
+            yPosition += 8;
+            
+            if (yPosition > 250) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+          });
         }
-        eventsByYoungster[event.youngsterName].push(event);
-      });
-      
-      // Ajouter les événements groupés au rapport
-      Object.entries(eventsByYoungster).forEach(([youngsterName, youngsterEvents]) => {
-        pdf.setFontSize(12);
-        pdf.setFont('helvetica', 'bold');
-        pdf.text(`JEUNE: ${youngsterName}`, 15, yPosition);
-        yPosition += 8;
         
-        youngsterEvents.forEach((event: any, index: number) => {
-          pdf.setFontSize(10);
-          pdf.setFont('helvetica', 'normal');
-          pdf.text(`${index + 1}. ${event.date} - ${event.type}`, 20, yPosition);
-          yPosition += 5;
-          pdf.text(`Description: ${event.description}`, 25, yPosition);
-          yPosition += 7;
+        // Ajouter les traitements en cours
+        if (data.traitements && data.traitements.length > 0) {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('TRAITEMENTS EN COURS:', 15, yPosition);
+          yPosition += 10;
           
-          if (yPosition > 250) {
-            pdf.addPage();
-            yPosition = 20;
+          data.traitements.forEach((traitement: any, index: number) => {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'bold');
+            pdf.text(`${index + 1}. ${traitement.youngsterName}`, 20, yPosition);
+            yPosition += 6;
+            
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`Médicament: ${traitement.medicament}`, 25, yPosition);
+            yPosition += 5;
+            pdf.text(`Posologie: ${traitement.posologie}`, 25, yPosition);
+            yPosition += 5;
+            pdf.text(`Fréquence: ${traitement.frequence}`, 25, yPosition);
+            yPosition += 8;
+            
+            if (yPosition > 250) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+          });
+        }
+      }
+      
+      // Ajouter les événements des jeunes
+      if (events.length > 0) {
+        yPosition += 10;
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('ÉVÉNEMENTS JEUNES', 15, yPosition);
+        yPosition += 15;
+        
+        // Grouper les événements par jeune
+        const eventsByYoungster: { [key: string]: any[] } = {};
+        events.forEach(event => {
+          if (!eventsByYoungster[event.youngsterName]) {
+            eventsByYoungster[event.youngsterName] = [];
           }
+          eventsByYoungster[event.youngsterName].push(event);
         });
-        yPosition += 5;
+        
+        // Ajouter les événements groupés au rapport
+        Object.entries(eventsByYoungster).forEach(([youngsterName, youngsterEvents]) => {
+          pdf.setFontSize(12);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`JEUNE: ${youngsterName}`, 15, yPosition);
+          yPosition += 8;
+          
+          youngsterEvents.forEach((event: any, index: number) => {
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.text(`${index + 1}. ${event.date} - ${event.type}`, 20, yPosition);
+            yPosition += 5;
+            pdf.text(`Description: ${event.description}`, 25, yPosition);
+            yPosition += 7;
+            
+            if (yPosition > 250) {
+              pdf.addPage();
+              yPosition = 20;
+            }
+          });
+          yPosition += 5;
+        });
+      }
+      
+      // Footer
+      const pageCount = pdf.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(8);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`Page ${i}/${pageCount}`, 180, 285);
+        pdf.text('Fondation MG - Rapport Administratif', 15, 285);
+      }
+      
+      pdf.save(`Rapport_Infirmerie_Evenements_${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "PDF généré",
+        description: "Le rapport a été téléchargé avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le PDF",
+        variant: "destructive"
       });
     }
-    
-    // Footer
-    const pageCount = pdf.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(`Page ${i}/${pageCount}`, 180, 285);
-      pdf.text('Fondation MG - Rapport Administratif', 15, 285);
-    }
-    
-    pdf.save(`Rapport_Infirmerie_Evenements_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   return (
@@ -353,6 +388,38 @@ const Administratif = () => {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Encart exercice d'évacuation */}
+        <Card className="mb-6 border-orange-200 bg-orange-50">
+          <CardHeader className="pb-4">
+            <CardTitle className="flex items-center space-x-2 text-lg text-orange-800">
+              <Shield className="h-5 w-5" />
+              <span>Exercice d'alerte et d'évacuation obligatoire</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <p className="text-sm text-orange-700">
+                Un exercice d'alerte et d'évacuation doit être obligatoirement effectué au début 
+                du séjour avec les enfants. Cet exercice doit être consigné sur les registres de sécurité.
+              </p>
+              <div className="flex items-center space-x-3">
+                <Checkbox
+                  id="evacuation-exercise"
+                  checked={exerciceEvacuationDone}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      handleEvacuationExerciseValidation();
+                    }
+                  }}
+                />
+                <Label htmlFor="evacuation-exercise" className="text-sm font-medium">
+                  {exerciceEvacuationDone ? "✓ Exercice effectué et consigné" : "Valider que l'exercice a été effectué"}
+                </Label>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Numéros d'urgence */}
         <Card className="mb-6">
           <CardHeader className="pb-4">
@@ -536,33 +603,47 @@ const Administratif = () => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={acmDocuments.reglementInterieur}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('reglementInterieur', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Règlement intérieur</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
                     checked={acmDocuments.registrePresence}
                     onCheckedChange={(checked) => handleAcmCheckboxChange('registrePresence', checked as boolean)}
                   />
                   <label className="text-xs font-medium">Registre de présence</label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={acmDocuments.planEvacuationConsignes}
+                    onCheckedChange={(checked) => handleAcmCheckboxChange('planEvacuationConsignes', checked as boolean)}
+                  />
+                  <label className="text-xs font-medium">Plan des locaux et consignes d'évacuation</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={acmDocuments.panneauInterdictionFumer}
+                    onCheckedChange={(checked) => handleAcmCheckboxChange('panneauInterdictionFumer', checked as boolean)}
+                  />
+                  <label className="text-xs font-medium">Panneau d'interdiction de fumer dans les locaux</label>
+                </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={acmDocuments.planEvacuation}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('planEvacuation', checked as boolean)}
+                    checked={acmDocuments.adressesUrgence}
+                    onCheckedChange={(checked) => handleAcmCheckboxChange('adressesUrgence', checked as boolean)}
                   />
-                  <label className="text-xs font-medium">Plan d'évacuation</label>
+                  <label className="text-xs font-medium">Adresses et numéros de téléphone des services d'urgence</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    checked={acmDocuments.trousseSecours}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('trousseSecours', checked as boolean)}
+                    checked={acmDocuments.tableauTemperatures}
+                    onCheckedChange={(checked) => handleAcmCheckboxChange('tableauTemperatures', checked as boolean)}
                   />
-                  <label className="text-xs font-medium">Trousse de secours</label>
+                  <label className="text-xs font-medium">Tableau des relevés de température sur les réfrigérateurs et congélateurs</label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Checkbox
+                    checked={acmDocuments.menusSemaine}
+                    onCheckedChange={(checked) => handleAcmCheckboxChange('menusSemaine', checked as boolean)}
+                  />
+                  <label className="text-xs font-medium">Menus de la semaine</label>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
