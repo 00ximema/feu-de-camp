@@ -7,181 +7,146 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, Upload, Search, UserPlus, AlertCircle, FileText, Calendar, Plus } from "lucide-react";
+import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
-import GroupsManager from "@/components/GroupsManager";
-import QuartiersLibres from "@/components/QuartiersLibres";
-import { parseExcel } from "@/utils/excelParser";
-import { Youngster } from "@/types/youngster";
-import { useJeunes } from "@/hooks/useJeunes";
-import { useEvents } from "@/hooks/useEvents";
-import RoomManager from "@/components/RoomManager";
-import BlankPdfGenerator from "@/components/BlankPdfGenerator";
+import jsPDF from 'jspdf';
+
+interface Jeune {
+  id: string;
+  nom: string;
+  prenom: string;
+  dateDeNaissance: string;
+  adresse: string;
+  telephone: string;
+  email: string;
+  informationsMedicales: string;
+  personneContactNom: string;
+  personneContactTelephone: string;
+  notes: string;
+  createdAt: string;
+}
 
 const Jeunes = () => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedYoungster, setSelectedYoungster] = useState<Youngster | null>(null);
+  const [jeunes, setJeunes] = useState<Jeune[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [showEventDialog, setShowEventDialog] = useState(false);
-  const [selectedYoungsterForEvent, setSelectedYoungsterForEvent] = useState<Youngster | null>(null);
+  const [editingJeune, setEditingJeune] = useState<Jeune | null>(null);
   const { toast } = useToast();
-  const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, isInitialized } = useJeunes();
-  const { events, addEvent } = useEvents();
 
-  const [newYoungster, setNewYoungster] = useState({
+  const [newJeune, setNewJeune] = useState({
     nom: "",
     prenom: "",
-    age: "",
+    dateDeNaissance: "",
+    adresse: "",
     telephone: "",
     email: "",
-    adresse: "",
-    allergies: "",
-    medicaments: "",
+    informationsMedicales: "",
+    personneContactNom: "",
+    personneContactTelephone: "",
     notes: ""
   });
 
-  const [newEvent, setNewEvent] = useState({
-    type: "",
-    description: ""
+  const [stats, setStats] = useState({
+    total: 0
   });
 
-  const filteredYoungsters = jeunes.filter(
-    (youngster) =>
-      youngster.nom.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      youngster.prenom.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    const savedJeunes = localStorage.getItem('jeunes');
+    if (savedJeunes) {
+      try {
+        setJeunes(JSON.parse(savedJeunes));
+      } catch (error) {
+        console.error('Erreur lors du chargement des jeunes:', error);
+      }
+    }
+  }, []);
 
-  const handleAddYoungster = async () => {
-    if (!newYoungster.nom || !newYoungster.prenom || !newYoungster.age) {
+  useEffect(() => {
+    setStats({
+      total: jeunes.length
+    });
+  }, [jeunes]);
+
+  const saveJeunes = (updatedJeunes: Jeune[]) => {
+    localStorage.setItem('jeunes', JSON.stringify(updatedJeunes));
+    setJeunes(updatedJeunes);
+  };
+
+  const handleAddJeune = () => {
+    if (!newJeune.nom || !newJeune.prenom || !newJeune.dateDeNaissance) {
       toast({
         title: "Erreur",
-        description: "Veuillez remplir au moins le nom, prénom et âge",
+        description: "Veuillez remplir au moins le nom, prénom et la date de naissance",
         variant: "destructive"
       });
       return;
     }
 
-    const youngsterData = {
-      nom: newYoungster.nom,
-      prenom: newYoungster.prenom,
-      age: parseInt(newYoungster.age),
-      telephone: newYoungster.telephone,
-      email: newYoungster.email,
-      adresse: newYoungster.adresse,
-      allergies: newYoungster.allergies.split(',').map(a => a.trim()).filter(a => a),
-      medicaments: newYoungster.medicaments.split(',').map(m => m.trim()).filter(m => m),
-      notes: newYoungster.notes
+    const jeune: Jeune = {
+      id: Date.now().toString(),
+      nom: newJeune.nom.toUpperCase(),
+      prenom: newJeune.prenom,
+      dateDeNaissance: newJeune.dateDeNaissance,
+      adresse: newJeune.adresse,
+      telephone: newJeune.telephone,
+      email: newJeune.email,
+      informationsMedicales: newJeune.informationsMedicales,
+      personneContactNom: newJeune.personneContactNom,
+      personneContactTelephone: newJeune.personneContactTelephone,
+      notes: newJeune.notes,
+      createdAt: new Date().toISOString()
     };
 
-    const result = await addJeune(youngsterData);
-    if (result) {
-      toast({
-        title: "Jeune ajouté",
-        description: `${newYoungster.prenom} ${newYoungster.nom} a été ajouté avec succès`
-      });
-      
-      setNewYoungster({
-        nom: "",
-        prenom: "",
-        age: "",
-        telephone: "",
-        email: "",
-        adresse: "",
-        allergies: "",
-        medicaments: "",
-        notes: ""
-      });
-      setShowAddForm(false);
-    }
+    const updatedJeunes = [...jeunes, jeune];
+    saveJeunes(updatedJeunes);
+
+    toast({
+      title: "Jeune ajouté",
+      description: `${newJeune.prenom} ${newJeune.nom} a été ajouté`
+    });
+
+    setNewJeune({
+      nom: "",
+      prenom: "",
+      dateDeNaissance: "",
+      adresse: "",
+      telephone: "",
+      email: "",
+      informationsMedicales: "",
+      personneContactNom: "",
+      personneContactTelephone: "",
+      notes: ""
+    });
+    setShowAddForm(false);
   };
 
-  const handleUpdateYoungster = async (id: string, updates: Partial<Youngster>) => {
-    const result = await updateJeune(id, updates);
-    if (result) {
-      toast({
-        title: "Jeune mis à jour",
-        description: "Les informations ont été mises à jour avec succès"
-      });
-    }
+  const handleDeleteJeune = (id: string) => {
+    const updatedJeunes = jeunes.filter(jeune => jeune.id !== id);
+    saveJeunes(updatedJeunes);
+    toast({
+      title: "Jeune supprimé",
+      description: "Le jeune a été supprimé"
+    });
   };
 
-  const handleDeleteYoungster = async (id: string) => {
-    const result = await deleteJeune(id);
-    if (result) {
-      toast({
-        title: "Jeune supprimé",
-        description: "Le jeune a été supprimé avec succès"
-      });
-    }
-  };
+  const handleUpdateJeune = () => {
+    if (!editingJeune) return;
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    try {
-      const youngsters = await parseExcel(file);
-      const result = await addMultipleJeunes(youngsters);
-      
-      if (result.length > 0) {
-        toast({
-          title: "Import réussi",
-          description: `${result.length} jeunes ont été importés avec succès`
-        });
-        setShowImportDialog(false);
-      }
-    } catch (error) {
-      console.error('Erreur lors de l\'import:', error);
-      toast({
-        title: "Erreur d'import",
-        description: "Impossible d'importer le fichier. Vérifiez le format.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const handleAddEvent = async () => {
-    if (!selectedYoungsterForEvent || !newEvent.type || !newEvent.description) {
-      toast({
-        title: "Erreur",
-        description: "Veuillez remplir tous les champs",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const result = await addEvent(
-      selectedYoungsterForEvent.id,
-      `${selectedYoungsterForEvent.prenom} ${selectedYoungsterForEvent.nom}`,
-      newEvent.type,
-      newEvent.description
+    const updatedJeunes = jeunes.map(jeune => 
+      jeune.id === editingJeune.id ? editingJeune : jeune
     );
-
-    if (result) {
-      toast({
-        title: "Événement ajouté",
-        description: "L'événement a été enregistré avec succès"
-      });
-      setNewEvent({ type: "", description: "" });
-      setSelectedYoungsterForEvent(null);
-      setShowEventDialog(false);
-    }
+    saveJeunes(updatedJeunes);
+    setEditingJeune(null);
+    toast({
+      title: "Jeune mis à jour",
+      description: "Les informations ont été mises à jour"
+    });
   };
 
-  if (!isInitialized) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Initialisation de la base de données...</p>
-        </div>
-      </div>
-    );
-  }
+  const handleNumericInput = (value: string, field: 'telephone' | 'personneContactTelephone') => {
+    const numericValue = value.replace(/[^0-9]/g, '');
+    setNewJeune({ ...newJeune, [field]: numericValue });
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -190,332 +155,331 @@ const Jeunes = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Users className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Gestion des Jeunes</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Gestion des jeunes</h1>
+              <Badge variant="secondary">{stats.total} total</Badge>
             </div>
-            <Link to="/">
-              <Button variant="outline">Retour accueil</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/">
+                <Button variant="outline">
+                  <ArrowLeft className="h-4 w-4 mr-2" />
+                  Retour accueil
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <Tabs defaultValue="jeunes" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="jeunes">Liste des jeunes</TabsTrigger>
-            <TabsTrigger value="groupes">Groupes</TabsTrigger>
-            <TabsTrigger value="chambres">Chambres</TabsTrigger>
-            <TabsTrigger value="quartiers-libres">Quartiers libres</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="jeunes" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>Jeunes ({stats.total})</span>
+                </CardTitle>
+                <CardDescription>Gérez les jeunes de la maison de la gendarmerie</CardDescription>
+              </div>
+              <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <UserPlus className="h-4 w-4 mr-2" />
+                    Ajouter un jeune
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl">
+                  <DialogHeader>
+                    <DialogTitle>Ajouter un jeune</DialogTitle>
+                    <DialogDescription>
+                      Ajoutez un nouveau jeune
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <CardTitle className="flex items-center space-x-2">
-                          <Users className="h-5 w-5" />
-                          <span>Liste des jeunes ({jeunes.length})</span>
-                        </CardTitle>
-                        <CardDescription>Gérez les informations des jeunes participants</CardDescription>
-                      </div>
-                      <div className="flex gap-2">
-                        <BlankPdfGenerator />
-                        
-                        <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
-                          <DialogTrigger asChild>
-                            <Button>
-                              <UserPlus className="h-4 w-4 mr-2" />
-                              Ajouter
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Ajouter un jeune</DialogTitle>
-                              <DialogDescription>
-                                Ajoutez un nouveau jeune participant
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                  <Label htmlFor="nom">Nom</Label>
-                                  <Input
-                                    id="nom"
-                                    value={newYoungster.nom}
-                                    onChange={(e) => setNewYoungster({ ...newYoungster, nom: e.target.value })}
-                                  />
-                                </div>
-                                <div>
-                                  <Label htmlFor="prenom">Prénom</Label>
-                                  <Input
-                                    id="prenom"
-                                    value={newYoungster.prenom}
-                                    onChange={(e) => setNewYoungster({ ...newYoungster, prenom: e.target.value })}
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <Label htmlFor="age">Âge</Label>
-                                <Input
-                                  id="age"
-                                  type="number"
-                                  value={newYoungster.age}
-                                  onChange={(e) => setNewYoungster({ ...newYoungster, age: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="telephone">Téléphone</Label>
-                                <Input
-                                  id="telephone"
-                                  value={newYoungster.telephone}
-                                  onChange={(e) => setNewYoungster({ ...newYoungster, telephone: e.target.value })}
-                                />
-                              </div>
-                              <div>
-                                <Label htmlFor="email">Email</Label>
-                                <Input
-                                  id="email"
-                                  type="email"
-                                  value={newYoungster.email}
-                                  onChange={(e) => setNewYoungster({ ...newYoungster, email: e.target.value })}
-                                />
-                              </div>
-                              <Button 
-                                className="w-full"
-                                disabled={!newYoungster.nom || !newYoungster.prenom || !newYoungster.age}
-                                onClick={handleAddYoungster}
-                              >
-                                Ajouter le jeune
-                              </Button>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-
-                        <Dialog open={showImportDialog} onOpenChange={setShowImportDialog}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline">
-                              <Upload className="h-4 w-4 mr-2" />
-                              Importer
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>Importer depuis Excel</DialogTitle>
-                              <DialogDescription>
-                                Importez une liste de jeunes depuis un fichier Excel
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                                <Upload className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                                <Input
-                                  type="file"
-                                  accept=".xlsx,.xls"
-                                  onChange={handleFileUpload}
-                                  className="max-w-xs mx-auto"
-                                />
-                              </div>
-                              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                                <div className="flex items-start space-x-2">
-                                  <AlertCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                                  <div>
-                                    <p className="text-sm text-blue-700">
-                                      Le fichier doit contenir : Nom, Prénom, Age, Téléphone, Email, Adresse
-                                    </p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </DialogContent>
-                        </Dialog>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center space-x-4 mb-6">
-                      <div className="relative flex-1">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                        <Label htmlFor="nom">Nom de famille</Label>
                         <Input
-                          placeholder="Rechercher par nom ou prénom..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="pl-10"
+                          id="nom"
+                          value={newJeune.nom}
+                          onChange={(e) => setNewJeune({ ...newJeune, nom: e.target.value.toUpperCase() })}
                         />
                       </div>
-                      <Badge variant="outline">
-                        {filteredYoungsters.length} résultat{filteredYoungsters.length !== 1 ? 's' : ''}
-                      </Badge>
+                      <div>
+                        <Label htmlFor="prenom">Prénom</Label>
+                        <Input
+                          id="prenom"
+                          value={newJeune.prenom}
+                          onChange={(e) => setNewJeune({ ...newJeune, prenom: e.target.value })}
+                        />
+                      </div>
                     </div>
-
-                    {filteredYoungsters.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun jeune trouvé</h3>
-                        <p className="text-gray-500 mb-4">
-                          {searchTerm ? "Aucun résultat pour votre recherche" : "Commencez par ajouter des jeunes"}
-                        </p>
+                    <div>
+                      <Label htmlFor="dateDeNaissance">Date de naissance</Label>
+                      <Input
+                        id="dateDeNaissance"
+                        type="date"
+                        value={newJeune.dateDeNaissance}
+                        onChange={(e) => setNewJeune({ ...newJeune, dateDeNaissance: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="adresse">Adresse</Label>
+                      <Input
+                        id="adresse"
+                        value={newJeune.adresse}
+                        onChange={(e) => setNewJeune({ ...newJeune, adresse: e.target.value })}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="telephone">Téléphone</Label>
+                        <Input
+                          id="telephone"
+                          value={newJeune.telephone}
+                          onChange={(e) => handleNumericInput(e.target.value, 'telephone')}
+                          placeholder="0123456789"
+                        />
                       </div>
-                    ) : (
-                      <div className="border rounded-lg">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Nom</TableHead>
-                              <TableHead>Sexe</TableHead>
-                              <TableHead>Âge</TableHead>
-                              <TableHead>Responsable</TableHead>
-                              <TableHead className="w-[100px]">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {filteredYoungsters.map((youngster) => (
-                              <TableRow 
-                                key={youngster.id}
-                                className="cursor-pointer hover:bg-muted/50"
-                                onClick={() => setSelectedYoungster(youngster)}
-                              >
-                                <TableCell className="font-medium">
-                                  {youngster.prenom} {youngster.nom}
-                                </TableCell>
-                                <TableCell>
-                                  {youngster.genre || '-'}
-                                </TableCell>
-                                <TableCell>
-                                  {youngster.age} ans
-                                </TableCell>
-                                <TableCell>
-                                  {youngster.responsable || '-'}
-                                </TableCell>
-                                <TableCell>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedYoungsterForEvent(youngster);
-                                      setShowEventDialog(true);
-                                    }}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newJeune.email}
+                          onChange={(e) => setNewJeune({ ...newJeune, email: e.target.value })}
+                        />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center space-x-2">
-                      <Calendar className="h-5 w-5" />
-                      <span>Journal des événements</span>
-                    </CardTitle>
-                    <CardDescription>
-                      Historique des événements récents
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {events.length === 0 ? (
-                      <div className="text-center py-8">
-                        <Calendar className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                        <p className="text-gray-500 text-sm">Aucun événement enregistré</p>
+                    </div>
+                    <div>
+                      <Label htmlFor="informationsMedicales">Informations médicales</Label>
+                      <Input
+                        id="informationsMedicales"
+                        value={newJeune.informationsMedicales}
+                        onChange={(e) => setNewJeune({ ...newJeune, informationsMedicales: e.target.value })}
+                        placeholder="Allergies, traitements..."
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <Label htmlFor="personneContactNom">Personne à contacter (nom)</Label>
+                        <Input
+                          id="personneContactNom"
+                          value={newJeune.personneContactNom}
+                          onChange={(e) => setNewJeune({ ...newJeune, personneContactNom: e.target.value })}
+                        />
                       </div>
-                    ) : (
-                      <div className="space-y-3 max-h-96 overflow-y-auto">
-                        {events.slice(-10).reverse().map((event) => (
-                          <div key={event.id} className="border-l-4 border-blue-500 pl-3 py-2">
-                            <div className="flex items-center justify-between mb-1">
-                              <Badge variant="secondary">{event.type}</Badge>
-                              <span className="text-xs text-gray-500">{event.date}</span>
-                            </div>
-                            <p className="font-medium text-sm">{event.youngsterName}</p>
-                            <p className="text-gray-600 text-sm">{event.description}</p>
-                          </div>
-                        ))}
+                      <div>
+                        <Label htmlFor="personneContactTelephone">Personne à contacter (téléphone)</Label>
+                        <Input
+                          id="personneContactTelephone"
+                          value={newJeune.personneContactTelephone}
+                          onChange={(e) => handleNumericInput(e.target.value, 'personneContactTelephone')}
+                          placeholder="0123456789"
+                        />
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="notes">Notes</Label>
+                      <Input
+                        id="notes"
+                        value={newJeune.notes}
+                        onChange={(e) => setNewJeune({ ...newJeune, notes: e.target.value })}
+                        placeholder="Informations complémentaires..."
+                      />
+                    </div>
+                    <Button 
+                      className="w-full"
+                      disabled={!newJeune.nom || !newJeune.prenom || !newJeune.dateDeNaissance}
+                      onClick={handleAddJeune}
+                    >
+                      Ajouter le jeune
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
-          </TabsContent>
+          </CardHeader>
+          <CardContent>
+            {jeunes.length === 0 ? (
+              <div className="text-center py-12">
+                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun jeune</h3>
+                <p className="text-gray-500 mb-4">Commencez par ajouter des jeunes</p>
+              </div>
+            ) : (
+              <div className="border rounded-lg">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nom</TableHead>
+                      <TableHead>Date de naissance</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>Personne à contacter</TableHead>
+                      <TableHead className="w-[100px]">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {jeunes.map((jeune) => (
+                      <TableRow key={jeune.id}>
+                        <TableCell className="font-medium">
+                          {jeune.prenom} {jeune.nom}
+                        </TableCell>
+                        <TableCell>{new Date(jeune.dateDeNaissance).toLocaleDateString('fr-FR')}</TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            {jeune.telephone && <div>{jeune.telephone}</div>}
+                            {jeune.email && <div className="text-gray-500">{jeune.email}</div>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="text-sm">
+                            <div>{jeune.personneContactNom}</div>
+                            {jeune.personneContactTelephone && <div>{jeune.personneContactTelephone}</div>}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex space-x-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setEditingJeune(jeune)}
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteJeune(jeune.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          <TabsContent value="groupes">
-            <GroupsManager />
-          </TabsContent>
-
-          <TabsContent value="chambres">
-            <RoomManager />
-          </TabsContent>
-
-          <TabsContent value="quartiers-libres">
-            <QuartiersLibres />
-          </TabsContent>
-        </Tabs>
-
-        <Dialog open={showEventDialog} onOpenChange={setShowEventDialog}>
-          <DialogContent>
+        {/* Dialog d'édition */}
+        <Dialog open={!!editingJeune} onOpenChange={() => setEditingJeune(null)}>
+          <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Ajouter un événement</DialogTitle>
+              <DialogTitle>Modifier le jeune</DialogTitle>
               <DialogDescription>
-                {selectedYoungsterForEvent && 
-                  `Ajouter un événement pour ${selectedYoungsterForEvent.prenom} ${selectedYoungsterForEvent.nom}`
-                }
+                Modifiez les informations du jeune
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="eventType">Type d'événement</Label>
-                <Select value={newEvent.type} onValueChange={(value) => setNewEvent({ ...newEvent, type: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionnez un type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Incident">Incident</SelectItem>
-                    <SelectItem value="Santé">Santé</SelectItem>
-                    <SelectItem value="Comportement">Comportement</SelectItem>
-                    <SelectItem value="Activité">Activité</SelectItem>
-                    <SelectItem value="Autre">Autre</SelectItem>
-                  </SelectContent>
-                </Select>
+            {editingJeune && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-nom">Nom de famille</Label>
+                    <Input
+                      id="edit-nom"
+                      value={editingJeune.nom}
+                      onChange={(e) => setEditingJeune({ ...editingJeune, nom: e.target.value.toUpperCase() })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-prenom">Prénom</Label>
+                    <Input
+                      id="edit-prenom"
+                      value={editingJeune.prenom}
+                      onChange={(e) => setEditingJeune({ ...editingJeune, prenom: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-dateDeNaissance">Date de naissance</Label>
+                  <Input
+                    id="edit-dateDeNaissance"
+                    type="date"
+                    value={editingJeune.dateDeNaissance}
+                    onChange={(e) => setEditingJeune({ ...editingJeune, dateDeNaissance: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="edit-adresse">Adresse</Label>
+                  <Input
+                    id="edit-adresse"
+                    value={editingJeune.adresse}
+                    onChange={(e) => setEditingJeune({ ...editingJeune, adresse: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-telephone">Téléphone</Label>
+                    <Input
+                      id="edit-telephone"
+                      value={editingJeune.telephone}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        setEditingJeune({ ...editingJeune, telephone: numericValue });
+                      }}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-email">Email</Label>
+                    <Input
+                      id="edit-email"
+                      type="email"
+                      value={editingJeune.email}
+                      onChange={(e) => setEditingJeune({ ...editingJeune, email: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-informationsMedicales">Informations médicales</Label>
+                  <Input
+                    id="edit-informationsMedicales"
+                    value={editingJeune.informationsMedicales}
+                    onChange={(e) => setEditingJeune({ ...editingJeune, informationsMedicales: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="edit-personneContactNom">Personne à contacter (nom)</Label>
+                    <Input
+                      id="edit-personneContactNom"
+                      value={editingJeune.personneContactNom}
+                      onChange={(e) => setEditingJeune({ ...editingJeune, personneContactNom: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="edit-personneContactTelephone">Personne à contacter (téléphone)</Label>
+                    <Input
+                      id="edit-personneContactTelephone"
+                      value={editingJeune.personneContactTelephone}
+                      onChange={(e) => {
+                        const numericValue = e.target.value.replace(/[^0-9]/g, '');
+                        setEditingJeune({ ...editingJeune, personneContactTelephone: numericValue });
+                      }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="edit-notes">Notes</Label>
+                  <Input
+                    id="edit-notes"
+                    value={editingJeune.notes}
+                    onChange={(e) => setEditingJeune({ ...editingJeune, notes: e.target.value })}
+                  />
+                </div>
+                <Button 
+                  className="w-full"
+                  onClick={handleUpdateJeune}
+                >
+                  Mettre à jour
+                </Button>
               </div>
-              <div>
-                <Label htmlFor="eventDescription">Description</Label>
-                <textarea
-                  id="eventDescription"
-                  value={newEvent.description}
-                  onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
-                  className="w-full min-h-[100px] p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Décrivez l'événement..."
-                />
-              </div>
-              <Button 
-                className="w-full"
-                disabled={!newEvent.type || !newEvent.description}
-                onClick={handleAddEvent}
-              >
-                Ajouter l'événement
-              </Button>
-            </div>
+            )}
           </DialogContent>
         </Dialog>
-
-        {selectedYoungster && (
-          <YoungsterDetailsModal
-            youngster={selectedYoungster}
-            isOpen={!!selectedYoungster}
-            onClose={() => setSelectedYoungster(null)}
-          />
-        )}
       </main>
     </div>
   );

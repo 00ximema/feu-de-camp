@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit } from "lucide-react";
+import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit, FileText, Upload, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import jsPDF from 'jspdf';
@@ -24,12 +23,23 @@ interface TeamMember {
   diplomes: string[];
   notes: string;
   createdAt: string;
+  documents?: Document[];
+}
+
+interface Document {
+  id: string;
+  name: string;
+  type: string;
+  uploadDate: string;
+  data?: string; // Base64 data pour simuler le stockage
 }
 
 const Equipe = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const [showDocuments, setShowDocuments] = useState<string | null>(null);
+  const [showUploadDialog, setShowUploadDialog] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [newMember, setNewMember] = useState({
@@ -45,7 +55,7 @@ const Equipe = () => {
 
   const roles = [
     "Directeur",
-    "Directeur adjoint",
+    "Directeur adjoint", 
     "Animateur",
     "Animateur stagiaire",
     "Assistant sanitaire",
@@ -137,6 +147,70 @@ const Equipe = () => {
       title: "Membre mis à jour",
       description: "Les informations ont été mises à jour avec succès"
     });
+  };
+
+  const handleFileUpload = (memberId: string, file: File) => {
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      toast({
+        title: "Fichier trop volumineux",
+        description: "La taille du fichier ne doit pas dépasser 5MB",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const newDocument: Document = {
+        id: Date.now().toString(),
+        name: file.name,
+        type: file.type,
+        uploadDate: new Date().toISOString(),
+        data: e.target?.result as string
+      };
+
+      const updatedTeam = team.map(member => 
+        member.id === memberId 
+          ? { ...member, documents: [...(member.documents || []), newDocument] }
+          : member
+      );
+      
+      saveTeam(updatedTeam);
+      setShowUploadDialog(null);
+      
+      toast({
+        title: "Document ajouté",
+        description: `${file.name} a été ajouté avec succès`
+      });
+    };
+    
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeleteDocument = (memberId: string, documentId: string) => {
+    const updatedTeam = team.map(member => 
+      member.id === memberId 
+        ? { ...member, documents: member.documents?.filter(doc => doc.id !== documentId) || [] }
+        : member
+    );
+    
+    saveTeam(updatedTeam);
+    
+    toast({
+      title: "Document supprimé",
+      description: "Le document a été supprimé avec succès"
+    });
+  };
+
+  const handleDownloadDocument = (document: Document) => {
+    if (document.data) {
+      const link = document.createElement('a');
+      link.href = document.data;
+      link.download = document.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const exportTeamToPDF = () => {
@@ -398,6 +472,7 @@ const Equipe = () => {
                       <TableHead>Âge</TableHead>
                       <TableHead>Contact</TableHead>
                       <TableHead>Diplômes</TableHead>
+                      <TableHead>Documents</TableHead>
                       <TableHead className="w-[100px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -423,6 +498,25 @@ const Equipe = () => {
                               ? member.diplomes.join(', ') 
                               : 'Aucun diplôme renseigné'
                             }
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center space-x-1">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setShowDocuments(member.id)}
+                            >
+                              <Eye className="h-3 w-3 mr-1" />
+                              {member.documents?.length || 0}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setShowUploadDialog(member.id)}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </Button>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -556,6 +650,86 @@ const Equipe = () => {
                 </Button>
               </div>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog de visualisation des documents */}
+        <Dialog open={!!showDocuments} onOpenChange={() => setShowDocuments(null)}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Documents</DialogTitle>
+              <DialogDescription>
+                {showDocuments && `Documents de ${team.find(m => m.id === showDocuments)?.prenom} ${team.find(m => m.id === showDocuments)?.nom}`}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              {showDocuments && team.find(m => m.id === showDocuments)?.documents?.map((doc) => (
+                <div key={doc.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center space-x-3">
+                    <FileText className="h-4 w-4 text-blue-600" />
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      <p className="text-sm text-gray-500">
+                        Ajouté le {new Date(doc.uploadDate).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadDocument(doc)}
+                    >
+                      <Download className="h-3 w-3 mr-1" />
+                      Télécharger
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => showDocuments && handleDeleteDocument(showDocuments, doc.id)}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              )) || (
+                <div className="text-center py-8">
+                  <FileText className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                  <p className="text-gray-500">Aucun document</p>
+                </div>
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Dialog d'upload de document */}
+        <Dialog open={!!showUploadDialog} onOpenChange={() => setShowUploadDialog(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Ajouter un document</DialogTitle>
+              <DialogDescription>
+                Téléchargez un document pour ce membre (contrat, certificat, diplôme, etc.)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="document">Sélectionner un fichier</Label>
+                <Input
+                  id="document"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file && showUploadDialog) {
+                      handleFileUpload(showUploadDialog, file);
+                    }
+                  }}
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Formats acceptés: PDF, DOC, DOCX, JPG, PNG (max 5MB)
+                </p>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </main>
