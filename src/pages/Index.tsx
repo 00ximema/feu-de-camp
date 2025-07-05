@@ -188,7 +188,7 @@ const Index = () => {
                 />
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                  <p className="text-gray-600">Système de gestion de colonie de vacances</p>
+                  <p className="text-gray-600">Plateforme de gestion des ACM</p>
                 </div>
               </div>
               
@@ -241,7 +241,7 @@ const Index = () => {
               />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                <p className="text-sm text-gray-600">Plateforme complète de gestion</p>
+                <p className="text-sm text-gray-600">Plateforme de gestion des ACM</p>
               </div>
             </div>
             <SessionManager />

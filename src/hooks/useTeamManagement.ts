@@ -138,15 +138,15 @@ export const useTeamManagement = () => {
     try {
       if (document.data) {
         // Créer un élément anchor temporaire pour le téléchargement
-        const link = document.createElement('a');
+        const link = window.document.createElement('a');
         link.href = document.data;
         link.download = document.name;
         link.style.display = 'none';
         
         // Ajouter à la page, cliquer, puis supprimer
-        document.body.appendChild(link);
+        window.document.body.appendChild(link);
         link.click();
-        document.body.removeChild(link);
+        window.document.body.removeChild(link);
         
         toast({
           title: "Téléchargement démarré",
