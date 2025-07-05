@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -7,11 +6,28 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Stethoscope, Plus } from "lucide-react";
+import { Stethoscope, Plus, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
 import { Youngster } from "@/types/youngster";
+
+interface Soin {
+  id: string;
+  jeuneId: string;
+  jeuneNom: string;
+  type: 'soin' | 'consultation' | 'autre';
+  titre: string;
+  description: string;
+  date: string;
+  heure: string;
+  soignant?: string;
+  symptomes?: string;
+  diagnostic?: string;
+  traitement?: string;
+  suivi?: boolean;
+  dateCreation: string;
+}
 
 interface SoinFormProps {
   isOpen: boolean;
@@ -19,6 +35,7 @@ interface SoinFormProps {
   jeunes: Youngster[];
   selectedJeuneId?: string | null;
   onSoinAdded: () => void;
+  editingSoin?: Soin | null;
 }
 
 const SoinForm: React.FC<SoinFormProps> = ({ 
@@ -26,7 +43,8 @@ const SoinForm: React.FC<SoinFormProps> = ({
   onClose, 
   jeunes, 
   selectedJeuneId,
-  onSoinAdded 
+  onSoinAdded,
+  editingSoin 
 }) => {
   const [selectedJeune, setSelectedJeune] = useState<string>('');
   const [type, setType] = useState<'soin' | 'consultation' | 'autre'>('soin');
@@ -44,12 +62,24 @@ const SoinForm: React.FC<SoinFormProps> = ({
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
 
-  // Pré-sélectionner le jeune si un ID est fourni
+  // Pré-remplir le formulaire lors de l'édition
   useEffect(() => {
-    if (selectedJeuneId && isOpen) {
+    if (editingSoin && isOpen) {
+      setSelectedJeune(editingSoin.jeuneId);
+      setType(editingSoin.type);
+      setTitre(editingSoin.titre);
+      setDescription(editingSoin.description);
+      setDate(editingSoin.date);
+      setHeure(editingSoin.heure);
+      setSoignant(editingSoin.soignant || '');
+      setSymptomes(editingSoin.symptomes || '');
+      setDiagnostic(editingSoin.diagnostic || '');
+      setTraitement(editingSoin.traitement || '');
+      setSuivi(editingSoin.suivi || false);
+    } else if (selectedJeuneId && isOpen && !editingSoin) {
       setSelectedJeune(selectedJeuneId);
     }
-  }, [selectedJeuneId, isOpen]);
+  }, [editingSoin, selectedJeuneId, isOpen]);
 
   // Initialiser avec la date et heure actuelles
   useEffect(() => {
@@ -105,7 +135,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
 
     try {
       const soin: any = {
-        id: `soin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: editingSoin ? editingSoin.id : `soin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         sessionId: currentSession.id,
         jeuneId: jeune.id,
         jeuneNom: `${jeune.prenom} ${jeune.nom}`,
@@ -114,7 +144,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
         description,
         date,
         heure,
-        dateCreation: new Date().toISOString()
+        dateCreation: editingSoin ? editingSoin.dateCreation : new Date().toISOString()
       };
 
       // Add optional fields only if they have values
@@ -125,10 +155,30 @@ const SoinForm: React.FC<SoinFormProps> = ({
       if (suivi) soin.suivi = suivi;
 
       await db.save('soins', soin);
+
+      // Si c'est une consultation avec un traitement ET qu'on n'est pas en mode édition, créer aussi un traitement actif
+      if (type === 'consultation' && traitement && traitement.trim() && !editingSoin) {
+        const traitementActif = {
+          id: `traitement_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          sessionId: currentSession.id,
+          jeuneId: jeune.id,
+          jeuneNom: `${jeune.prenom} ${jeune.nom}`,
+          medicament: titre,
+          posologie: traitement,
+          duree: "À définir",
+          dateDebut: date,
+          dateFin: date,
+          instructions: `Prescrit lors de la consultation: ${description}`,
+          ordonnance: true,
+          dateCreation: new Date().toISOString()
+        };
+
+        await db.save('traitements', traitementActif);
+      }
       
       toast({
-        title: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} ajouté${type === 'consultation' ? 'e' : ''}`,
-        description: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} pour ${jeune.prenom} ${jeune.nom} enregistré${type === 'consultation' ? 'e' : ''} avec succès`
+        title: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} ${editingSoin ? 'modifié' : 'ajouté'}${type === 'consultation' ? 'e' : ''}`,
+        description: `${type === 'soin' ? 'Soin' : type === 'consultation' ? 'Consultation' : 'Intervention'} pour ${jeune.prenom} ${jeune.nom} ${editingSoin ? 'modifié' : 'enregistré'}${type === 'consultation' ? 'e' : ''} avec succès${type === 'consultation' && traitement && !editingSoin ? ' (traitement ajouté automatiquement)' : ''}`
       });
 
       resetForm();
@@ -139,7 +189,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
       console.error('Erreur lors de l\'enregistrement du soin:', error);
       toast({
         title: "Erreur",
-        description: `Impossible d'enregistrer le ${type}`,
+        description: `Impossible d'${editingSoin ? 'modifier' : 'enregistrer'} le ${type}`,
         variant: "destructive"
       });
     }
@@ -151,7 +201,7 @@ const SoinForm: React.FC<SoinFormProps> = ({
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Stethoscope className="h-5 w-5" />
-            <span>Nouveau {type === 'soin' ? 'soin' : type === 'consultation' ? 'consultation' : 'autre'}</span>
+            <span>{editingSoin ? 'Modifier' : 'Nouveau'} {type === 'soin' ? 'soin' : type === 'consultation' ? 'consultation' : 'autre'}</span>
           </DialogTitle>
         </DialogHeader>
         
@@ -261,9 +311,14 @@ const SoinForm: React.FC<SoinFormProps> = ({
                 <Textarea
                   value={traitement}
                   onChange={(e) => setTraitement(e.target.value)}
-                  placeholder="Traitement ou recommandations"
+                  placeholder="Traitement ou recommandations (sera automatiquement ajouté aux traitements en cours)"
                   rows={2}
                 />
+                {traitement && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    ℹ️ Ce traitement sera automatiquement ajouté à la liste des traitements en cours
+                  </p>
+                )}
               </div>
             </>
           )}
@@ -281,8 +336,8 @@ const SoinForm: React.FC<SoinFormProps> = ({
 
           <div className="flex space-x-2">
             <Button onClick={handleSubmit}>
-              <Plus className="h-4 w-4 mr-2" />
-              Ajouter le {type}
+              {editingSoin ? <Edit className="h-4 w-4 mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+              {editingSoin ? 'Modifier' : 'Ajouter'} le {type}
             </Button>
             <Button variant="outline" onClick={onClose}>
               Annuler

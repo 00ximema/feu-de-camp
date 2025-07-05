@@ -1,9 +1,8 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Heart, Plus, Pill, Clock, Trash2, Stethoscope, Bandage } from "lucide-react";
+import { Heart, Plus, Pill, Clock, Trash2, Stethoscope, Bandage, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import TraitementForm from "@/components/TraitementForm";
@@ -46,6 +45,7 @@ interface Soin {
 const Infirmerie = () => {
   const [showTraitementForm, setShowTraitementForm] = useState(false);
   const [showSoinForm, setShowSoinForm] = useState(false);
+  const [editingSoin, setEditingSoin] = useState<Soin | null>(null);
   const [traitements, setTraitements] = useState<Traitement[]>([]);
   const [soins, setSoins] = useState<Soin[]>([]);
   const { toast } = useToast();
@@ -124,6 +124,16 @@ const Infirmerie = () => {
         variant: "destructive"
       });
     }
+  };
+
+  const handleEditSoin = (soin: Soin) => {
+    setEditingSoin(soin);
+    setShowSoinForm(true);
+  };
+
+  const handleCloseSoinForm = () => {
+    setShowSoinForm(false);
+    setEditingSoin(null);
   };
 
   const getTraitementsActifs = () => {
@@ -215,6 +225,11 @@ const Infirmerie = () => {
                               Soignant: {soin.soignant}
                             </div>
                           )}
+                          {soin.traitement && (
+                            <div className="text-xs text-blue-700 mt-1">
+                              Traitement: {soin.traitement}
+                            </div>
+                          )}
                           {soin.suivi && (
                             <div className="text-xs text-orange-700 font-medium mt-1">
                               ⚠️ Nécessite un suivi
@@ -225,14 +240,24 @@ const Infirmerie = () => {
                             <span>{new Date(soin.date).toLocaleDateString('fr-FR')} à {soin.heure}</span>
                           </div>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleDeleteSoin(soin)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditSoin(soin)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                          >
+                            <FileText className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteSoin(soin)}
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -319,10 +344,11 @@ const Infirmerie = () => {
 
       <SoinForm 
         isOpen={showSoinForm}
-        onClose={() => setShowSoinForm(false)}
+        onClose={handleCloseSoinForm}
         jeunes={jeunes}
         selectedJeuneId={null}
         onSoinAdded={handleDataUpdated}
+        editingSoin={editingSoin}
       />
     </div>
   );

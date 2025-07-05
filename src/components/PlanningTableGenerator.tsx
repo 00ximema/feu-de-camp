@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,6 +23,8 @@ interface PlanningEvent {
   name: string;
   type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
   assignedMember?: TeamMember;
+  startDate?: string;
+  endDate?: string;
 }
 
 interface PlanningCell {
@@ -105,7 +106,7 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = (eventName: string, memberId?: number, type?: string) => {
+  const handleSaveEvent = (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => {
     if (!selectedCell) return;
     
     const { rowIndex, cellIndex } = selectedCell;
@@ -116,7 +117,9 @@ const PlanningTableGenerator = () => {
       id: `${rowIndex}-${cellIndex}`,
       name: eventName,
       type: (type as any) || (SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity'),
-      assignedMember: member
+      assignedMember: member,
+      startDate,
+      endDate
     };
     
     setPlanningData(newData);
@@ -238,6 +241,11 @@ const PlanningTableGenerator = () => {
                               {cell.event.assignedMember && (
                                 <div className="text-xs text-gray-600">
                                   {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                </div>
+                              )}
+                              {cell.event.startDate !== cell.event.endDate && (
+                                <div className="text-xs text-blue-600">
+                                  {format(new Date(cell.event.startDate || ''), 'dd/MM')} - {format(new Date(cell.event.endDate || ''), 'dd/MM')}
                                 </div>
                               )}
                               <Button

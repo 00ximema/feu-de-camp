@@ -19,6 +19,7 @@ import { Youngster } from "@/types/youngster";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import RoomManager from "@/components/RoomManager";
+import BlankPdfGenerator from "@/components/BlankPdfGenerator";
 
 const Jeunes = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -221,6 +222,8 @@ const Jeunes = () => {
                         <CardDescription>Gérez les informations des jeunes participants</CardDescription>
                       </div>
                       <div className="flex gap-2">
+                        <BlankPdfGenerator />
+                        
                         <Dialog open={showAddForm} onOpenChange={setShowAddForm}>
                           <DialogTrigger asChild>
                             <Button>
