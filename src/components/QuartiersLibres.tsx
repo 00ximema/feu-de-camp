@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +31,22 @@ const QuartiersLibres = () => {
   
   const { toast } = useToast();
   const { jeunes } = useJeunes();
+
+  const addLogoToPdf = (pdf: jsPDF) => {
+    // Header avec logo
+    pdf.setFillColor(65, 105, 225);
+    pdf.rect(0, 0, 210, 25, 'F');
+    
+    // Logo Fondation MG en blanc
+    pdf.setTextColor(255, 255, 255);
+    pdf.setFontSize(16);
+    pdf.text('Fondation MG', 15, 12);
+    pdf.setFontSize(12);
+    pdf.text('Maison de la Gendarmerie', 15, 19);
+    
+    // Reset text color
+    pdf.setTextColor(0, 0, 0);
+  };
 
   const handleJeuneSelection = (jeuneId: string, checked: boolean) => {
     if (checked) {
@@ -96,18 +111,21 @@ const QuartiersLibres = () => {
   const generatePDF = () => {
     const doc = new jsPDF();
     
+    // Ajouter le logo
+    addLogoToPdf(doc);
+    
     // Titre
     doc.setFontSize(20);
-    doc.text('Liste des Quartiers Libres', 20, 30);
+    doc.text('Liste des Quartiers Libres', 20, 40);
     
     // Date
     doc.setFontSize(12);
-    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, 45);
+    doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 20, 55);
     
     // Headers du tableau
     doc.setFontSize(10);
     const headers = ['Jeunes', 'Groupe QL', 'Heure départ', 'Heure retour'];
-    const startY = 65;
+    const startY = 75;
     const cellWidth = 45;
     
     headers.forEach((header, index) => {
@@ -141,52 +159,64 @@ const QuartiersLibres = () => {
   };
 
   const generateBlankPDF = () => {
-    const doc = new jsPDF();
-    
-    // Titre
-    doc.setFontSize(20);
-    doc.text('Feuille de Quartiers Libres', 20, 30);
-    
-    // Date
-    doc.setFontSize(12);
-    doc.text(`Date: ______________`, 20, 45);
-    doc.text(`Heure de départ: ______________`, 20, 60);
-    
-    // Liste de tous les jeunes
-    doc.setFontSize(14);
-    doc.text('Liste des jeunes:', 20, 80);
-    
-    const startY = 95;
-    const lineHeight = 8;
-    
-    jeunes.forEach((jeune, index) => {
-      const y = startY + (index * lineHeight);
-      if (y > 270) return; // Éviter de dépasser la page
+    try {
+      const doc = new jsPDF();
       
-      // Case à cocher
-      doc.rect(20, y - 3, 4, 4);
-      // Nom du jeune
-      doc.setFontSize(10);
-      doc.text(`${jeune.prenom} ${jeune.nom}`, 30, y);
+      // Ajouter le logo
+      addLogoToPdf(doc);
       
-      // Groupe QL
-      doc.text('Groupe QL: ________________', 100, y);
+      // Titre
+      doc.setFontSize(20);
+      doc.text('Feuille de Quartiers Libres', 20, 40);
       
-      // Heure de retour
-      doc.text('Retour: ________', 170, y);
-    });
-    
-    // Signature
-    doc.setFontSize(12);
-    doc.text('Responsable: ________________________________', 20, 280);
-    
-    // Sauvegarder le PDF
-    doc.save(`feuille-quartiers-libres-vierge-${new Date().toISOString().split('T')[0]}.pdf`);
-    
-    toast({
-      title: "PDF vierge généré",
-      description: "La feuille vierge a été téléchargée avec succès"
-    });
+      // Date
+      doc.setFontSize(12);
+      doc.text(`Date: ______________`, 20, 55);
+      doc.text(`Heure de départ: ______________`, 20, 70);
+      
+      // Liste de tous les jeunes
+      doc.setFontSize(14);
+      doc.text('Liste des jeunes:', 20, 90);
+      
+      const startY = 105;
+      const lineHeight = 8;
+      
+      jeunes.forEach((jeune, index) => {
+        const y = startY + (index * lineHeight);
+        if (y > 270) return; // Éviter de dépasser la page
+        
+        // Case à cocher
+        doc.rect(20, y - 3, 4, 4);
+        // Nom du jeune
+        doc.setFontSize(10);
+        doc.text(`${jeune.prenom} ${jeune.nom}`, 30, y);
+        
+        // Groupe QL
+        doc.text('Groupe QL: ________________', 100, y);
+        
+        // Heure de retour
+        doc.text('Retour: ________', 170, y);
+      });
+      
+      // Signature
+      doc.setFontSize(12);
+      doc.text('Responsable: ________________________________', 20, 280);
+      
+      // Sauvegarder le PDF
+      doc.save(`feuille-quartiers-libres-vierge-${new Date().toISOString().split('T')[0]}.pdf`);
+      
+      toast({
+        title: "PDF vierge généré",
+        description: "La feuille vierge a été téléchargée avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération du PDF vierge:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le PDF vierge",
+        variant: "destructive"
+      });
+    }
   };
 
   return (

@@ -16,12 +16,13 @@ const BlankPdfGenerator: React.FC = () => {
       pdf.setFillColor(147, 51, 234);
       pdf.rect(0, 0, 210, 25, 'F');
       
+      // Logo Fondation MG en blanc
       pdf.setTextColor(255, 255, 255);
       pdf.setFontSize(20);
-      pdf.text('CVJ MG', 15, 17);
+      pdf.text('Fondation MG', 15, 17);
       
-      pdf.setFontSize(16);
-      pdf.text('Fiche Jeune - Modèle vierge', 50, 17);
+      pdf.setFontSize(14);
+      pdf.text('Maison de la Gendarmerie', 130, 17);
       
       // Reset text color
       pdf.setTextColor(0, 0, 0);
