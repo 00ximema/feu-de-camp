@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -81,7 +82,8 @@ const Comptabilite = () => {
               libelle: ligne.libelle || ligne.description || `Transaction ${index + 1}`,
               montant: parseFloat(ligne.montant) || 0,
               categorie: ligne.categorie || 'Général',
-              type: form.type as 'recette' | 'depense'
+              type: form.type === 'recettes' ? 'recette' as const : 'depense' as const,
+              pieceIntegree: false
             }));
             
             setTransactions(prev => [...prev, ...newTransactions]);
