@@ -1,10 +1,10 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserPlus, ArrowLeft, Home, Users2, FileText } from "lucide-react";
+import { Users, UserPlus, ArrowLeft, Home, Users2, FileText, Upload } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useGroups } from "@/hooks/useGroups";
@@ -14,16 +14,56 @@ import GroupsManager from "@/components/GroupsManager";
 import RoomManager from "@/components/RoomManager";
 import QuartiersLibres from "@/components/QuartiersLibres";
 import { Youngster } from "@/types/youngster";
+import { parseExcel } from "@/utils/excelParser";
+import { toast } from "sonner";
 
 const Jeunes = () => {
-  const { jeunes, addJeune, updateJeune, deleteJeune, isInitialized } = useJeunes();
+  const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, isInitialized } = useJeunes();
   const { groupes } = useGroups();
   const [selectedYoungster, setSelectedYoungster] = useState<Youngster | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const stats = {
     total: jeunes.length,
     groupes: groupes.length
+  };
+
+  const handleExcelImport = async (file: File) => {
+    setIsImporting(true);
+    try {
+      const parsedJeunes = await parseExcel(file);
+      console.log('Jeunes parsés:', parsedJeunes);
+      
+      if (parsedJeunes.length === 0) {
+        toast.error("Aucun jeune trouvé dans le fichier");
+        return;
+      }
+
+      const addedJeunes = await addMultipleJeunes(parsedJeunes);
+      
+      if (addedJeunes.length > 0) {
+        toast.success(`${addedJeunes.length} jeune(s) importé(s) avec succès`);
+      } else {
+        toast.error("Erreur lors de l'import des jeunes");
+      }
+    } catch (error) {
+      console.error('Erreur lors de l\'import:', error);
+      toast.error("Erreur lors de l'import du fichier Excel");
+    } finally {
+      setIsImporting(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      handleExcelImport(file);
+    }
   };
 
   if (!isInitialized) {
@@ -91,10 +131,27 @@ const Jeunes = () => {
                     </CardTitle>
                     <CardDescription>Gérez les jeunes de la maison de la gendarmerie</CardDescription>
                   </div>
-                  <Button onClick={() => setShowAddModal(true)}>
-                    <UserPlus className="h-4 w-4 mr-2" />
-                    Ajouter un jeune
-                  </Button>
+                  <div className="flex gap-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      onChange={handleFileSelect}
+                      accept=".xlsx,.xls"
+                      className="hidden"
+                    />
+                    <Button 
+                      variant="outline" 
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isImporting}
+                    >
+                      <Upload className="h-4 w-4 mr-2" />
+                      {isImporting ? 'Import en cours...' : 'Importer Excel'}
+                    </Button>
+                    <Button onClick={() => setShowAddModal(true)}>
+                      <UserPlus className="h-4 w-4 mr-2" />
+                      Ajouter un jeune
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent>
@@ -102,11 +159,17 @@ const Jeunes = () => {
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun jeune</h3>
-                    <p className="text-gray-500 mb-4">Commencez par ajouter des jeunes</p>
-                    <Button onClick={() => setShowAddModal(true)}>
-                      <UserPlus className="h-4 w-4 mr-2" />
-                      Ajouter un jeune
-                    </Button>
+                    <p className="text-gray-500 mb-4">Commencez par ajouter des jeunes ou importer un fichier Excel</p>
+                    <div className="flex justify-center gap-2">
+                      <Button onClick={() => setShowAddModal(true)}>
+                        <UserPlus className="h-4 w-4 mr-2" />
+                        Ajouter un jeune
+                      </Button>
+                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Importer Excel
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
