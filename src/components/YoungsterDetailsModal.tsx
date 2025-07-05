@@ -34,9 +34,9 @@ interface YoungsterDetailsModalProps {
   youngster?: Youngster | null;
   isOpen: boolean;
   onClose: () => void;
-  onUpdate?: (id: string, updates: Partial<Youngster>) => Promise<Youngster>;
-  onDelete?: (id: string) => Promise<void>;
-  onAdd?: (jeune: Omit<Youngster, "id">) => Promise<Youngster>;
+  onUpdate?: (id: string, updates: Partial<Youngster>) => Promise<Youngster | null>;
+  onDelete?: (id: string) => Promise<boolean>;
+  onAdd?: (jeune: Omit<Youngster, "id">) => Promise<Youngster | null>;
 }
 
 const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
