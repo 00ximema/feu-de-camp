@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Download, Plus, Trash2 } from "lucide-react";
-import { format, addDays, startOfWeek } from 'date-fns';
+import { format, addDays, startOfWeek, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -49,7 +49,17 @@ const SPECIAL_ROWS = [
 ];
 
 const PlanningTableGenerator = () => {
-  const [startDate, setStartDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
+  // Initialize with a valid date
+  const getValidStartDate = () => {
+    const today = new Date();
+    if (!isValid(today)) {
+      return new Date('2024-01-01'); // Fallback date
+    }
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    return isValid(weekStart) ? weekStart : new Date('2024-01-01');
+  };
+
+  const [startDate, setStartDate] = useState<Date>(getValidStartDate);
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
   const [teamMembers] = useState<TeamMember[]>([
     { id: 1, nom: 'Dupont', prenom: 'Jean', role: 'Directeur' },
@@ -60,11 +70,17 @@ const PlanningTableGenerator = () => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const planningRef = useRef<HTMLDivElement>(null);
 
-  // Generate 7 days from start date
+  // Generate 7 days from start date with validation
   const generateDates = () => {
     const dates = [];
     for (let i = 0; i < 7; i++) {
-      dates.push(addDays(startDate, i));
+      const newDate = addDays(startDate, i);
+      if (isValid(newDate)) {
+        dates.push(newDate);
+      } else {
+        // Fallback date if invalid
+        dates.push(new Date('2024-01-01'));
+      }
     }
     return dates;
   };
@@ -74,30 +90,44 @@ const PlanningTableGenerator = () => {
   // Initialize planning data
   useEffect(() => {
     console.log('Initializing planning data for date:', startDate);
+    
+    if (!isValid(startDate)) {
+      console.error('Invalid start date:', startDate);
+      return;
+    }
+
     const initialData: PlanningCell[][] = [];
     
     // Regular time slots
     TIME_SLOTS.forEach(timeSlot => {
       const row: PlanningCell[] = [];
       dates.forEach(date => {
-        row.push({
-          date: format(date, 'yyyy-MM-dd'),
-          timeSlot,
-        });
+        if (isValid(date)) {
+          row.push({
+            date: format(date, 'yyyy-MM-dd'),
+            timeSlot,
+          });
+        }
       });
-      initialData.push(row);
+      if (row.length > 0) {
+        initialData.push(row);
+      }
     });
 
     // Special rows (Astreintes, Congés, Repos récupérateurs)
     SPECIAL_ROWS.forEach(specialRow => {
       const row: PlanningCell[] = [];
       dates.forEach(date => {
-        row.push({
-          date: format(date, 'yyyy-MM-dd'),
-          timeSlot: specialRow,
-        });
+        if (isValid(date)) {
+          row.push({
+            date: format(date, 'yyyy-MM-dd'),
+            timeSlot: specialRow,
+          });
+        }
       });
-      initialData.push(row);
+      if (row.length > 0) {
+        initialData.push(row);
+      }
     });
 
     setPlanningData(initialData);
@@ -165,7 +195,9 @@ const PlanningTableGenerator = () => {
       // Date
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
-      pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
+      if (isValid(startDate)) {
+        pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
+      }
       
       // Add planning table
       const imgWidth = 267;
@@ -173,7 +205,10 @@ const PlanningTableGenerator = () => {
       
       pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
       
-      pdf.save(`Planning_${format(startDate, 'yyyy-MM-dd')}.pdf`);
+      const fileName = isValid(startDate) ? 
+        `Planning_${format(startDate, 'yyyy-MM-dd')}.pdf` : 
+        'Planning.pdf';
+      pdf.save(fileName);
       console.log('PDF exported successfully');
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
@@ -181,6 +216,13 @@ const PlanningTableGenerator = () => {
   };
 
   const isSpecialRow = (timeSlot: string) => SPECIAL_ROWS.includes(timeSlot);
+
+  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newDate = new Date(e.target.value);
+    if (isValid(newDate)) {
+      setStartDate(startOfWeek(newDate, { weekStartsOn: 1 }));
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -201,11 +243,8 @@ const PlanningTableGenerator = () => {
               <Input
                 id="start-date" 
                 type="date"
-                value={format(startDate, 'yyyy-MM-dd')}
-                onChange={(e) => {
-                  const newDate = new Date(e.target.value);
-                  setStartDate(startOfWeek(newDate, { weekStartsOn: 1 }));
-                }}
+                value={isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
+                onChange={handleDateChange}
               />
             </div>
             <Button onClick={exportToPDF} className="mt-6">
@@ -220,10 +259,16 @@ const PlanningTableGenerator = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
-                    {dates.map((date) => (
-                      <TableHead key={format(date, 'yyyy-MM-dd')} className="text-center font-bold bg-gray-100 min-w-32">
-                        <div>{format(date, 'EEEE', { locale: fr })}</div>
-                        <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
+                    {dates.map((date, index) => (
+                      <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
+                        {isValid(date) ? (
+                          <>
+                            <div>{format(date, 'EEEE', { locale: fr })}</div>
+                            <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
+                          </>
+                        ) : (
+                          <div>Date invalide</div>
+                        )}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -250,9 +295,16 @@ const PlanningTableGenerator = () => {
                                   {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
                                 </div>
                               )}
-                              {cell.event.startDate !== cell.event.endDate && (
+                              {cell.event.startDate && cell.event.endDate && 
+                               cell.event.startDate !== cell.event.endDate && (
                                 <div className="text-xs text-blue-600">
-                                  {format(new Date(cell.event.startDate || ''), 'dd/MM')} - {format(new Date(cell.event.endDate || ''), 'dd/MM')}
+                                  {isValid(new Date(cell.event.startDate)) && isValid(new Date(cell.event.endDate)) ? (
+                                    <>
+                                      {format(new Date(cell.event.startDate), 'dd/MM')} - {format(new Date(cell.event.endDate), 'dd/MM')}
+                                    </>
+                                  ) : (
+                                    'Dates invalides'
+                                  )}
                                 </div>
                               )}
                               <Button
