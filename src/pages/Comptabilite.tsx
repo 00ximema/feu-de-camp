@@ -1,11 +1,12 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, Upload, FileSpreadsheet, TrendingUp, TrendingDown, Euro, Plus } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calculator, Upload, FileSpreadsheet, TrendingUp, TrendingDown, Euro, Plus, Trash2, Edit } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 
@@ -25,6 +26,7 @@ interface Transaction {
   montant: number;
   categorie: string;
   type: 'recette' | 'depense';
+  pieceIntegree: boolean;
 }
 
 const Comptabilite = () => {
@@ -32,11 +34,22 @@ const Comptabilite = () => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [selectedFichier, setSelectedFichier] = useState<number | null>(null);
   const [showForm, setShowForm] = useState(false);
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const { toast } = useToast();
 
   const [form, setForm] = useState({
     nom: "",
     type: "" as 'recettes' | 'depenses' | 'budget' | 'bilan' | ""
+  });
+
+  const [transactionForm, setTransactionForm] = useState({
+    date: new Date().toISOString().split('T')[0],
+    libelle: "",
+    montant: "",
+    categorie: "",
+    type: "recette" as 'recette' | 'depense',
+    pieceIntegree: false
   });
 
   const handleExcelUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -136,6 +149,79 @@ const Comptabilite = () => {
     };
   };
 
+  const handleAddTransaction = () => {
+    if (!transactionForm.libelle || !transactionForm.montant) {
+      toast({
+        title: "Erreur",
+        description: "Veuillez remplir tous les champs obligatoires",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const newTransaction: Transaction = {
+      id: editingTransaction ? editingTransaction.id : Date.now(),
+      date: transactionForm.date,
+      libelle: transactionForm.libelle,
+      montant: parseFloat(transactionForm.montant),
+      categorie: transactionForm.categorie || "Général",
+      type: transactionForm.type,
+      pieceIntegree: transactionForm.pieceIntegree
+    };
+
+    if (editingTransaction) {
+      setTransactions(prev => prev.map(t => t.id === editingTransaction.id ? newTransaction : t));
+      toast({
+        title: "Transaction modifiée",
+        description: "La transaction a été mise à jour avec succès"
+      });
+    } else {
+      setTransactions(prev => [...prev, newTransaction]);
+      toast({
+        title: "Transaction ajoutée",
+        description: "La nouvelle transaction a été enregistrée"
+      });
+    }
+
+    setTransactionForm({
+      date: new Date().toISOString().split('T')[0],
+      libelle: "",
+      montant: "",
+      categorie: "",
+      type: "recette",
+      pieceIntegree: false
+    });
+    setShowTransactionForm(false);
+    setEditingTransaction(null);
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setTransactionForm({
+      date: transaction.date,
+      libelle: transaction.libelle,
+      montant: transaction.montant.toString(),
+      categorie: transaction.categorie,
+      type: transaction.type,
+      pieceIntegree: transaction.pieceIntegree
+    });
+    setShowTransactionForm(true);
+  };
+
+  const handleDeleteTransaction = (id: number) => {
+    setTransactions(prev => prev.filter(t => t.id !== id));
+    toast({
+      title: "Transaction supprimée",
+      description: "La transaction a été supprimée avec succès"
+    });
+  };
+
+  const togglePieceIntegree = (id: number) => {
+    setTransactions(prev => prev.map(t => 
+      t.id === id ? { ...t, pieceIntegree: !t.pieceIntegree } : t
+    ));
+  };
+
   const getTypeIcon = (type: string) => {
     switch (type) {
       case 'recettes': return <TrendingUp className="h-4 w-4 text-green-600" />;
@@ -166,7 +252,7 @@ const Comptabilite = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <Calculator className="h-6 w-6 text-red-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Comptabilité</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Gestion comptable</h1>
             </div>
             <Link to="/">
               <Button variant="outline">Retour accueil</Button>
@@ -228,6 +314,195 @@ const Comptabilite = () => {
           </Card>
         </div>
 
+        {/* Gestion des transactions */}
+        <Card className="mb-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle>Transactions</CardTitle>
+                <CardDescription>
+                  Gérez vos recettes et dépenses avec suivi d'intégration
+                </CardDescription>
+              </div>
+              <Button 
+                onClick={() => {
+                  setShowTransactionForm(true);
+                  setEditingTransaction(null);
+                  setTransactionForm({
+                    date: new Date().toISOString().split('T')[0],
+                    libelle: "",
+                    montant: "",
+                    categorie: "",
+                    type: "recette",
+                    pieceIntegree: false
+                  });
+                }}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Ajouter transaction
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {showTransactionForm && (
+              <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                <h3 className="font-medium mb-4">
+                  {editingTransaction ? 'Modifier la transaction' : 'Nouvelle transaction'}
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div>
+                    <Label>Date</Label>
+                    <Input
+                      type="date"
+                      value={transactionForm.date}
+                      onChange={(e) => setTransactionForm(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label>Type</Label>
+                    <Select 
+                      value={transactionForm.type} 
+                      onValueChange={(value: 'recette' | 'depense') => setTransactionForm(prev => ({ ...prev, type: value }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="recette">Recette</SelectItem>
+                        <SelectItem value="depense">Dépense</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label>Libellé *</Label>
+                    <Input
+                      value={transactionForm.libelle}
+                      onChange={(e) => setTransactionForm(prev => ({ ...prev, libelle: e.target.value }))}
+                      placeholder="Description de la transaction"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Montant * (€)</Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      value={transactionForm.montant}
+                      onChange={(e) => setTransactionForm(prev => ({ ...prev, montant: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <Label>Catégorie</Label>
+                    <Input
+                      value={transactionForm.categorie}
+                      onChange={(e) => setTransactionForm(prev => ({ ...prev, categorie: e.target.value }))}
+                      placeholder="Ex: Alimentation, Activités..."
+                    />
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <Checkbox 
+                      id="pieceIntegree"
+                      checked={transactionForm.pieceIntegree}
+                      onCheckedChange={(checked) => setTransactionForm(prev => ({ ...prev, pieceIntegree: checked as boolean }))}
+                    />
+                    <Label htmlFor="pieceIntegree">Pièce intégrée au document MG</Label>
+                  </div>
+                </div>
+
+                <div className="flex space-x-2 mt-4">
+                  <Button onClick={handleAddTransaction}>
+                    {editingTransaction ? 'Modifier' : 'Ajouter'}
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowTransactionForm(false);
+                      setEditingTransaction(null);
+                    }}
+                  >
+                    Annuler
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {transactions.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Libellé</TableHead>
+                    <TableHead>Catégorie</TableHead>
+                    <TableHead className="text-right">Montant</TableHead>
+                    <TableHead className="text-center">Pièce intégrée</TableHead>
+                    <TableHead className="text-center">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {transactions.map((transaction) => (
+                    <TableRow key={transaction.id}>
+                      <TableCell>{new Date(transaction.date).toLocaleDateString('fr-FR')}</TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          transaction.type === 'recette' 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-red-100 text-red-800'
+                        }`}>
+                          {transaction.type === 'recette' ? 'Recette' : 'Dépense'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="font-medium">{transaction.libelle}</TableCell>
+                      <TableCell>{transaction.categorie}</TableCell>
+                      <TableCell className={`text-right font-bold ${
+                        transaction.type === 'recette' ? 'text-green-600' : 'text-red-600'
+                      }`}>
+                        {transaction.type === 'recette' ? '+' : '-'}{transaction.montant.toFixed(2)} €
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Checkbox 
+                          checked={transaction.pieceIntegree}
+                          onCheckedChange={() => togglePieceIntegree(transaction.id)}
+                        />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <div className="flex justify-center space-x-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleEditTransaction(transaction)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteTransaction(transaction.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>Aucune transaction enregistrée</p>
+                <p className="text-sm">Commencez par ajouter vos premières transactions</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Gestion des fichiers */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Gestion des fichiers */}
           <div className="lg:col-span-2">
