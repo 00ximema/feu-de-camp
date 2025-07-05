@@ -1,9 +1,8 @@
 
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Table, UserCheck } from "lucide-react";
+import { Calendar, Table, UserCheck, ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
 import PlanningTableGenerator from "@/components/PlanningTableGenerator";
 import LeaveSignaturePlanning from "@/components/LeaveSignaturePlanning";
@@ -22,7 +21,10 @@ const Planning = () => {
               <h1 className="text-2xl font-bold text-gray-900">Planning</h1>
             </div>
             <Link to="/">
-              <Button variant="outline">Retour accueil</Button>
+              <Button variant="outline">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Retour accueil
+              </Button>
             </Link>
           </div>
         </div>
@@ -59,4 +61,3 @@ const Planning = () => {
 };
 
 export default Planning;
-

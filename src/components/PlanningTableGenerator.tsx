@@ -1,10 +1,11 @@
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Calendar, Download, Plus, Trash2, Edit } from "lucide-react";
+import { Calendar, Download, Plus, Trash2 } from "lucide-react";
 import { format, addDays, startOfWeek } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
@@ -48,7 +49,7 @@ const SPECIAL_ROWS = [
 ];
 
 const PlanningTableGenerator = () => {
-  const [startDate, setStartDate] = useState<Date>(startOfWeek(new Date(), { weekStartsOn: 1 }));
+  const [startDate, setStartDate] = useState<Date>(() => startOfWeek(new Date(), { weekStartsOn: 1 }));
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
   const [teamMembers] = useState<TeamMember[]>([
     { id: 1, nom: 'Dupont', prenom: 'Jean', role: 'Directeur' },
@@ -71,7 +72,8 @@ const PlanningTableGenerator = () => {
   const dates = generateDates();
 
   // Initialize planning data
-  React.useEffect(() => {
+  useEffect(() => {
+    console.log('Initializing planning data for date:', startDate);
     const initialData: PlanningCell[][] = [];
     
     // Regular time slots
@@ -102,6 +104,7 @@ const PlanningTableGenerator = () => {
   }, [startDate]);
 
   const handleCellClick = (rowIndex: number, cellIndex: number) => {
+    console.log('Cell clicked:', rowIndex, cellIndex);
     setSelectedCell({ rowIndex, cellIndex });
     setDialogOpen(true);
   };
@@ -109,6 +112,7 @@ const PlanningTableGenerator = () => {
   const handleSaveEvent = (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => {
     if (!selectedCell) return;
     
+    console.log('Saving event:', eventName, memberId, type);
     const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
     const member = memberId ? teamMembers.find(m => m.id === memberId) : undefined;
@@ -127,6 +131,7 @@ const PlanningTableGenerator = () => {
 
   const handleDeleteEvent = (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    console.log('Deleting event at:', rowIndex, cellIndex);
     const newData = [...planningData];
     delete newData[rowIndex][cellIndex].event;
     setPlanningData(newData);
@@ -136,6 +141,7 @@ const PlanningTableGenerator = () => {
     if (!planningRef.current) return;
 
     try {
+      console.log('Exporting to PDF...');
       const canvas = await html2canvas(planningRef.current, {
         scale: 2,
         useCORS: true,
@@ -168,6 +174,7 @@ const PlanningTableGenerator = () => {
       pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
       
       pdf.save(`Planning_${format(startDate, 'yyyy-MM-dd')}.pdf`);
+      console.log('PDF exported successfully');
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
     }
