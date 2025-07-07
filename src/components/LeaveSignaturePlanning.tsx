@@ -414,7 +414,8 @@ const LeaveSignaturePlanning = () => {
               : `${formatDateSafely(leave.startDate)} au ${formatDateSafely(leave.endDate)}`;
             
             const leaveText = `${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`;
-            const displayText = leave.notes ? `${leaveText} (${leave.notes})` : leaveText;
+            const notes = leave.notes ? leave.notes.replace(/[^\w\s\-]/g, '') : '';
+            const displayText = notes ? `${leaveText} ${notes}` : leaveText;
             
             pdf.text(`  - ${displayText}`, 20, yPosition);
             yPosition += 3;
