@@ -448,143 +448,148 @@ const LeaveSignaturePlanning = () => {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center space-x-2">
-            <UserCheck className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2">
+            <UserCheck className="h-5 w-5 text-blue-600" />
             <span>Signatures électroniques - Repos des personnels</span>
           </CardTitle>
           <CardDescription>
-            Les membres du personnel doivent signer leurs congés et repos récupérateurs. Une seule signature par entrée est requise.
+            Chaque membre du personnel signe une seule fois pour tous ses congés et repos récupérateurs du séjour.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-end mb-4">
-            <Button onClick={exportToPDF}>
+          <div className="flex justify-between items-center mb-6">
+            <div className="text-sm text-gray-600">
+              {entriesWithSignatureStatus.length} membre(s) avec repos/congés • {' '}
+              {entriesWithSignatureStatus.filter(e => e.isSigned).length} signature(s) complétée(s)
+            </div>
+            <Button onClick={exportToPDF} variant="outline">
               <Download className="h-4 w-4 mr-2" />
               Exporter le rapport
             </Button>
           </div>
 
-          <div ref={reportRef} className="bg-white">
+          <div className="border rounded-lg overflow-hidden bg-white">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Personnel</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Période</TableHead>
-                  <TableHead>Précisions</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Signature</TableHead>
-                  <TableHead>Actions</TableHead>
+                  <TableHead className="w-[200px]">Personnel</TableHead>
+                  <TableHead className="w-[150px]">Types de repos</TableHead>
+                  <TableHead className="w-[200px]">Périodes</TableHead>
+                  <TableHead className="w-[100px]">Statut</TableHead>
+                  <TableHead className="w-[120px]">Signature</TableHead>
+                  <TableHead className="w-[120px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entriesWithSignatureStatus.length > 0 ? (
                   entriesWithSignatureStatus.map((entry) => (
-                     <TableRow key={entry.id}>
-                       <TableCell className="font-medium">{entry.staffName}</TableCell>
+                     <TableRow key={entry.id} className="hover:bg-gray-50">
+                       <TableCell className="font-medium">
+                         {entry.staffName}
+                       </TableCell>
                        <TableCell>
-                         <div className="space-y-1">
-                           {entry.leaves.map((leave, index) => (
+                         <div className="flex flex-wrap gap-1">
+                           {Array.from(new Set(entry.leaves.map(l => l.type))).map((type) => (
                              <Badge 
-                               key={index}
-                               variant={leave.type === 'leave' ? 'default' : 'secondary'}
-                               className="mr-1"
+                               key={type}
+                               variant={type === 'leave' ? 'default' : 'secondary'}
+                               className="text-xs"
                              >
-                               {leave.type === 'leave' ? 'Congé' : 'Repos récup.'}
+                               {type === 'leave' ? 'Congé' : 'Repos récup.'}
                              </Badge>
                            ))}
                          </div>
                        </TableCell>
                        <TableCell>
-                         <div className="space-y-1 text-sm">
-                           {entry.leaves.map((leave, index) => (
-                             <div key={index}>
-                               {leave.startDate === leave.endDate 
-                                 ? formatDateSafely(leave.startDate)
-                                 : `${formatDateSafely(leave.startDate)} - ${formatDateSafely(leave.endDate)}`
-                               }
-                             </div>
-                           ))}
-                         </div>
-                       </TableCell>
-                       <TableCell className="text-sm text-gray-600">
                          <div className="space-y-1">
                            {entry.leaves.map((leave, index) => (
-                             <div key={index}>
-                               {leave.notes || '-'}
+                             <div key={index} className="text-sm flex items-center gap-2">
+                               <Badge 
+                                 variant="outline" 
+                                 className="text-xs px-1 py-0"
+                               >
+                                 {leave.type === 'leave' ? 'C' : 'R'}
+                               </Badge>
+                               <span>
+                                 {leave.startDate === leave.endDate 
+                                   ? formatDateSafely(leave.startDate)
+                                   : `${formatDateSafely(leave.startDate)} → ${formatDateSafely(leave.endDate)}`
+                                 }
+                               </span>
+                               {leave.notes && (
+                                 <span className="text-xs text-gray-500 italic">
+                                   ({leave.notes})
+                                 </span>
+                               )}
                              </div>
                            ))}
                          </div>
                        </TableCell>
-                      <TableCell>
-                        {entry.isSigned ? (
-                          <div className="flex flex-col">
-                            <Badge variant="default" className="bg-green-500">
-                              Signé
-                            </Badge>
-                            {entry.signedAt && (
-                              <span className="text-xs text-gray-500 mt-1">
-                                {formatDateSafely(entry.signedAt)}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <Badge variant="outline">
-                            En attente
-                          </Badge>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {entry.signature && (
-                          <div className="flex items-center space-x-2">
-                            <img 
-                              src={entry.signature} 
-                              alt="Signature" 
-                              className="h-8 w-16 border border-gray-300 rounded cursor-pointer"
-                              onClick={() => setViewingSignature(entry.signature!)}
-                            />
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setViewingSignature(entry.signature!)}
-                            >
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
-                          {entry.isSigned ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => deleteSignature(entry.id)}
-                            >
-                              <Trash2 className="h-4 w-4 mr-1" />
-                              Supprimer
-                            </Button>
-                          ) : (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setSelectedEntry(entry.id)}
-                            >
-                              <FileSignature className="h-4 w-4 mr-1" />
-                              Signer
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
+                       <TableCell>
+                         {entry.isSigned ? (
+                           <div className="flex items-center gap-2">
+                             <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                               ✓ Signé
+                             </Badge>
+                             {entry.signedAt && (
+                               <span className="text-xs text-gray-500">
+                                 {formatDateSafely(entry.signedAt)}
+                               </span>
+                             )}
+                           </div>
+                         ) : (
+                           <Badge variant="outline" className="border-orange-300 text-orange-600">
+                             En attente
+                           </Badge>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {entry.signature && (
+                           <Button
+                             variant="ghost"
+                             size="sm"
+                             onClick={() => setViewingSignature(entry.signature!)}
+                             className="h-8 w-8 p-0"
+                           >
+                             <Eye className="h-4 w-4" />
+                           </Button>
+                         )}
+                       </TableCell>
+                       <TableCell>
+                         {entry.isSigned ? (
+                           <Button
+                             variant="outline"
+                             size="sm"
+                             onClick={() => deleteSignature(entry.id)}
+                             className="h-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                           >
+                             <Trash2 className="h-4 w-4 mr-1" />
+                             Supprimer
+                           </Button>
+                         ) : (
+                           <Button
+                             variant="default"
+                             size="sm"
+                             onClick={() => setSelectedEntry(entry.id)}
+                             className="h-8"
+                           >
+                             <FileSignature className="h-4 w-4 mr-1" />
+                             Signer
+                           </Button>
+                         )}
+                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
-                      Aucun congé ou repos récupérateur à signer. 
-                      Ajoutez des entrées dans le planning principal.
-                    </TableCell>
-                  </TableRow>
+                   <TableRow>
+                     <TableCell colSpan={6} className="text-center py-8">
+                       <div className="flex flex-col items-center gap-2 text-gray-500">
+                         <FileSignature className="h-8 w-8" />
+                         <p>Aucun congé ou repos récupérateur à signer</p>
+                         <p className="text-sm">Ajoutez des entrées dans le planning principal</p>
+                       </div>
+                     </TableCell>
+                   </TableRow>
                 )}
               </TableBody>
             </Table>
