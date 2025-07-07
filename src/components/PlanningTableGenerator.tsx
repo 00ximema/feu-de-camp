@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -413,40 +414,6 @@ const PlanningTableGenerator = () => {
       />
     </div>
   );
-};
-
-const handleCellClick = (rowIndex: number, cellIndex: number) => {
-  console.log('Cellule cliquée:', rowIndex, cellIndex);
-  setSelectedCell({ rowIndex, cellIndex });
-  setDialogOpen(true);
-};
-
-const handleSaveEvent = (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => {
-  if (!selectedCell) return;
-  
-  console.log('Sauvegarde événement:', eventName, memberId, type);
-  const { rowIndex, cellIndex } = selectedCell;
-  const newData = [...planningData];
-  const member = memberId ? teamMembers.find(m => m.id === memberId) : undefined;
-  
-  newData[rowIndex][cellIndex].event = {
-    id: `${rowIndex}-${cellIndex}`,
-    name: eventName,
-    type: (type as any) || (SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity'),
-    assignedMember: member,
-    startDate,
-    endDate
-  };
-  
-  setPlanningData(newData);
-};
-
-const handleDeleteEvent = (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
-  e.stopPropagation();
-  console.log('Suppression événement:', rowIndex, cellIndex);
-  const newData = [...planningData];
-  delete newData[rowIndex][cellIndex].event;
-  setPlanningData(newData);
 };
 
 export default PlanningTableGenerator;
