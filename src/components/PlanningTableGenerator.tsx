@@ -33,6 +33,7 @@ interface PlanningEvent {
   endTime?: string;
   selectedGroups?: string[];
   selectedJeunes?: string[];
+  description?: string;
   notes?: string;
 }
 
@@ -192,40 +193,40 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = async (
-    eventName: string, 
-    memberIds?: string[], 
-    type?: string, 
-    startDate?: string, 
-    endDate?: string, 
-    startTime?: string, 
-    endTime?: string, 
-    selectedGroups?: string[], 
-    selectedJeunes?: string[], 
-    notes?: string
-  ) => {
+  const handleSaveEvent = async (eventData: {
+    eventName: string;
+    memberIds?: string[];
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    selectedGroups?: string[];
+    selectedJeunes?: string[];
+    notes?: string;
+  }) => {
     if (!selectedCell) return;
     
-    console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes, notes);
+    console.log('Saving event:', eventData);
     const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
-    const members = memberIds ? teamMembers.filter(m => memberIds.includes(m.id)) : undefined;
+    const members = eventData.memberIds ? teamMembers.filter(m => eventData.memberIds!.includes(m.id)) : undefined;
     
     const timeSlot = newData[rowIndex][cellIndex].timeSlot;
     const isSpecialRow = SPECIAL_ROWS.includes(timeSlot);
     
     newData[rowIndex][cellIndex].event = {
       id: `${rowIndex}-${cellIndex}-${Date.now()}`,
-      name: isSpecialRow ? timeSlot : eventName,
-      type: (type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
+      name: isSpecialRow ? timeSlot : eventData.eventName,
+      type: (eventData.type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
       assignedMembers: members,
-      startDate,
-      endDate,
-      startTime,
-      endTime,
-      selectedGroups,
-      selectedJeunes,
-      notes
+      startDate: eventData.startDate,
+      endDate: eventData.endDate,
+      startTime: eventData.startTime,
+      endTime: eventData.endTime,
+      selectedGroups: eventData.selectedGroups,
+      selectedJeunes: eventData.selectedJeunes,
+      notes: eventData.notes
     };
     
     setPlanningData(newData);

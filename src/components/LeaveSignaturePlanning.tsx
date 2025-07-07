@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -50,6 +49,7 @@ interface PlanningEvent {
   selectedGroups?: string[];
   selectedJeunes?: string[];
   description?: string;
+  notes?: string;
 }
 
 const LeaveSignaturePlanning = () => {
@@ -94,7 +94,7 @@ const LeaveSignaturePlanning = () => {
                     type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
                     startDate: cell.event!.startDate || cell.date,
                     endDate: cell.event!.endDate || cell.date,
-                    notes: cell.event!.description,
+                    notes: cell.event!.description || cell.event!.notes,
                     isSigned: false,
                     signedAt: undefined
                   });
