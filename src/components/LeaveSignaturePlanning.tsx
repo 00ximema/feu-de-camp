@@ -76,8 +76,17 @@ const LeaveSignaturePlanning = () => {
 
     try {
       const plannings = await db.getAll('plannings', currentSession.id);
-      const entries: LeaveEntry[] = [];
+      const memberLeaveData: { [memberId: string]: {
+        member: any;
+        leaves: Array<{
+          type: 'leave' | 'recovery';
+          startDate: string;
+          endDate: string;
+          notes?: string;
+        }>;
+      } } = {};
       
+      // Collecter tous les congés/repos par membre
       plannings.forEach(planning => {
         if (planning.data) {
           planning.data.forEach((row, rowIndex) => {
@@ -87,16 +96,18 @@ const LeaveSignaturePlanning = () => {
                   cell.event.assignedMembers) {
                 
                 cell.event.assignedMembers.forEach(member => {
-                  const entryId = `${member.id}-${cell.event!.id}`;
-                  entries.push({
-                    id: entryId,
-                    staffName: `${member.prenom} ${member.nom}`,
+                  if (!memberLeaveData[member.id]) {
+                    memberLeaveData[member.id] = {
+                      member,
+                      leaves: []
+                    };
+                  }
+                  
+                  memberLeaveData[member.id].leaves.push({
                     type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
                     startDate: cell.event!.startDate || cell.date,
                     endDate: cell.event!.endDate || cell.date,
-                    notes: cell.event!.notes || cell.event!.description,
-                    isSigned: false,
-                    signedAt: undefined
+                    notes: cell.event!.notes || cell.event!.description
                   });
                 });
               }
@@ -105,8 +116,41 @@ const LeaveSignaturePlanning = () => {
         }
       });
 
+      // Créer une seule entrée par membre
+      const entries: LeaveEntry[] = Object.values(memberLeaveData).map(({ member, leaves }) => {
+        // Trier les congés par date pour déterminer la période globale
+        const sortedLeaves = leaves.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+        const firstLeave = sortedLeaves[0];
+        const lastLeave = sortedLeaves[sortedLeaves.length - 1];
+        
+        // Déterminer les types de congés
+        const hasLeave = leaves.some(l => l.type === 'leave');
+        const hasRecovery = leaves.some(l => l.type === 'recovery');
+        
+        let type: 'leave' | 'recovery';
+        if (hasLeave && hasRecovery) {
+          type = 'leave'; // Priorité aux congés si les deux types existent
+        } else {
+          type = hasLeave ? 'leave' : 'recovery';
+        }
+        
+        // Compiler les notes de tous les congés
+        const allNotes = leaves.map(l => l.notes).filter(Boolean).join(' | ');
+        
+        return {
+          id: member.id, // Une seule entrée par membre, basée sur son ID
+          staffName: `${member.prenom} ${member.nom}`,
+          type,
+          startDate: firstLeave.startDate,
+          endDate: lastLeave.endDate,
+          notes: allNotes || `${leaves.length} période(s) de repos/congés`,
+          isSigned: false,
+          signedAt: undefined
+        };
+      });
+
       setLeaveEntries(entries);
-      console.log('Entrées de congés/repos chargées:', entries);
+      console.log('Entrées de congés/repos chargées (regroupées par membre):', entries);
     } catch (error) {
       console.error('Erreur lors du chargement des entrées:', error);
     }
