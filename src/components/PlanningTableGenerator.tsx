@@ -252,11 +252,14 @@ const PlanningTableGenerator = () => {
     }
   }, [isInitialized, currentSession]);
 
-  useEffect(() => {
+  const initializePlanningData = () => {
+    if (!startDate || !endDate) return [];
+    
     console.log('Initialisation du planning pour la période:', startDate, 'à', endDate);
     
     try {
       const initialData: PlanningCell[][] = [];
+      const dateRange = generateDateRange(startDate, endDate);
       
       TIME_SLOTS.forEach(timeSlot => {
         const row: PlanningCell[] = [];
@@ -298,13 +301,12 @@ const PlanningTableGenerator = () => {
         initialData.push(row);
       });
 
-      // Toujours mettre à jour le planning quand les dates changent
-      setPlanningData(initialData);
+      return initialData;
     } catch (error) {
       console.error('Erreur lors de l\'initialisation du planning:', error);
-      setPlanningData([]);
+      return [];
     }
-  }, [startDate, endDate]);
+  };
 
   const exportToPDF = async () => {
     if (!planningRef.current || !startDate || !endDate) {
@@ -551,7 +553,7 @@ const PlanningTableGenerator = () => {
     }
   };
 
-  const generatePlanning = () => {
+  const generatePlanning = async () => {
     if (!startDate || !endDate) {
       toast({
         title: "Dates manquantes",
@@ -560,7 +562,20 @@ const PlanningTableGenerator = () => {
       });
       return;
     }
+    
+    // Initialiser les données du planning
+    const initialData = initializePlanningData();
+    setPlanningData(initialData);
+    
+    // Sauvegarder le planning vide
+    await savePlanning(initialData);
+    
     setShowPlanning(true);
+    
+    toast({
+      title: "Planning généré",
+      description: "Le planning a été créé et sauvegardé avec succès.",
+    });
   };
 
   const getStartDateValue = () => {
