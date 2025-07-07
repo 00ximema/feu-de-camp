@@ -1,14 +1,15 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, Download, FileSignature, Trash2 } from "lucide-react";
+import { UserCheck, Download, FileSignature, Trash2, Eye } from "lucide-react";
 import { format, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -48,7 +49,7 @@ interface PlanningEvent {
   endTime?: string;
   selectedGroups?: string[];
   selectedJeunes?: string[];
-  notes?: string;
+  description?: string;
 }
 
 const LeaveSignaturePlanning = () => {
@@ -56,6 +57,7 @@ const LeaveSignaturePlanning = () => {
   const [signatures, setSignatures] = useState<SignatureData[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  const [viewingSignature, setViewingSignature] = useState<string | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const reportRef = useRef<HTMLDivElement>(null);
   const { isInitialized, db } = useLocalDatabase();
@@ -92,7 +94,7 @@ const LeaveSignaturePlanning = () => {
                     type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
                     startDate: cell.event!.startDate || cell.date,
                     endDate: cell.event!.endDate || cell.date,
-                    notes: cell.event!.notes,
+                    notes: cell.event!.description,
                     isSigned: false,
                     signedAt: undefined
                   });
@@ -246,37 +248,6 @@ const LeaveSignaturePlanning = () => {
     try {
       console.log('Export PDF rapport signatures démarré...');
 
-      const originalElement = reportRef.current;
-      
-      const exportElement = document.createElement('div');
-      exportElement.innerHTML = originalElement.innerHTML;
-      exportElement.style.position = 'absolute';
-      exportElement.style.left = '-9999px';
-      exportElement.style.top = '0';
-      exportElement.style.backgroundColor = 'white';
-      exportElement.style.padding = '20px';
-      exportElement.style.width = '800px';
-      exportElement.style.fontFamily = 'Arial, sans-serif';
-      
-      // Supprimer les boutons d'action
-      const buttons = exportElement.querySelectorAll('button');
-      buttons.forEach(button => button.remove());
-      
-      document.body.appendChild(exportElement);
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(exportElement, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: 800
-      });
-      
-      document.body.removeChild(exportElement);
-
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       
       // En-tête
@@ -295,33 +266,93 @@ const LeaveSignaturePlanning = () => {
       pdf.setFontSize(10);
       pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, 15, 35);
       
-      // Image
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 30;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      let yPosition = 50;
       
-      let yPosition = 45;
-      let remainingHeight = imgHeight;
-      
-      while (remainingHeight > 0) {
-        const pageHeight = pdfHeight - yPosition - 10;
-        const currentHeight = Math.min(remainingHeight, pageHeight);
-        
-        pdf.addImage(
-          imgData, 
-          'PNG', 
-          15, 
-          yPosition, 
-          imgWidth, 
-          currentHeight
-        );
-        
-        remainingHeight -= currentHeight;
-        
-        if (remainingHeight > 0) {
+      // Tableau des entrées avec signatures
+      const entriesWithSignatureStatus = leaveEntries.map(entry => {
+        const signature = signatures.find(s => s.entryId === entry.id);
+        return {
+          ...entry,
+          isSigned: !!signature,
+          signedAt: signature?.signedAt,
+          signature: signature?.signature
+        };
+      });
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Résumé des signatures', 15, yPosition);
+      yPosition += 10;
+
+      // En-têtes du tableau
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Personnel', 15, yPosition);
+      pdf.text('Type', 60, yPosition);
+      pdf.text('Période', 90, yPosition);
+      pdf.text('Statut', 150, yPosition);
+      yPosition += 7;
+
+      // Lignes du tableau
+      pdf.setFont('helvetica', 'normal');
+      entriesWithSignatureStatus.forEach((entry) => {
+        if (yPosition > 270) {
           pdf.addPage();
           yPosition = 20;
+        }
+
+        pdf.text(entry.staffName, 15, yPosition);
+        pdf.text(entry.type === 'leave' ? 'Congé' : 'Repos récup.', 60, yPosition);
+        
+        const dateText = entry.startDate === entry.endDate 
+          ? formatDateSafely(entry.startDate)
+          : `${formatDateSafely(entry.startDate)} - ${formatDateSafely(entry.endDate)}`;
+        pdf.text(dateText, 90, yPosition);
+        
+        pdf.text(entry.isSigned ? 'Signé' : 'En attente', 150, yPosition);
+        
+        if (entry.isSigned && entry.signedAt) {
+          pdf.setFontSize(8);
+          pdf.text(`le ${formatDateSafely(entry.signedAt)}`, 150, yPosition + 3);
+          pdf.setFontSize(9);
+        }
+        
+        yPosition += 10;
+      });
+
+      // Ajouter les signatures visuelles
+      yPosition += 15;
+      const signedEntries = entriesWithSignatureStatus.filter(entry => entry.isSigned && entry.signature);
+      
+      if (signedEntries.length > 0) {
+        pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Signatures électroniques', 15, yPosition);
+        yPosition += 15;
+
+        for (const entry of signedEntries) {
+          if (yPosition > 200) {
+            pdf.addPage();
+            yPosition = 20;
+          }
+
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text(`${entry.staffName} - ${entry.type === 'leave' ? 'Congé' : 'Repos récupérateur'}`, 15, yPosition);
+          yPosition += 5;
+          
+          if (entry.signature) {
+            try {
+              pdf.addImage(entry.signature, 'PNG', 15, yPosition, 80, 25);
+              yPosition += 30;
+            } catch (error) {
+              console.error('Erreur ajout signature:', error);
+              pdf.text('Signature non disponible', 15, yPosition);
+              yPosition += 10;
+            }
+          }
+          
+          yPosition += 10;
         }
       }
       
@@ -361,7 +392,8 @@ const LeaveSignaturePlanning = () => {
     return {
       ...entry,
       isSigned: !!signature,
-      signedAt: signature?.signedAt
+      signedAt: signature?.signedAt,
+      signature: signature?.signature
     };
   });
 
@@ -394,6 +426,7 @@ const LeaveSignaturePlanning = () => {
                   <TableHead>Période</TableHead>
                   <TableHead>Précisions</TableHead>
                   <TableHead>Statut</TableHead>
+                  <TableHead>Signature</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -435,31 +468,52 @@ const LeaveSignaturePlanning = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        {entry.isSigned ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteSignature(entry.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Supprimer
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedEntry(entry.id)}
-                          >
-                            <FileSignature className="h-4 w-4 mr-1" />
-                            Signer
-                          </Button>
+                        {entry.signature && (
+                          <div className="flex items-center space-x-2">
+                            <img 
+                              src={entry.signature} 
+                              alt="Signature" 
+                              className="h-8 w-16 border border-gray-300 rounded cursor-pointer"
+                              onClick={() => setViewingSignature(entry.signature!)}
+                            />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setViewingSignature(entry.signature!)}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                          </div>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          {entry.isSigned ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => deleteSignature(entry.id)}
+                            >
+                              <Trash2 className="h-4 w-4 mr-1" />
+                              Supprimer
+                            </Button>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedEntry(entry.id)}
+                            >
+                              <FileSignature className="h-4 w-4 mr-1" />
+                              Signer
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center text-gray-500">
+                    <TableCell colSpan={7} className="text-center text-gray-500">
                       Aucun congé ou repos récupérateur à signer. 
                       Ajoutez des entrées dans le planning principal.
                     </TableCell>
@@ -502,6 +556,28 @@ const LeaveSignaturePlanning = () => {
                       Annuler
                     </Button>
                   </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {viewingSignature && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Visualisation de la signature</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border border-gray-300 rounded-lg p-4 bg-white">
+                    <img 
+                      src={viewingSignature} 
+                      alt="Signature" 
+                      className="max-w-full h-auto"
+                    />
+                  </div>
+                  <Button variant="outline" onClick={() => setViewingSignature(null)}>
+                    Fermer
+                  </Button>
                 </div>
               </CardContent>
             </Card>
