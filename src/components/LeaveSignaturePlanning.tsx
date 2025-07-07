@@ -442,9 +442,9 @@ const LeaveSignaturePlanning = () => {
             
             const periodText = leave.startDate === leave.endDate 
               ? formatDateSafely(leave.startDate)
-              : `${formatDateSafely(leave.startDate)} → ${formatDateSafely(leave.endDate)}`;
+              : `${formatDateSafely(leave.startDate)} vers ${formatDateSafely(leave.endDate)}`;
             
-            pdf.text(`  → ${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`, 20, yPosition);
+            pdf.text(`  - ${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`, 20, yPosition);
             
             if (leave.notes) {
               pdf.text(`    (${leave.notes})`, 25, yPosition + 2);
