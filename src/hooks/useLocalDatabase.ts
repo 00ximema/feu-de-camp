@@ -15,6 +15,13 @@ export const useLocalDatabase = () => {
           await localDB.migrateFromLocalStorage();
           localStorage.setItem('db-migrated', 'true');
         }
+        
+        // Nettoyage des données orphelines pour la session courante
+        const currentSessionStr = localStorage.getItem('current-session');
+        if (currentSessionStr) {
+          const currentSession = JSON.parse(currentSessionStr);
+          await localDB.cleanOrphanedData(currentSession.id);
+        }
         setIsInitialized(true);
         console.log('Base de données locale initialisée');
       } catch (error) {

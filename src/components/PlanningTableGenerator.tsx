@@ -410,13 +410,7 @@ const PlanningTableGenerator = () => {
           15, 
           yPosition, 
           imgWidth, 
-          currentHeight,
-          undefined,
-          'FAST',
-          0,
-          sy,
-          canvas.width,
-          (sHeight * canvas.width) / imgWidth
+          currentHeight
         );
         
         remainingHeight -= currentHeight;

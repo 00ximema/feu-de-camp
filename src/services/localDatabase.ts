@@ -105,6 +105,8 @@ interface DatabaseSchema {
         endTime?: string;
         selectedGroups?: string[];
         selectedJeunes?: string[];
+        description?: string;
+        notes?: string;
       };
     }>>;
     startDate?: string;
@@ -316,18 +318,33 @@ class LocalDatabase {
     const transaction = this.db!.transaction([table], 'readonly');
     const store = transaction.objectStore(table);
     
-    let request;
+    let result: DatabaseSchema[T][];
+    
     if (sessionId && store.indexNames.contains('sessionId')) {
+      // Utiliser l'index sessionId pour un filtrage efficace
       const index = store.index('sessionId');
-      request = index.getAll(sessionId);
+      const request = index.getAll(sessionId);
+      result = await new Promise((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
     } else {
-      request = store.getAll();
+      // Récupérer toutes les données et les filtrer manuellement si nécessaire
+      const request = store.getAll();
+      const allData = await new Promise<DatabaseSchema[T][]>((resolve, reject) => {
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+      
+      // Si sessionId est fourni mais pas d'index, filtrer manuellement
+      if (sessionId) {
+        result = allData.filter((item: any) => item.sessionId === sessionId);
+      } else {
+        result = allData;
+      }
     }
     
-    return new Promise((resolve, reject) => {
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
+    return result;
   }
 
   async getById<T extends keyof DatabaseSchema>(
@@ -368,6 +385,38 @@ class LocalDatabase {
     const transaction = this.db!.transaction([table], 'readwrite');
     const store = transaction.objectStore(table);
     await store.clear();
+  }
+
+  // Nettoyer les données orphelines et migrer vers une session
+  async cleanOrphanedData(currentSessionId: string): Promise<void> {
+    console.log('Nettoyage des données orphelines...');
+    
+    const tables: (keyof DatabaseSchema)[] = ['plannings', 'animateurs', 'jeunes', 'groupes', 'events', 'roomData', 'traitements', 'soins', 'signatures'];
+    
+    for (const table of tables) {
+      try {
+        if (table === 'sessions') continue; // Skip sessions table
+        
+        const allData = await this.getAll(table);
+        const orphanedData = allData.filter((item: any) => !item.sessionId);
+        
+        if (orphanedData.length > 0) {
+          console.log(`Migration de ${orphanedData.length} entrées orphelines dans ${table} vers la session ${currentSessionId}`);
+          
+          // Migrer les données orphelines vers la session courante
+          const migratedData = orphanedData.map((item: any) => ({
+            ...item,
+            sessionId: currentSessionId
+          }));
+          
+          await this.saveMany(table, migratedData);
+        }
+      } catch (error) {
+        console.error(`Erreur lors du nettoyage de ${table}:`, error);
+      }
+    }
+    
+    console.log('Nettoyage terminé');
   }
 
   // Migration depuis localStorage
