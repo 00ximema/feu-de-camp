@@ -207,6 +207,41 @@ interface DatabaseSchema {
     signedAt: string;
     createdAt: string;
   };
+
+  // Données administratives
+  administratif: {
+    id: string;
+    sessionId?: string;
+    exerciceEvacuationDone: boolean;
+    emergencyContacts: Array<{
+      id: number;
+      label: string;
+      number: string;
+      description: string;
+    }>;
+    hospitalDetails: {
+      nom: string;
+      adresse: string;
+      telephone: string;
+    };
+    acmDocuments: {
+      declarationACM: boolean;
+      projetEducatif: boolean;
+      projetPedagogique: boolean;
+      registrePresence: boolean;
+      planEvacuationConsignes: boolean;
+      panneauInterdictionFumer: boolean;
+      adressesUrgence: boolean;
+      tableauTemperatures: boolean;
+      menusSemaine: boolean;
+      protocoleSanitaire: boolean;
+      assurances: boolean;
+      conventionsPartenaires: boolean;
+    };
+    checklistData: { [key: string]: { [key: string]: boolean } };
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
 class LocalDatabase {
@@ -278,6 +313,11 @@ class LocalDatabase {
           const signaturesStore = db.createObjectStore('signatures', { keyPath: 'id' });
           signaturesStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table signatures créée');
+        }
+        if (!db.objectStoreNames.contains('administratif')) {
+          const administratifStore = db.createObjectStore('administratif', { keyPath: 'id' });
+          administratifStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table administratif créée');
         }
       };
     });
@@ -391,7 +431,7 @@ class LocalDatabase {
   async cleanOrphanedData(currentSessionId: string): Promise<void> {
     console.log('Nettoyage des données orphelines...');
     
-    const tables: (keyof DatabaseSchema)[] = ['plannings', 'animateurs', 'jeunes', 'groupes', 'events', 'roomData', 'traitements', 'soins', 'signatures'];
+    const tables: (keyof DatabaseSchema)[] = ['plannings', 'animateurs', 'jeunes', 'groupes', 'events', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
     
     for (const table of tables) {
       try {

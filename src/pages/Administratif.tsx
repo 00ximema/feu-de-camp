@@ -13,14 +13,18 @@ import { Youngster } from "@/types/youngster";
 import { useEvents } from "@/hooks/useEvents";
 import jsPDF from 'jspdf';
 import { useToast } from "@/hooks/use-toast";
+import { useLocalDatabase } from '@/hooks/useLocalDatabase';
+import { useSession } from '@/hooks/useSession';
 
 const Administratif = () => {
   const [youngsters, setYoungsters] = useState<Youngster[]>([]);
   const { events } = useEvents();
   const { toast } = useToast();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
   const [checklistData, setChecklistData] = useState<{ [key: string]: { [key: string]: boolean } }>({});
   const [exerciceEvacuationDone, setExerciceEvacuationDone] = useState(false);
-  const [acmDocuments, setAcmDocuments] = useState<{ [key: string]: boolean }>({
+  const [acmDocuments, setAcmDocuments] = useState({
     declarationACM: false,
     projetEducatif: false,
     projetPedagogique: false,
@@ -58,58 +62,112 @@ const Administratif = () => {
     telephone: ""
   });
 
-  // Charger les jeunes depuis le localStorage au montage du composant
+  // Charger les données administratives et les jeunes depuis la base de données
   useEffect(() => {
-    const savedYoungsters = localStorage.getItem('imported-youngsters');
-    if (savedYoungsters) {
-      try {
-        const parsedYoungsters = JSON.parse(savedYoungsters);
-        setYoungsters(parsedYoungsters);
-        
-        // Initialiser les données de checklist
-        const initialChecklistData: { [key: string]: { [key: string]: boolean } } = {};
-        parsedYoungsters.forEach((youngster: Youngster) => {
-          initialChecklistData[youngster.id] = {
-            ficheRenseignements: false,
-            ficheSanitaire: false,
-            copieCNI: false,
-            copieVaccins: false,
-            autorisationSortieTerritory: false,
-            copieCNIParents: false,
-            autorisationQL: false
-          };
-        });
-        setChecklistData(initialChecklistData);
-      } catch (error) {
-        console.error('Erreur lors du chargement des jeunes:', error);
-      }
+    if (isInitialized && currentSession) {
+      loadAdministrativeData();
+      loadYoungsters();
     }
-  }, []);
+  }, [isInitialized, currentSession]);
 
-  const handleCheckboxChange = (youngesterId: string, documentType: string, checked: boolean) => {
-    setChecklistData(prev => ({
-      ...prev,
+  const loadYoungsters = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const savedYoungsters = await db.getAll('jeunes', currentSession.id);
+      setYoungsters(savedYoungsters as Youngster[]);
+      
+      // Initialiser les données de checklist
+      const initialChecklistData: { [key: string]: { [key: string]: boolean } } = {};
+      savedYoungsters.forEach((youngster) => {
+        initialChecklistData[youngster.id] = {
+          ficheRenseignements: false,
+          ficheSanitaire: false,
+          copieCNI: false,
+          copieVaccins: false,
+          autorisationSortieTerritory: false,
+          copieCNIParents: false,
+          autorisationQL: false
+        };
+      });
+      setChecklistData(initialChecklistData);
+    } catch (error) {
+      console.error('Erreur lors du chargement des jeunes:', error);
+    }
+  };
+
+  const loadAdministrativeData = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const adminData = await db.getAll('administratif', currentSession.id);
+      if (adminData.length > 0) {
+        const data = adminData[0];
+        setExerciceEvacuationDone(data.exerciceEvacuationDone);
+        setEmergencyContacts(data.emergencyContacts);
+        setHospitalDetails(data.hospitalDetails);
+        setAcmDocuments(data.acmDocuments);
+        if (data.checklistData) {
+          setChecklistData(data.checklistData);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des données administratives:', error);
+    }
+  };
+
+  const saveAdministrativeData = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const adminData = {
+        id: `admin_${currentSession.id}`,
+        sessionId: currentSession.id,
+        exerciceEvacuationDone,
+        emergencyContacts,
+        hospitalDetails,
+        acmDocuments,
+        checklistData,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.save('administratif', adminData);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde des données administratives:', error);
+    }
+  };
+
+  const handleCheckboxChange = async (youngesterId: string, documentType: string, checked: boolean) => {
+    const newChecklistData = {
+      ...checklistData,
       [youngesterId]: {
-        ...prev[youngesterId],
+        ...checklistData[youngesterId],
         [documentType]: checked
       }
-    }));
+    };
+    setChecklistData(newChecklistData);
+    await saveAdministrativeData();
   };
 
-  const handleAcmCheckboxChange = (documentType: string, checked: boolean) => {
-    setAcmDocuments(prev => ({
-      ...prev,
+  const handleAcmCheckboxChange = async (documentType: string, checked: boolean) => {
+    const newAcmDocuments = {
+      ...acmDocuments,
       [documentType]: checked
-    }));
+    };
+    setAcmDocuments(newAcmDocuments);
+    await saveAdministrativeData();
   };
 
-  const handleEmergencyContactChange = (id: number, field: 'label' | 'number' | 'description', value: string) => {
-    setEmergencyContacts(prev => prev.map(contact => 
+  const handleEmergencyContactChange = async (id: number, field: 'label' | 'number' | 'description', value: string) => {
+    const newContacts = emergencyContacts.map(contact => 
       contact.id === id ? { ...contact, [field]: value } : contact
-    ));
+    );
+    setEmergencyContacts(newContacts);
+    await saveAdministrativeData();
   };
 
-  const addEmergencyContact = () => {
+  const addEmergencyContact = async () => {
     const newId = Math.max(...emergencyContacts.map(c => c.id)) + 1;
     const newContact = {
       id: newId,
@@ -117,18 +175,22 @@ const Administratif = () => {
       number: "",
       description: ""
     };
-    setEmergencyContacts(prev => [...prev, newContact]);
+    const newContacts = [...emergencyContacts, newContact];
+    setEmergencyContacts(newContacts);
     setSelectedContactId(newId.toString());
     setEditingContact(newContact);
     setIsEditing(true);
+    await saveAdministrativeData();
   };
 
-  const removeEmergencyContact = (id: number) => {
-    setEmergencyContacts(prev => prev.filter(contact => contact.id !== id));
+  const removeEmergencyContact = async (id: number) => {
+    const newContacts = emergencyContacts.filter(contact => contact.id !== id);
+    setEmergencyContacts(newContacts);
     if (editingContact?.id === id) {
       setEditingContact(null);
       setIsEditing(false);
     }
+    await saveAdministrativeData();
   };
 
   const startEditingContact = (contact: typeof emergencyContacts[0]) => {
@@ -137,11 +199,11 @@ const Administratif = () => {
     setSelectedContactId(contact.id.toString());
   };
 
-  const saveEditingContact = () => {
+  const saveEditingContact = async () => {
     if (editingContact) {
-      handleEmergencyContactChange(editingContact.id, 'label', editingContact.label);
-      handleEmergencyContactChange(editingContact.id, 'number', editingContact.number);
-      handleEmergencyContactChange(editingContact.id, 'description', editingContact.description);
+      await handleEmergencyContactChange(editingContact.id, 'label', editingContact.label);
+      await handleEmergencyContactChange(editingContact.id, 'number', editingContact.number);
+      await handleEmergencyContactChange(editingContact.id, 'description', editingContact.description);
     }
     setIsEditing(false);
     setEditingContact(null);
@@ -152,45 +214,21 @@ const Administratif = () => {
     setEditingContact(null);
   };
 
-  const handleHospitalDetailsChange = (field: string, value: string) => {
-    setHospitalDetails(prev => ({
-      ...prev,
+  const handleHospitalDetailsChange = async (field: string, value: string) => {
+    const newHospitalDetails = {
+      ...hospitalDetails,
       [field]: value
-    }));
+    };
+    setHospitalDetails(newHospitalDetails);
+    await saveAdministrativeData();
   };
 
-  // Save emergency contacts to localStorage
+  // Sauvegarder automatiquement quand les données changent
   useEffect(() => {
-    localStorage.setItem('emergency-contacts', JSON.stringify(emergencyContacts));
-    localStorage.setItem('hospital-details', JSON.stringify(hospitalDetails));
-  }, [emergencyContacts, hospitalDetails]);
-
-  // Load emergency contacts from localStorage and evacuation exercise state
-  useEffect(() => {
-    const savedContacts = localStorage.getItem('emergency-contacts');
-    const savedHospital = localStorage.getItem('hospital-details');
-    const savedEvacuation = localStorage.getItem('evacuation-exercise-done');
-    
-    if (savedContacts) {
-      try {
-        setEmergencyContacts(JSON.parse(savedContacts));
-      } catch (error) {
-        console.error('Erreur lors du chargement des contacts d\'urgence:', error);
-      }
+    if (isInitialized && currentSession) {
+      saveAdministrativeData();
     }
-    
-    if (savedHospital) {
-      try {
-        setHospitalDetails(JSON.parse(savedHospital));
-      } catch (error) {
-        console.error('Erreur lors du chargement des détails hôpital:', error);
-      }
-    }
-
-    if (savedEvacuation) {
-      setExerciceEvacuationDone(JSON.parse(savedEvacuation));
-    }
-  }, []);
+  }, [exerciceEvacuationDone, emergencyContacts, hospitalDetails, acmDocuments, checklistData, isInitialized, currentSession]);
 
   const getCompletionPercentage = (youngesterId: string) => {
     const youngsterChecklist = checklistData[youngesterId];
@@ -202,9 +240,9 @@ const Administratif = () => {
     return Math.round((completedItems / totalItems) * 100);
   };
 
-  const handleEvacuationExerciseValidation = () => {
+  const handleEvacuationExerciseValidation = async () => {
     setExerciceEvacuationDone(true);
-    localStorage.setItem('evacuation-exercise-done', JSON.stringify(true));
+    await saveAdministrativeData();
     toast({
       title: "Exercice validé",
       description: "L'exercice d'évacuation a été marqué comme effectué"
