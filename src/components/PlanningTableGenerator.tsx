@@ -300,9 +300,8 @@ const PlanningTableGenerator = () => {
         initialData.push(row);
       });
 
-      if (planningData.length === 0) {
-        setPlanningData(initialData);
-      }
+      // Toujours mettre à jour le planning quand les dates changent
+      setPlanningData(initialData);
     } catch (error) {
       console.error('Erreur lors de l\'initialisation du planning:', error);
       setPlanningData([]);
