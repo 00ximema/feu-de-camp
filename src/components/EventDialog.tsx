@@ -175,28 +175,27 @@ const EventDialog: React.FC<EventDialogProps> = ({
                 </Select>
               </div>
 
-              {isActivity && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="start-time">Heure de début</Label>
-                    <Input
-                      id="start-time"
-                      type="time"
-                      value={startTime}
-                      onChange={(e) => setStartTime(e.target.value)}
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="end-time">Heure de fin</Label>
-                    <Input
-                      id="end-time"
-                      type="time"
-                      value={endTime}
-                      onChange={(e) => setEndTime(e.target.value)}
-                    />
-                  </div>
+              {/* Horaires - affichés pour toutes les activités sauf les créneaux spéciaux */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="start-time">Heure de début</Label>
+                  <Input
+                    id="start-time"
+                    type="time"
+                    value={startTime}
+                    onChange={(e) => setStartTime(e.target.value)}
+                  />
                 </div>
-              )}
+                <div>
+                  <Label htmlFor="end-time">Heure de fin</Label>
+                  <Input
+                    id="end-time"
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                  />
+                </div>
+              </div>
             </>
           )}
 
@@ -224,7 +223,8 @@ const EventDialog: React.FC<EventDialogProps> = ({
             </div>
           </div>
 
-          {isActivity && (
+          {/* Participants - affiché pour toutes les activités sauf les créneaux spéciaux */}
+          {!isSpecialTimeSlot && (
             <div>
               <Label>Participants</Label>
               <Tabs defaultValue="groups" className="mt-2">

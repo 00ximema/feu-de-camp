@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Download, Plus, Trash2 } from "lucide-react";
-import { format, addDays, startOfWeek, isValid, differenceInDays, eachDayOfInterval } from 'date-fns';
+import { format, addDays, startOfWeek, isValid, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -113,6 +113,27 @@ const PlanningTableGenerator = () => {
   };
 
   const dateRange = generateDateRange(startDate, endDate);
+
+  const formatDateSafely = (date: Date) => {
+    try {
+      if (!isValid(date)) {
+        return '01/01/2024';
+      }
+      return format(date, 'dd/MM/yyyy');
+    } catch (error) {
+      console.error('Erreur formatage date:', error);
+      return '01/01/2024';
+    }
+  };
+
+  const formatDateForInput = (date: Date) => {
+    try {
+      return isValid(date) ? format(date, 'yyyy-MM-dd') : '2024-01-01';
+    } catch (error) {
+      console.error('Erreur formatage date input:', error);
+      return '2024-01-01';
+    }
+  };
 
   const savePlanning = async (updatedData: PlanningCell[][]) => {
     if (!isInitialized || !currentSession) return;
@@ -469,6 +490,16 @@ const PlanningTableGenerator = () => {
                                   {cell.event.assignedMembers.map(member => 
                                     `${member.prenom} ${member.nom}`
                                   ).join(', ')}
+                                </div>
+                              )}
+                              {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
+                                <div className="text-xs text-green-600">
+                                  Groupes sélectionnés
+                                </div>
+                              )}
+                              {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
+                                <div className="text-xs text-green-600">
+                                  Jeunes individuels
                                 </div>
                               )}
                               {cell.event.startDate && cell.event.endDate && 
