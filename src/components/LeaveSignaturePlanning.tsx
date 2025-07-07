@@ -69,7 +69,7 @@ const QuartiersLibres = () => {
         const formattedEntries = dbEntries.map((entry: any) => ({
           id: String(entry.id),
           sessionId: entry.sessionId,
-          eventId: entry.eventId || '',
+          eventId: entry.entryId || '', // Map entryId back to eventId
           eventName: entry.eventName || '',
           memberName: entry.memberName || '',
           startDate: entry.startDate || '',
@@ -120,9 +120,9 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      // Convert to database format - map eventId to entryId
+      // Convert to database format - map eventId to entryId and keep id as string
       const dbEntry = {
-        id: parseInt(entry.id),
+        id: entry.id, // Keep as string
         sessionId: entry.sessionId,
         entryId: entry.eventId, // Map eventId to entryId for database
         signature: entry.signature,
@@ -143,9 +143,9 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      // Convert to database format - map eventId to entryId
+      // Convert to database format - map eventId to entryId and keep id as string
       const dbEntry = {
-        id: parseInt(updatedEntry.id),
+        id: updatedEntry.id, // Keep as string
         sessionId: updatedEntry.sessionId,
         entryId: updatedEntry.eventId, // Map eventId to entryId for database
         signature: updatedEntry.signature,
@@ -168,7 +168,7 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      await db.delete('signatures', parseInt(entryId));
+      await db.delete('signatures', entryId); // Keep as string
       setSignatureEntries(prev => prev.filter(entry => entry.id !== entryId));
       toast.success("Entrée supprimée avec succès");
     } catch (error) {
