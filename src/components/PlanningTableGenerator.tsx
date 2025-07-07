@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -12,6 +11,9 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import EventDialog from './EventDialog';
 import { useTeamManagement } from '@/hooks/useTeamManagement';
+import { useLocalDatabase } from '@/hooks/useLocalDatabase';
+import { useSession } from '@/hooks/useSession';
+import { toast } from '@/components/ui/use-toast';
 
 interface TeamMember {
   id: string;
@@ -76,7 +78,7 @@ const PlanningTableGenerator = () => {
   const [startDate, setStartDate] = useState<Date>(getDefaultStartDate());
   const [endDate, setEndDate] = useState<Date>(() => {
     const start = getDefaultStartDate();
-    return addDays(start, 6); // Par défaut, une semaine
+    return addDays(start, 6);
   });
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
   const { team } = useTeamManagement();
@@ -84,7 +86,9 @@ const PlanningTableGenerator = () => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const planningRef = useRef<HTMLDivElement>(null);
 
-  // Convertir les membres d'équipe au format attendu
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
+
   const teamMembers: TeamMember[] = team.map(member => ({
     id: member.id,
     nom: member.nom,
@@ -103,7 +107,6 @@ const PlanningTableGenerator = () => {
       return interval.filter(date => isValid(date));
     } catch (error) {
       console.error('Erreur lors de la génération des dates:', error);
-      // Retourner une semaine par défaut
       const fallbackStart = new Date(2024, 0, 1);
       return Array.from({ length: 7 }, (_, i) => addDays(fallbackStart, i));
     }
@@ -111,13 +114,63 @@ const PlanningTableGenerator = () => {
 
   const dateRange = generateDateRange(startDate, endDate);
 
+  const savePlanning = async (updatedData: PlanningCell[][]) => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const planningToSave = {
+        id: `planning_${currentSession.id}_${Date.now()}`,
+        sessionId: currentSession.id,
+        data: updatedData,
+        startDate: format(startDate, 'yyyy-MM-dd'),
+        endDate: format(endDate, 'yyyy-MM-dd'),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      await db.save('plannings', planningToSave);
+      console.log('Planning sauvegardé avec succès');
+      toast({
+        title: "Planning sauvegardé",
+        description: "Les modifications ont été enregistrées avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du planning:', error);
+      toast({
+        title: "Erreur de sauvegarde",
+        description: "Impossible de sauvegarder le planning.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const loadPlanning = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const plannings = await db.getAll('plannings', currentSession.id);
+      if (plannings.length > 0) {
+        const latestPlanning = plannings.sort((a, b) => 
+          new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
+        )[0];
+        
+        if (latestPlanning.data) {
+          setPlanningData(latestPlanning.data);
+          console.log('Planning chargé depuis la base de données');
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement du planning:', error);
+    }
+  };
+
   const handleCellClick = (rowIndex: number, cellIndex: number) => {
     console.log('Cell clicked:', rowIndex, cellIndex);
     setSelectedCell({ rowIndex, cellIndex });
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => {
+  const handleSaveEvent = async (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => {
     if (!selectedCell) return;
     
     console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes);
@@ -129,7 +182,7 @@ const PlanningTableGenerator = () => {
     const isSpecialRow = SPECIAL_ROWS.includes(timeSlot);
     
     newData[rowIndex][cellIndex].event = {
-      id: `${rowIndex}-${cellIndex}`,
+      id: `${rowIndex}-${cellIndex}-${Date.now()}`,
       name: isSpecialRow ? timeSlot : eventName,
       type: (type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
       assignedMembers: members,
@@ -142,15 +195,28 @@ const PlanningTableGenerator = () => {
     };
     
     setPlanningData(newData);
+    await savePlanning(newData);
   };
 
-  const handleDeleteEvent = (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
+  const handleDeleteEvent = async (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
     e.stopPropagation();
     console.log('Deleting event at:', rowIndex, cellIndex);
     const newData = [...planningData];
     delete newData[rowIndex][cellIndex].event;
     setPlanningData(newData);
+    await savePlanning(newData);
+    
+    toast({
+      title: "Événement supprimé",
+      description: "L'événement a été supprimé avec succès.",
+    });
   };
+
+  useEffect(() => {
+    if (isInitialized && currentSession) {
+      loadPlanning();
+    }
+  }, [isInitialized, currentSession]);
 
   useEffect(() => {
     console.log('Initialisation du planning pour la période:', startDate, 'à', endDate);
@@ -198,7 +264,9 @@ const PlanningTableGenerator = () => {
         initialData.push(row);
       });
 
-      setPlanningData(initialData);
+      if (planningData.length === 0) {
+        setPlanningData(initialData);
+      }
     } catch (error) {
       console.error('Erreur lors de l\'initialisation du planning:', error);
       setPlanningData([]);
@@ -265,7 +333,6 @@ const PlanningTableGenerator = () => {
       const newDate = new Date(inputValue);
       if (isValid(newDate)) {
         setStartDate(newDate);
-        // Si la date de fin est antérieure à la nouvelle date de début, l'ajuster
         if (endDate < newDate) {
           setEndDate(addDays(newDate, 6));
         }
@@ -316,7 +383,7 @@ const PlanningTableGenerator = () => {
             <span>Planning interactif</span>
           </CardTitle>
           <CardDescription>
-            Cliquez sur une case pour ajouter ou modifier un événement
+            Cliquez sur une case pour ajouter ou modifier un événement. Les données sont automatiquement sauvegardées.
           </CardDescription>
         </CardHeader>
         <CardContent>

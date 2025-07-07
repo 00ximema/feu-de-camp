@@ -82,25 +82,35 @@ interface DatabaseSchema {
     timestamp: string;
   };
   
-  // Plannings - Updated to match PlanningCell structure
+  // Plannings - Updated to include more comprehensive planning data
   plannings: {
     id: string;
     sessionId?: string;
     data: Array<Array<{
       date: string;
       timeSlot: string;
-      event: {
+      event?: {
         id: string;
         name: string;
-        type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'other';
-        assignedMember: {
-          id: number;
+        type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
+        assignedMembers?: Array<{
+          id: string;
           nom: string;
           prenom: string;
           role: string;
-        } | null;
-      } | null;
+        }>;
+        startDate?: string;
+        endDate?: string;
+        startTime?: string;
+        endTime?: string;
+        selectedGroups?: string[];
+        selectedJeunes?: string[];
+      };
     }>>;
+    startDate?: string;
+    endDate?: string;
+    createdAt: string;
+    updatedAt: string;
   };
 
   // Room data - New dedicated table for room configurations and assignments
