@@ -195,11 +195,21 @@ interface DatabaseSchema {
     suivi?: boolean;
     dateCreation: string;
   };
+
+  // Signatures électroniques pour les congés/repos
+  signatures: {
+    id: string;
+    sessionId?: string;
+    entryId: string;
+    signature: string;
+    signedAt: string;
+    createdAt: string;
+  };
 }
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 5; // Augmenter la version pour forcer la mise à jour
+  private version = 6; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -261,6 +271,11 @@ class LocalDatabase {
           const soinsStore = db.createObjectStore('soins', { keyPath: 'id' });
           soinsStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table soins créée');
+        }
+        if (!db.objectStoreNames.contains('signatures')) {
+          const signaturesStore = db.createObjectStore('signatures', { keyPath: 'id' });
+          signaturesStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table signatures créée');
         }
       };
     });
