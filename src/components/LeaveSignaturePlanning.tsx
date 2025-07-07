@@ -271,31 +271,31 @@ const LeaveSignaturePlanning = () => {
 
   const exportToPDF = async () => {
     try {
-      console.log('Export PDF rapport signatures démarré...');
+      console.log('Export PDF rapport signatures demarr...');
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       
-      // En-tête professionnel
+      // En-tete professionnel
       pdf.setFillColor(59, 130, 246); // Bleu moderne
-      pdf.rect(0, 0, 210, 30, 'F');
+      pdf.rect(0, 0, 210, 25, 'F');
       
       pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
+      pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('CVJ MG', 15, 20);
+      pdf.text('CVJ MG', 15, 16);
       
-      pdf.setFontSize(14);
+      pdf.setFontSize(12);
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Rapport des signatures - Repos du personnel', 60, 20);
+      pdf.text('Rapport des signatures - Repos du personnel', 60, 16);
       
-      // Date de génération
+      // Date de generation
       pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
-      pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, 15, 40);
+      pdf.setFontSize(9);
+      pdf.text(`Genere le ${format(new Date(), 'dd/MM/yyyy a HH:mm', { locale: fr })}`, 15, 35);
       
-      let yPosition = 55;
+      let yPosition = 45;
       
-      // Préparer les données avec statut des signatures
+      // Preparer les donnees avec statut des signatures
       const entriesWithSignatureStatus = leaveEntries.map(entry => {
         const memberSignatures = signatures.filter(s => 
           s.entryId === entry.id || s.entryId.startsWith(`${entry.id}-`)
@@ -312,89 +312,63 @@ const LeaveSignaturePlanning = () => {
         };
       });
 
-      // Statistiques générales
+      // Statistiques generales compactes
       const totalPersons = entriesWithSignatureStatus.length;
       const signedPersons = entriesWithSignatureStatus.filter(e => e.isSigned).length;
       
-      pdf.setFontSize(12);
-      pdf.setFont('helvetica', 'bold');
-      pdf.text('RÉSUMÉ GÉNÉRAL', 15, yPosition);
-      yPosition += 8;
-      
       pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('RESUME', 15, yPosition);
+      yPosition += 6;
+      
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`• Membres avec congés/repos : ${totalPersons}`, 20, yPosition);
-      yPosition += 5;
-      pdf.text(`• Signatures complétées : ${signedPersons}/${totalPersons}`, 20, yPosition);
-      yPosition += 5;
-      pdf.text(`• Taux de signature : ${totalPersons > 0 ? Math.round((signedPersons/totalPersons)*100) : 0}%`, 20, yPosition);
-      yPosition += 15;
+      pdf.text(`Membres: ${totalPersons} | Signatures: ${signedPersons}/${totalPersons} | Taux: ${totalPersons > 0 ? Math.round((signedPersons/totalPersons)*100) : 0}%`, 20, yPosition);
+      yPosition += 12;
 
       if (entriesWithSignatureStatus.length === 0) {
-        pdf.setFontSize(12);
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'italic');
-        pdf.text('Aucun congé ou repos récupérateur enregistré.', 15, yPosition);
+        pdf.text('Aucun conge ou repos recuperateur enregistre.', 15, yPosition);
         pdf.save(`Rapport_Signatures_${format(new Date(), 'dd-MM-yyyy')}.pdf`);
         
         toast({
-          title: "Export réussi",
-          description: "Le rapport des signatures a été exporté en PDF",
+          title: "Export reussi",
+          description: "Le rapport des signatures a ete exporte en PDF",
         });
         return;
       }
 
-      // Tableau détaillé
-      pdf.setFontSize(12);
+      // Tableau detaille compact
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('DÉTAIL DES SIGNATURES', 15, yPosition);
-      yPosition += 10;
+      pdf.text('DETAIL DES SIGNATURES', 15, yPosition);
+      yPosition += 8;
 
-      // En-têtes du tableau avec séparateurs
-      pdf.setFontSize(9);
+      // En-tetes du tableau
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
-      
-      // Dessiner une ligne de séparation
       pdf.setDrawColor(200, 200, 200);
-      pdf.line(15, yPosition - 2, 195, yPosition - 2);
+      pdf.line(15, yPosition - 1, 195, yPosition - 1);
       
       pdf.text('PERSONNEL', 15, yPosition);
       pdf.text('TYPES', 70, yPosition);
-      pdf.text('PÉRIODES', 110, yPosition);
+      pdf.text('PERIODES', 110, yPosition);
       pdf.text('STATUT', 160, yPosition);
-      yPosition += 5;
-      
-      // Ligne de séparation sous les en-têtes
+      yPosition += 4;
       pdf.line(15, yPosition, 195, yPosition);
-      yPosition += 8;
+      yPosition += 6;
 
-      // Lignes du tableau avec alternance de couleurs
+      // Lignes du tableau compactes
       pdf.setFont('helvetica', 'normal');
       entriesWithSignatureStatus.forEach((entry, index) => {
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 20;
-          
-          // Répéter les en-têtes sur nouvelle page
-          pdf.setFontSize(9);
-          pdf.setFont('helvetica', 'bold');
-          pdf.line(15, yPosition - 2, 195, yPosition - 2);
-          pdf.text('PERSONNEL', 15, yPosition);
-          pdf.text('TYPES', 70, yPosition);
-          pdf.text('PÉRIODES', 110, yPosition);
-          pdf.text('STATUT', 160, yPosition);
-          yPosition += 5;
-          pdf.line(15, yPosition, 195, yPosition);
-          yPosition += 8;
-          pdf.setFont('helvetica', 'normal');
-        }
-
         // Alternance de couleur de fond
         if (index % 2 === 0) {
           pdf.setFillColor(248, 250, 252);
-          pdf.rect(15, yPosition - 4, 180, 12, 'F');
+          pdf.rect(15, yPosition - 3, 180, 8, 'F');
         }
 
-        pdf.setFontSize(9);
+        pdf.setFontSize(8);
         
         // Nom du personnel
         pdf.setFont('helvetica', 'bold');
@@ -402,118 +376,106 @@ const LeaveSignaturePlanning = () => {
         
         pdf.setFont('helvetica', 'normal');
         
-        // Types de congés/repos
+        // Types de conges/repos
         const uniqueTypes = Array.from(new Set(entry.leaves.map(l => l.type)));
-        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Conge' : 'Repos R.').join(' + ');
+        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Conge' : 'Repos').join(' + ');
         pdf.text(typesText, 72, yPosition);
         
-        // Nombre de périodes
-        pdf.text(`${entry.leaves.length} période(s)`, 112, yPosition);
+        // Nombre de periodes
+        pdf.text(`${entry.leaves.length} periode(s)`, 112, yPosition);
         
-        // Statut avec couleur
+        // Statut
         if (entry.isSigned) {
-          pdf.setTextColor(0, 150, 0); // Vert
+          pdf.setTextColor(0, 150, 0);
           pdf.text('SIGNE', 162, yPosition);
           if (entry.signedAt) {
-            pdf.setFontSize(7);
+            pdf.setFontSize(6);
             pdf.setTextColor(100, 100, 100);
-            pdf.text(formatDateSafely(entry.signedAt), 162, yPosition + 3);
-            pdf.setFontSize(9);
+            pdf.text(formatDateSafely(entry.signedAt), 162, yPosition + 2);
+            pdf.setFontSize(8);
           }
         } else {
-          pdf.setTextColor(255, 100, 0); // Orange
+          pdf.setTextColor(255, 100, 0);
           pdf.text('EN ATTENTE', 162, yPosition);
         }
-        pdf.setTextColor(0, 0, 0); // Reset couleur
+        pdf.setTextColor(0, 0, 0);
         
-        yPosition += 15;
+        yPosition += 10;
         
-        // Détail des périodes si plusieurs
+        // Detail des periodes en mode compact
         if (entry.leaves.length > 1) {
-          pdf.setFontSize(7);
+          pdf.setFontSize(6);
           pdf.setFont('helvetica', 'italic');
           pdf.setTextColor(100, 100, 100);
           
           entry.leaves.forEach((leave, leaveIndex) => {
-            if (yPosition > 270) {
-              pdf.addPage();
-              yPosition = 20;
-            }
-            
             const periodText = leave.startDate === leave.endDate 
               ? formatDateSafely(leave.startDate)
-              : `${formatDateSafely(leave.startDate)} vers ${formatDateSafely(leave.endDate)}`;
+              : `${formatDateSafely(leave.startDate)} au ${formatDateSafely(leave.endDate)}`;
             
-            pdf.text(`  - ${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`, 20, yPosition);
+            const leaveText = `${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`;
+            const displayText = leave.notes ? `${leaveText} (${leave.notes})` : leaveText;
             
-            if (leave.notes) {
-              pdf.text(`    (${leave.notes})`, 25, yPosition + 2);
-              yPosition += 2;
-            }
-            yPosition += 4;
+            pdf.text(`  - ${displayText}`, 20, yPosition);
+            yPosition += 3;
           });
           
-          pdf.setFontSize(9);
+          pdf.setFontSize(8);
           pdf.setFont('helvetica', 'normal');
           pdf.setTextColor(0, 0, 0);
-          yPosition += 3;
+          yPosition += 2;
         }
       });
 
-      // Section signatures visuelles
-      yPosition += 10;
+      // Section signatures visuelles compacte
+      yPosition += 8;
       const signedEntries = entriesWithSignatureStatus.filter(entry => entry.isSigned && entry.signature);
       
-      if (signedEntries.length > 0) {
-        if (yPosition > 200) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        
-        pdf.setFontSize(14);
+      if (signedEntries.length > 0 && yPosition < 220) {
+        pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('SIGNATURES ÉLECTRONIQUES', 15, yPosition);
-        yPosition += 15;
+        pdf.text('SIGNATURES ELECTRONIQUES', 15, yPosition);
+        yPosition += 8;
 
         signedEntries.forEach((entry, index) => {
-          if (yPosition > 180) {
+          if (yPosition > 240) {
             pdf.addPage();
             yPosition = 20;
           }
 
-          // Encadré pour chaque signature
+          // Encadre compact pour chaque signature
           pdf.setDrawColor(200, 200, 200);
-          pdf.rect(15, yPosition - 5, 180, 40);
+          pdf.rect(15, yPosition - 3, 180, 25);
           
-          pdf.setFontSize(11);
+          pdf.setFontSize(9);
           pdf.setFont('helvetica', 'bold');
           pdf.text(`${entry.staffName}`, 20, yPosition);
           
-          pdf.setFontSize(9);
+          pdf.setFontSize(7);
           pdf.setFont('helvetica', 'normal');
           const leaveTypes = Array.from(new Set(entry.leaves.map(l => l.type)))
-            .map(t => t === 'leave' ? 'Conge' : 'Repos recuperateur').join(' + ');
-          pdf.text(leaveTypes, 20, yPosition + 5);
+            .map(t => t === 'leave' ? 'Conge' : 'Repos').join(' + ');
+          pdf.text(leaveTypes, 20, yPosition + 3);
           
           if (entry.signature) {
             try {
-              pdf.addImage(entry.signature, 'PNG', 20, yPosition + 8, 40, 15);
+              pdf.addImage(entry.signature, 'PNG', 20, yPosition + 5, 35, 12);
             } catch (error) {
               console.error('Erreur ajout signature:', error);
               pdf.setFont('helvetica', 'italic');
-              pdf.text('Signature non disponible', 20, yPosition + 15);
+              pdf.text('Signature non disponible', 20, yPosition + 10);
             }
           }
           
-          yPosition += 50;
+          yPosition += 30;
         });
       }
       
-      // Pied de page sur toutes les pages
+      // Pied de page
       const pageCount = pdf.getNumberOfPages();
       for (let i = 1; i <= pageCount; i++) {
         pdf.setPage(i);
-        pdf.setFontSize(8);
+        pdf.setFontSize(7);
         pdf.setTextColor(128, 128, 128);
         pdf.line(15, 285, 195, 285);
         pdf.text(`CVJ MG - Rapport des signatures | Page ${i}/${pageCount}`, 15, 290);
@@ -524,8 +486,8 @@ const LeaveSignaturePlanning = () => {
       pdf.save(fileName);
       
       toast({
-        title: "Export réussi",
-        description: "Le rapport des signatures a été exporté en PDF",
+        title: "Export reussi",
+        description: "Le rapport des signatures a ete exporte en PDF",
       });
       
     } catch (error) {
