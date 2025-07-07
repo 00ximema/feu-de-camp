@@ -258,7 +258,7 @@ const LeaveSignaturePlanning = () => {
       exportElement.style.width = '800px';
       exportElement.style.fontFamily = 'Arial, sans-serif';
       
-      // Supprimer les boutons d'action mais garder les signatures
+      // Supprimer les boutons d'action
       const buttons = exportElement.querySelectorAll('button');
       buttons.forEach(button => button.remove());
       
@@ -361,8 +361,7 @@ const LeaveSignaturePlanning = () => {
     return {
       ...entry,
       isSigned: !!signature,
-      signedAt: signature?.signedAt,
-      signatureImage: signature?.signature
+      signedAt: signature?.signedAt
     };
   });
 
@@ -395,7 +394,6 @@ const LeaveSignaturePlanning = () => {
                   <TableHead>Période</TableHead>
                   <TableHead>Précisions</TableHead>
                   <TableHead>Statut</TableHead>
-                  <TableHead>Signature</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -437,15 +435,6 @@ const LeaveSignaturePlanning = () => {
                         )}
                       </TableCell>
                       <TableCell>
-                        {entry.signatureImage && (
-                          <img 
-                            src={entry.signatureImage} 
-                            alt="Signature" 
-                            className="w-20 h-10 border border-gray-300 rounded"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
                         {entry.isSigned ? (
                           <Button
                             variant="outline"
@@ -470,7 +459,7 @@ const LeaveSignaturePlanning = () => {
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
+                    <TableCell colSpan={6} className="text-center text-gray-500">
                       Aucun congé ou repos récupérateur à signer. 
                       Ajoutez des entrées dans le planning principal.
                     </TableCell>

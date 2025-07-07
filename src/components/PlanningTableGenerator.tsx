@@ -548,7 +548,7 @@ const PlanningTableGenerator = () => {
                               return (
                                 <>
                                   <div>{format(date, 'EEEE', { locale: fr })}</div>
-                                  <div className="text-sm">{format(date, 'dd/MM/yyyy', { locale: fr })}</div>
+                                  <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
                                 </>
                               );
                             } else {
@@ -565,16 +565,14 @@ const PlanningTableGenerator = () => {
                 </TableHeader>
                 <TableBody>
                   {planningData.map((row, rowIndex) => (
-                    <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-gradient-to-r from-purple-50 to-purple-100 border-l-4 border-purple-300' : 'hover:bg-gray-50'}>
-                      <TableCell className={`font-medium border-r ${isSpecialRow(row[0]?.timeSlot) ? 'bg-purple-100 text-purple-800 font-semibold' : 'bg-gray-50'}`}>
+                    <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-purple-50' : ''}>
+                      <TableCell className="font-medium bg-gray-50 border-r">
                         {row[0]?.timeSlot}
                       </TableCell>
                       {row.map((cell, cellIndex) => (
                         <TableCell 
                           key={cellIndex} 
-                          className={`p-2 border min-h-16 cursor-pointer transition-colors relative group ${
-                            isSpecialRow(cell.timeSlot) ? 'bg-purple-25 hover:bg-purple-100' : 'hover:bg-gray-50'
-                          }`}
+                          className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
                           onClick={() => handleCellClick(rowIndex, cellIndex)}
                         >
                           {cell.event ? (
@@ -614,7 +612,7 @@ const PlanningTableGenerator = () => {
                                 <div className="text-xs text-blue-600">
                                   {isValid(new Date(cell.event.startDate)) && isValid(new Date(cell.event.endDate)) ? (
                                     <>
-                                      {format(new Date(cell.event.startDate), 'dd/MM/yyyy')} - {format(new Date(cell.event.endDate), 'dd/MM/yyyy')}
+                                      {format(new Date(cell.event.startDate), 'dd/MM')} - {format(new Date(cell.event.endDate), 'dd/MM')}
                                     </>
                                   ) : (
                                     'Dates invalides'
