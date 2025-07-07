@@ -1,77 +1,120 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserCheck, FileDown, Trash2, Edit, Info, RefreshCw } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import { useLocalDatabase } from "@/hooks/useLocalDatabase";
-import { useSession } from "@/hooks/useSession";
+import { Badge } from "@/components/ui/badge";
+import { UserCheck, Download, FileSignature, Trash2 } from "lucide-react";
+import { format, isValid } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { useLocalDatabase } from '@/hooks/useLocalDatabase';
+import { useSession } from '@/hooks/useSession';
+import { toast } from '@/components/ui/use-toast';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
-interface Animateur {
-  id: number;
-  nom: string;
-  prenom: string;
-  role: string;
-}
-
 interface LeaveEntry {
   id: string;
-  animateurId: number;
-  animateurNom: string;
-  animateurPrenom: string;
+  staffName: string;
   type: 'leave' | 'recovery';
-  date: string;
-  timeSlot: string;
-  signature?: string;
+  startDate: string;
+  endDate: string;
+  notes?: string;
+  isSigned: boolean;
   signedAt?: string;
 }
 
-interface SignatureCanvasProps {
-  onSave: (signature: string) => void;
-  onCancel: () => void;
+interface SignatureData {
+  id: string;
+  sessionId?: string;
+  entryId: string;
+  signature: string;
+  signedAt: string;
+  createdAt: string;
 }
 
-const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCancel }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+const LeaveSignaturePlanning = () => {
+  const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
+  const [signatures, setSignatures] = useState<SignatureData[]>([]);
   const [isDrawing, setIsDrawing] = useState(false);
+  const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const reportRef = useRef<HTMLDivElement>(null);
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
+  // Charger les données au démarrage
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (isInitialized && currentSession) {
+      loadLeaveEntries();
+      loadSignatures();
+    }
+  }, [isInitialized, currentSession]);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+  const loadLeaveEntries = async () => {
+    if (!isInitialized || !currentSession) return;
 
-    // Set canvas background to white
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    
-    // Set drawing properties
-    ctx.strokeStyle = '#000000';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-  }, []);
+    try {
+      const plannings = await db.getAll('plannings', currentSession.id);
+      const entries: LeaveEntry[] = [];
+      
+      plannings.forEach(planning => {
+        if (planning.data) {
+          planning.data.forEach((row, rowIndex) => {
+            row.forEach((cell, cellIndex) => {
+              if (cell.event && 
+                  (cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs') &&
+                  cell.event.assignedMembers) {
+                
+                cell.event.assignedMembers.forEach(member => {
+                  const entryId = `${member.id}-${cell.event!.id}`;
+                  entries.push({
+                    id: entryId,
+                    staffName: `${member.prenom} ${member.nom}`,
+                    type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
+                    startDate: cell.event!.startDate || cell.date,
+                    endDate: cell.event!.endDate || cell.date,
+                    notes: cell.event!.notes,
+                    isSigned: false,
+                    signedAt: undefined
+                  });
+                });
+              }
+            });
+          });
+        }
+      });
+
+      setLeaveEntries(entries);
+      console.log('Entrées de congés/repos chargées:', entries);
+    } catch (error) {
+      console.error('Erreur lors du chargement des entrées:', error);
+    }
+  };
+
+  const loadSignatures = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const dbSignatures = await db.getAll('signatures', currentSession.id);
+      setSignatures(dbSignatures);
+      console.log('Signatures chargées:', dbSignatures);
+    } catch (error) {
+      console.error('Erreur lors du chargement des signatures:', error);
+    }
+  };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     ctx.beginPath();
-    ctx.moveTo(x, y);
-    setIsDrawing(true);
+    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -81,13 +124,10 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCancel }) =
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.lineTo(x, y);
+    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
     ctx.stroke();
   };
 
@@ -95,516 +135,361 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCancel }) =
     setIsDrawing(false);
   };
 
-  const clearCanvas = () => {
+  const clearSignature = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  const saveSignature = () => {
+  const saveSignature = async () => {
+    if (!selectedEntry || !canvasRef.current) return;
+
     const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const signature = canvas.toDataURL('image/png');
-    onSave(signature);
-  };
-
-  return (
-    <div className="space-y-4 p-4">
-      <div className="text-center">
-        <p className="text-sm text-gray-600 mb-2">Signez dans le cadre ci-dessous avec votre souris</p>
-        <canvas
-          ref={canvasRef}
-          width={400}
-          height={200}
-          className="border border-gray-300 rounded cursor-crosshair bg-white"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-        />
-      </div>
-      <div className="flex justify-center space-x-2">
-        <Button onClick={clearCanvas} variant="outline" size="sm">
-          Effacer
-        </Button>
-        <Button onClick={saveSignature} size="sm">
-          Valider signature
-        </Button>
-        <Button onClick={onCancel} variant="outline" size="sm">
-          Annuler
-        </Button>
-      </div>
-    </div>
-  );
-};
-
-const LeaveSignaturePlanning = () => {
-  const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
-  const [selectedEntry, setSelectedEntry] = useState<LeaveEntry | null>(null);
-  const [showSignature, setShowSignature] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const planningRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
-  const { isInitialized, db } = useLocalDatabase();
-  const { currentSession } = useSession();
-
-  const loadLeaveData = async () => {
-    if (!isInitialized || !currentSession) return;
-    
-    setIsLoading(true);
-    
-    try {
-      console.log('Chargement des congés et repos récupérateurs...');
-      
-      // Charger les plannings pour extraire les congés et RR
-      const plannings = await db.getAll('plannings', currentSession.id);
-      const leaves: LeaveEntry[] = [];
-
-      plannings.forEach(planning => {
-        if (planning.data && Array.isArray(planning.data)) {
-          planning.data.forEach((row: any[]) => {
-            row.forEach((cell: any) => {
-              if (cell.event && 
-                  (cell.event.type === 'leave' || cell.event.type === 'recovery' || 
-                   cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs') &&
-                  cell.event.assignedMembers && cell.event.assignedMembers.length > 0) {
-                
-                // Créer une entrée pour chaque membre assigné
-                cell.event.assignedMembers.forEach((member: any) => {
-                  const entryId = `${member.id}_${cell.date}_${cell.timeSlot}`;
-                  
-                  const existingEntry = leaves.find(entry => entry.id === entryId);
-
-                  if (!existingEntry) {
-                    leaves.push({
-                      id: entryId,
-                      animateurId: parseInt(member.id),
-                      animateurNom: member.nom,
-                      animateurPrenom: member.prenom,
-                      type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
-                      date: cell.date,
-                      timeSlot: cell.timeSlot
-                    });
-                  }
-                });
-              }
-            });
-          });
-        }
-      });
-
-      // Charger les signatures existantes
-      const signatures = await db.getAll('signatures', currentSession.id);
-      
-      // Associer les signatures aux entrées
-      const leavesWithSignatures = leaves.map(entry => {
-        const signature = signatures.find(sig => sig.entryId === entry.id);
-        return signature ? { ...entry, signature: signature.signature, signedAt: signature.signedAt } : entry;
-      });
-
-      setLeaveEntries(leavesWithSignatures);
-      console.log('Congés et RR chargés:', leavesWithSignatures.length);
-      
-      toast({
-        title: "Données actualisées",
-        description: `${leavesWithSignatures.length} congé(s) et repos récupérateur(s) trouvé(s)`,
-      });
-    } catch (error) {
-      console.error('Erreur lors du chargement des données:', error);
-      toast({
-        title: "Erreur de chargement",
-        description: "Impossible de charger les données du planning",
-        variant: "destructive"
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadLeaveData();
-  }, [isInitialized, currentSession]);
-
-  const handleSignature = async (signature: string) => {
-    if (!selectedEntry || !currentSession) return;
+    const signatureData = canvas.toDataURL();
 
     try {
-      // Sauvegarder la signature en base
-      const signatureData = {
-        id: `signature_${selectedEntry.id}_${Date.now()}`,
-        sessionId: currentSession.id,
-        entryId: selectedEntry.id,
-        signature,
+      const newSignature: SignatureData = {
+        id: `sig_${selectedEntry}_${Date.now()}`,
+        sessionId: currentSession?.id,
+        entryId: selectedEntry,
+        signature: signatureData,
         signedAt: new Date().toISOString(),
         createdAt: new Date().toISOString()
       };
 
-      await db.save('signatures', signatureData);
+      await db.save('signatures', newSignature);
+      
+      setSignatures(prev => [...prev, newSignature]);
+      setLeaveEntries(prev => prev.map(entry => 
+        entry.id === selectedEntry 
+          ? { ...entry, isSigned: true, signedAt: newSignature.signedAt }
+          : entry
+      ));
 
-      // Mettre à jour l'état local
-      const updatedEntries = leaveEntries.map(entry => {
-        if (entry.id === selectedEntry.id) {
-          return {
-            ...entry,
-            signature,
-            signedAt: new Date().toISOString()
-          };
-        }
-        return entry;
-      });
-
-      setLeaveEntries(updatedEntries);
-      setShowSignature(false);
       setSelectedEntry(null);
+      clearSignature();
 
       toast({
         title: "Signature enregistrée",
-        description: `Signature de ${selectedEntry.animateurPrenom} ${selectedEntry.animateurNom} enregistrée`
+        description: "La signature a été enregistrée avec succès.",
       });
     } catch (error) {
-      console.error('Erreur lors de l\'enregistrement de la signature:', error);
+      console.error('Erreur lors de la sauvegarde de la signature:', error);
       toast({
         title: "Erreur",
-        description: "Impossible d'enregistrer la signature",
+        description: "Impossible d'enregistrer la signature.",
         variant: "destructive"
       });
     }
   };
 
-  const removeSignature = async (entryId: string) => {
-    if (!currentSession) return;
-
+  const deleteSignature = async (entryId: string) => {
     try {
-      // Supprimer la signature de la base
-      const signatures = await db.getAll('signatures', currentSession.id);
-      const signatureToDelete = signatures.find(sig => sig.entryId === entryId);
+      const signature = signatures.find(s => s.entryId === entryId);
+      if (!signature) return;
+
+      await db.delete('signatures', signature.id);
       
-      if (signatureToDelete) {
-        await db.delete('signatures', signatureToDelete.id);
-      }
+      setSignatures(prev => prev.filter(s => s.entryId !== entryId));
+      setLeaveEntries(prev => prev.map(entry => 
+        entry.id === entryId 
+          ? { ...entry, isSigned: false, signedAt: undefined }
+          : entry
+      ));
 
-      // Mettre à jour l'état local
-      const updatedEntries = leaveEntries.map(entry => {
-        if (entry.id === entryId) {
-          const { signature, signedAt, ...entryWithoutSignature } = entry;
-          return entryWithoutSignature;
-        }
-        return entry;
-      });
-
-      setLeaveEntries(updatedEntries);
       toast({
         title: "Signature supprimée",
-        description: "La signature a été supprimée"
+        description: "La signature a été supprimée avec succès.",
       });
     } catch (error) {
       console.error('Erreur lors de la suppression de la signature:', error);
       toast({
         title: "Erreur",
-        description: "Impossible de supprimer la signature",
+        description: "Impossible de supprimer la signature.",
         variant: "destructive"
       });
     }
   };
 
   const exportToPDF = async () => {
-    if (!planningRef.current) {
+    if (!reportRef.current) {
       toast({
         title: "Erreur",
-        description: "Aucun planning à exporter",
+        description: "Impossible d'exporter le rapport",
         variant: "destructive"
       });
       return;
     }
 
-    setIsExporting(true);
-    
     try {
-      // Créer un élément temporaire pour le PDF
-      const tempElement = document.createElement('div');
-      tempElement.style.position = 'absolute';
-      tempElement.style.left = '-9999px';
-      tempElement.style.background = 'white';
-      tempElement.style.padding = '20px';
-      tempElement.style.width = '800px';
-      
-      tempElement.innerHTML = `
-        <h1 style="font-size: 24px; margin-bottom: 10px;">Repos des personnels</h1>
-        <p style="font-size: 14px; margin-bottom: 20px;">Session: ${currentSession?.name || 'Non définie'} - Généré le: ${new Date().toLocaleDateString('fr-FR')}</p>
-        ${planningRef.current.innerHTML}
-      `;
-      
-      document.body.appendChild(tempElement);
+      console.log('Export PDF rapport signatures démarré...');
 
-      const canvas = await html2canvas(tempElement, {
+      const originalElement = reportRef.current;
+      
+      const exportElement = document.createElement('div');
+      exportElement.innerHTML = originalElement.innerHTML;
+      exportElement.style.position = 'absolute';
+      exportElement.style.left = '-9999px';
+      exportElement.style.top = '0';
+      exportElement.style.backgroundColor = 'white';
+      exportElement.style.padding = '20px';
+      exportElement.style.width = '800px';
+      exportElement.style.fontFamily = 'Arial, sans-serif';
+      
+      // Supprimer les boutons d'action
+      const buttons = exportElement.querySelectorAll('button');
+      buttons.forEach(button => button.remove());
+      
+      document.body.appendChild(exportElement);
+
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      const canvas = await html2canvas(exportElement, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        width: 800,
-        height: tempElement.scrollHeight
+        logging: false,
+        width: 800
       });
-
-      document.body.removeChild(tempElement);
+      
+      document.body.removeChild(exportElement);
 
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('portrait', 'mm', 'a4');
+      const pdf = new jsPDF('p', 'mm', 'a4');
       
+      // En-tête
+      pdf.setFillColor(147, 51, 234);
+      pdf.rect(0, 0, 210, 25, 'F');
+      
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(18);
+      pdf.text('CVJ MG', 15, 17);
+      
+      pdf.setFontSize(14);
+      pdf.text('Rapport des signatures - Repos des personnels', 60, 17);
+      
+      // Date
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(10);
+      pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, 15, 35);
+      
+      // Image
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 20;
+      const imgWidth = pdfWidth - 30;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      let heightLeft = imgHeight;
-      let position = 10;
+      let yPosition = 45;
+      let remainingHeight = imgHeight;
       
-      pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-      heightLeft -= pdfHeight - 20;
-      
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight + 10;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 10, position, imgWidth, imgHeight);
-        heightLeft -= pdfHeight - 20;
+      while (remainingHeight > 0) {
+        const pageHeight = pdfHeight - yPosition - 10;
+        const currentHeight = Math.min(remainingHeight, pageHeight);
+        
+        pdf.addImage(
+          imgData, 
+          'PNG', 
+          15, 
+          yPosition, 
+          imgWidth, 
+          currentHeight
+        );
+        
+        remainingHeight -= currentHeight;
+        
+        if (remainingHeight > 0) {
+          pdf.addPage();
+          yPosition = 20;
+        }
       }
-
-      const fileName = `Repos_Personnels_${currentSession?.name?.replace(/\s+/g, '_') || 'Session'}_${new Date().toISOString().split('T')[0]}.pdf`;
+      
+      const fileName = `Signatures_Repos_${format(new Date(), 'dd-MM-yyyy')}.pdf`;
       pdf.save(fileName);
       
       toast({
         title: "Export réussi",
-        description: "Le planning des repos du personnel a été exporté en PDF"
+        description: "Le rapport des signatures a été exporté en PDF",
       });
+      
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
       toast({
         title: "Erreur d'export",
-        description: "Impossible d'exporter le planning en PDF",
+        description: "Impossible d'exporter le rapport en PDF",
         variant: "destructive"
       });
-    } finally {
-      setIsExporting(false);
     }
   };
 
-  if (leaveEntries.length === 0 && !isLoading) {
-    return (
-      <div className="space-y-6">
-        {/* Information sur les repos */}
-        <Card className="bg-blue-50 border-blue-200">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2 text-blue-800">
-              <Info className="h-5 w-5" />
-              <span>Information importante - Repos du personnel</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-blue-700">
-              <strong>Les repos se prennent la veille au soir après le coucher des jeunes, jusqu'au lendemain à la même heure.</strong>
-            </p>
-            <p className="text-blue-600 text-sm mt-2">
-              Cette règle garantit la continuité du service et le respect de la réglementation en vigueur.
-            </p>
-          </CardContent>
-        </Card>
+  const formatDateSafely = (dateString: string) => {
+    try {
+      if (!dateString) return 'Date non définie';
+      const dateObj = new Date(dateString);
+      if (!isValid(dateObj)) return 'Date invalide';
+      return format(dateObj, 'dd/MM/yyyy', { locale: fr });
+    } catch (error) {
+      console.error('Erreur de formatage de date:', error);
+      return 'Erreur de date';
+    }
+  };
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <UserCheck className="h-5 w-5" />
-                <span>Repos des personnels</span>
-              </div>
-              <Button onClick={loadLeaveData} variant="outline" disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-            </CardTitle>
-            <CardDescription>
-              Aucun congé ou repos récupérateur trouvé dans les plannings actuels
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-gray-600">
-              Les congés et repos récupérateurs définis dans le planning principal apparaîtront ici pour signature.
-              Cliquez sur "Actualiser" pour recharger les données du planning.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Mettre à jour le statut des signatures
+  const entriesWithSignatureStatus = leaveEntries.map(entry => {
+    const signature = signatures.find(s => s.entryId === entry.id);
+    return {
+      ...entry,
+      isSigned: !!signature,
+      signedAt: signature?.signedAt
+    };
+  });
 
   return (
     <div className="space-y-6">
-      {/* Information sur les repos */}
-      <Card className="bg-blue-50 border-blue-200">
-        <CardHeader>
-          <CardTitle className="flex items-center space-x-2 text-blue-800">
-            <Info className="h-5 w-5" />
-            <span>Information importante - Repos du personnel</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-blue-700">
-            <strong>Les repos se prennent la veille au soir après le coucher des jeunes, jusqu'au lendemain à la même heure.</strong>
-          </p>
-          <p className="text-blue-600 text-sm mt-2">
-            Cette règle garantit la continuité du service et le respect de la réglementation en vigueur.
-          </p>
-        </CardContent>
-      </Card>
-
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center space-x-2">
-                <UserCheck className="h-5 w-5" />
-                <span>Repos des personnels</span>
-              </CardTitle>
-              <CardDescription>
-                Signature électronique des congés et repos récupérateurs
-              </CardDescription>
-            </div>
-            <div className="flex space-x-2">
-              <Button onClick={loadLeaveData} variant="outline" disabled={isLoading}>
-                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
-                Actualiser
-              </Button>
-              <Button 
-                onClick={exportToPDF} 
-                disabled={isExporting}
-                className="bg-red-600 hover:bg-red-700"
-              >
-                <FileDown className="h-4 w-4 mr-2" />
-                {isExporting ? 'Export...' : 'Exporter PDF'}
-              </Button>
-            </div>
-          </div>
+          <CardTitle className="flex items-center space-x-2">
+            <UserCheck className="h-5 w-5" />
+            <span>Signatures électroniques - Repos des personnels</span>
+          </CardTitle>
+          <CardDescription>
+            Les membres du personnel doivent signer leurs congés et repos récupérateurs. Une seule signature par entrée est requise.
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
-              <span>Chargement des données...</span>
-            </div>
-          ) : (
-            <div ref={planningRef}>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Membre de l'équipe</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Créneau</TableHead>
-                    <TableHead>Statut</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {leaveEntries.map(entry => (
+          <div className="flex justify-end mb-4">
+            <Button onClick={exportToPDF}>
+              <Download className="h-4 w-4 mr-2" />
+              Exporter le rapport
+            </Button>
+          </div>
+
+          <div ref={reportRef} className="bg-white">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Personnel</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Période</TableHead>
+                  <TableHead>Précisions</TableHead>
+                  <TableHead>Statut</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {entriesWithSignatureStatus.length > 0 ? (
+                  entriesWithSignatureStatus.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="font-medium">
-                        {entry.animateurPrenom} {entry.animateurNom}
-                      </TableCell>
+                      <TableCell className="font-medium">{entry.staffName}</TableCell>
                       <TableCell>
-                        <Badge 
-                          variant={entry.type === 'leave' ? 'secondary' : 'outline'}
-                          className={entry.type === 'leave' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}
-                        >
-                          {entry.type === 'leave' ? 'Congé' : 'Repos Récup.'}
+                        <Badge variant={entry.type === 'leave' ? 'default' : 'secondary'}>
+                          {entry.type === 'leave' ? 'Congé' : 'Repos récupérateur'}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(entry.date).toLocaleDateString('fr-FR', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric' 
-                        })}
+                        {entry.startDate === entry.endDate 
+                          ? formatDateSafely(entry.startDate)
+                          : `${formatDateSafely(entry.startDate)} - ${formatDateSafely(entry.endDate)}`
+                        }
                       </TableCell>
-                      <TableCell>{entry.timeSlot}</TableCell>
+                      <TableCell className="text-sm text-gray-600">
+                        {entry.notes || '-'}
+                      </TableCell>
                       <TableCell>
-                        {entry.signature ? (
-                          <div className="flex items-center space-x-2">
-                            <UserCheck className="h-4 w-4 text-green-600" />
-                            <span className="text-sm text-green-600 font-medium">Signé</span>
-                            <img 
-                              src={entry.signature} 
-                              alt="Signature" 
-                              className="h-6 w-12 object-contain border rounded"
-                            />
+                        {entry.isSigned ? (
+                          <div className="flex flex-col">
+                            <Badge variant="default" className="bg-green-500">
+                              Signé
+                            </Badge>
+                            {entry.signedAt && (
+                              <span className="text-xs text-gray-500 mt-1">
+                                {formatDateSafely(entry.signedAt)}
+                              </span>
+                            )}
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-600">Non signé</span>
+                          <Badge variant="outline">
+                            En attente
+                          </Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          {entry.signature ? (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeSignature(entry.id)}
-                              className="h-8 w-8 p-0 hover:bg-red-100"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          ) : (
-                            <Button
-                              onClick={() => {
-                                setSelectedEntry(entry);
-                                setShowSignature(true);
-                              }}
-                              size="sm"
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              <Edit className="h-4 w-4 mr-1" />
-                              Signer
-                            </Button>
-                          )}
-                        </div>
+                        {entry.isSigned ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => deleteSignature(entry.id)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-1" />
+                            Supprimer
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setSelectedEntry(entry.id)}
+                          >
+                            <FileSignature className="h-4 w-4 mr-1" />
+                            Signer
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center text-gray-500">
+                      Aucun congé ou repos récupérateur à signer. 
+                      Ajoutez des entrées dans le planning principal.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          {selectedEntry && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Signature électronique</CardTitle>
+                <CardDescription>
+                  Signez avec votre souris ou votre doigt dans la zone ci-dessous
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
+                    <canvas
+                      ref={canvasRef}
+                      width={500}
+                      height={200}
+                      className="border border-gray-300 cursor-crosshair bg-white"
+                      onMouseDown={startDrawing}
+                      onMouseMove={draw}
+                      onMouseUp={stopDrawing}
+                      onMouseLeave={stopDrawing}
+                    />
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button onClick={saveSignature}>
+                      Enregistrer la signature
+                    </Button>
+                    <Button variant="outline" onClick={clearSignature}>
+                      Effacer
+                    </Button>
+                    <Button variant="outline" onClick={() => setSelectedEntry(null)}>
+                      Annuler
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </CardContent>
       </Card>
-
-      {/* Dialog de signature */}
-      <Dialog open={showSignature} onOpenChange={setShowSignature}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Signature électronique</DialogTitle>
-            <DialogDescription>
-              {selectedEntry && (
-                <>
-                  Signature pour {selectedEntry.animateurPrenom} {selectedEntry.animateurNom}
-                  <br />
-                  {selectedEntry.type === 'leave' ? 'Congé' : 'Repos Récupérateur'} - {new Date(selectedEntry.date).toLocaleDateString('fr-FR')} - {selectedEntry.timeSlot}
-                </>
-              )}
-            </DialogDescription>
-          </DialogHeader>
-          <SignatureCanvas
-            onSave={handleSignature}
-            onCancel={() => {
-              setShowSignature(false);
-              setSelectedEntry(null);
-            }}
-          />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };

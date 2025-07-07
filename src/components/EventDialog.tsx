@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import { format, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { useGroups } from '@/hooks/useGroups';
@@ -30,12 +31,13 @@ interface PlanningEvent {
   endTime?: string;
   selectedGroups?: string[];
   selectedJeunes?: string[];
+  notes?: string;
 }
 
 interface EventDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => void;
+  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[], notes?: string) => void;
   timeSlot: string;
   date: string;
   teamMembers: TeamMember[];
@@ -60,6 +62,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
   const [endTime, setEndTime] = useState('');
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const [selectedJeunes, setSelectedJeunes] = useState<string[]>([]);
+  const [notes, setNotes] = useState('');
 
   const { groupes } = useGroups();
   const { jeunes } = useJeunes();
@@ -79,6 +82,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
         setEndTime(currentEvent.endTime || '');
         setSelectedGroups(currentEvent.selectedGroups || []);
         setSelectedJeunes(currentEvent.selectedJeunes || []);
+        setNotes(currentEvent.notes || '');
       } else {
         setEventName(isSpecialTimeSlot ? timeSlot : '');
         setSelectedMembers([]);
@@ -89,6 +93,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
         setEndTime('');
         setSelectedGroups([]);
         setSelectedJeunes([]);
+        setNotes('');
       }
     }
   }, [isOpen, currentEvent, date, timeSlot, isSpecialTimeSlot]);
@@ -97,7 +102,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
     if (!isSpecialTimeSlot && !eventName.trim()) return;
     if (selectedMembers.length === 0) return;
     
-    onSave(eventName, selectedMembers, eventType, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes);
+    onSave(eventName, selectedMembers, eventType, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes, notes);
     onClose();
   };
 
@@ -125,7 +130,6 @@ const EventDialog: React.FC<EventDialogProps> = ({
     );
   };
 
-  // Fonction pour formater une date de manière sécurisée en JJ/MM/AAAA
   const formatDateSafely = (dateString: string) => {
     try {
       if (!dateString) return 'Date non définie';
@@ -175,7 +179,6 @@ const EventDialog: React.FC<EventDialogProps> = ({
                 </Select>
               </div>
 
-              {/* Horaires - affichés pour toutes les activités sauf les créneaux spéciaux */}
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start-time">Heure de début</Label>
@@ -223,7 +226,6 @@ const EventDialog: React.FC<EventDialogProps> = ({
             </div>
           </div>
 
-          {/* Participants - affiché pour toutes les activités sauf les créneaux spéciaux */}
           {!isSpecialTimeSlot && (
             <div>
               <Label>Participants</Label>
@@ -303,6 +305,19 @@ const EventDialog: React.FC<EventDialogProps> = ({
               />
             </div>
           </div>
+
+          {isSpecialTimeSlot && (
+            <div>
+              <Label htmlFor="notes">Précisions</Label>
+              <Textarea
+                id="notes"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Ajoutez des précisions..."
+                rows={3}
+              />
+            </div>
+          )}
 
           <div className="text-sm text-gray-600">
             <div><strong>Créneau:</strong> {timeSlot}</div>

@@ -33,6 +33,7 @@ interface PlanningEvent {
   endTime?: string;
   selectedGroups?: string[];
   selectedJeunes?: string[];
+  notes?: string;
 }
 
 interface PlanningCell {
@@ -191,10 +192,10 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = async (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => {
+  const handleSaveEvent = async (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[], notes?: string) => {
     if (!selectedCell) return;
     
-    console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes);
+    console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes, notes);
     const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
     const members = memberIds ? teamMembers.filter(m => memberIds.includes(m.id)) : undefined;
@@ -212,7 +213,8 @@ const PlanningTableGenerator = () => {
       startTime,
       endTime,
       selectedGroups,
-      selectedJeunes
+      selectedJeunes,
+      notes
     };
     
     setPlanningData(newData);
@@ -307,26 +309,39 @@ const PlanningTableGenerator = () => {
     try {
       console.log('Export PDF démarré...');
       
-      // Créer une version simplifiée pour l'export
-      const exportElement = planningRef.current.cloneNode(true) as HTMLElement;
+      const originalElement = planningRef.current;
+      
+      // Créer un élément temporaire pour l'export
+      const exportElement = document.createElement('div');
+      exportElement.innerHTML = originalElement.innerHTML;
       exportElement.style.position = 'absolute';
       exportElement.style.left = '-9999px';
+      exportElement.style.top = '0';
       exportElement.style.backgroundColor = 'white';
       exportElement.style.padding = '20px';
-      exportElement.style.width = '1200px';
+      exportElement.style.width = '1400px';
+      exportElement.style.fontFamily = 'Arial, sans-serif';
       
-      // Supprimer les boutons d'action pour l'export
+      // Supprimer tous les boutons de l'export
       const buttons = exportElement.querySelectorAll('button');
       buttons.forEach(button => button.remove());
       
+      // Supprimer les éléments d'interaction
+      const interactive = exportElement.querySelectorAll('.group-hover\\:opacity-100, .opacity-0');
+      interactive.forEach(el => el.remove());
+      
       document.body.appendChild(exportElement);
 
+      // Attendre un court délai pour que l'élément soit rendu
+      await new Promise(resolve => setTimeout(resolve, 100));
+
       const canvas = await html2canvas(exportElement, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
-        width: 1200,
-        logging: false
+        logging: false,
+        width: 1400,
+        height: exportElement.scrollHeight
       });
       
       document.body.removeChild(exportElement);
@@ -334,7 +349,7 @@ const PlanningTableGenerator = () => {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
       
-      // Header
+      // Ajouter l'en-tête
       pdf.setFillColor(147, 51, 234);
       pdf.rect(0, 0, 297, 25, 'F');
       
@@ -343,9 +358,9 @@ const PlanningTableGenerator = () => {
       pdf.text('CVJ MG', 15, 17);
       
       pdf.setFontSize(16);
-      pdf.text('Planning Équipe', 50, 17);
+      pdf.text('Planning Équipe', 60, 17);
       
-      // Date
+      // Ajouter la date
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
       try {
@@ -359,7 +374,7 @@ const PlanningTableGenerator = () => {
         pdf.text('Planning', 15, 35);
       }
       
-      // Image
+      // Calculer les dimensions de l'image
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
       const imgWidth = pdfWidth - 30;
@@ -368,9 +383,13 @@ const PlanningTableGenerator = () => {
       let yPosition = 45;
       let remainingHeight = imgHeight;
       
+      // Ajouter l'image page par page si nécessaire
       while (remainingHeight > 0) {
         const pageHeight = pdfHeight - yPosition - 10;
         const currentHeight = Math.min(remainingHeight, pageHeight);
+        
+        const sy = imgHeight - remainingHeight;
+        const sHeight = currentHeight;
         
         pdf.addImage(
           imgData, 
@@ -378,7 +397,13 @@ const PlanningTableGenerator = () => {
           15, 
           yPosition, 
           imgWidth, 
-          currentHeight
+          currentHeight,
+          undefined,
+          'FAST',
+          0,
+          sy,
+          canvas.width,
+          (sHeight * canvas.width) / imgWidth
         );
         
         remainingHeight -= currentHeight;
@@ -564,6 +589,11 @@ const PlanningTableGenerator = () => {
                               {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
                                 <div className="text-xs text-green-600">
                                   Jeunes individuels
+                                </div>
+                              )}
+                              {cell.event.notes && (
+                                <div className="text-xs text-purple-600 italic">
+                                  {cell.event.notes}
                                 </div>
                               )}
                               {cell.event.startDate && cell.event.endDate && 
