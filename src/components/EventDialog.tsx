@@ -6,8 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { format, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { useGroups } from '@/hooks/useGroups';
+import { useJeunes } from '@/hooks/useJeunes';
 
 interface TeamMember {
   id: string;
@@ -23,12 +26,16 @@ interface PlanningEvent {
   assignedMembers?: TeamMember[];
   startDate?: string;
   endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  selectedGroups?: string[];
+  selectedJeunes?: string[];
 }
 
 interface EventDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string) => void;
+  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => void;
   timeSlot: string;
   date: string;
   teamMembers: TeamMember[];
@@ -49,8 +56,16 @@ const EventDialog: React.FC<EventDialogProps> = ({
   const [eventType, setEventType] = useState<string>('activity');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [selectedJeunes, setSelectedJeunes] = useState<string[]>([]);
+
+  const { groupes } = useGroups();
+  const { jeunes } = useJeunes();
 
   const isSpecialTimeSlot = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
+  const isActivity = eventType === 'activity' && !isSpecialTimeSlot;
 
   useEffect(() => {
     if (isOpen) {
@@ -60,12 +75,20 @@ const EventDialog: React.FC<EventDialogProps> = ({
         setEventType(currentEvent.type);
         setStartDate(currentEvent.startDate || date);
         setEndDate(currentEvent.endDate || date);
+        setStartTime(currentEvent.startTime || '');
+        setEndTime(currentEvent.endTime || '');
+        setSelectedGroups(currentEvent.selectedGroups || []);
+        setSelectedJeunes(currentEvent.selectedJeunes || []);
       } else {
         setEventName(isSpecialTimeSlot ? timeSlot : '');
         setSelectedMembers([]);
         setEventType(isSpecialTimeSlot ? 'astreinte' : 'activity');
         setStartDate(date);
         setEndDate(date);
+        setStartTime('');
+        setEndTime('');
+        setSelectedGroups([]);
+        setSelectedJeunes([]);
       }
     }
   }, [isOpen, currentEvent, date, timeSlot, isSpecialTimeSlot]);
@@ -74,7 +97,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
     if (!isSpecialTimeSlot && !eventName.trim()) return;
     if (selectedMembers.length === 0) return;
     
-    onSave(eventName, selectedMembers, eventType, startDate, endDate);
+    onSave(eventName, selectedMembers, eventType, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes);
     onClose();
   };
 
@@ -86,13 +109,29 @@ const EventDialog: React.FC<EventDialogProps> = ({
     );
   };
 
-  // Fonction pour formater une date de manière sécurisée
+  const handleGroupToggle = (groupId: string) => {
+    setSelectedGroups(prev => 
+      prev.includes(groupId) 
+        ? prev.filter(id => id !== groupId)
+        : [...prev, groupId]
+    );
+  };
+
+  const handleJeuneToggle = (jeuneId: string) => {
+    setSelectedJeunes(prev => 
+      prev.includes(jeuneId) 
+        ? prev.filter(id => id !== jeuneId)
+        : [...prev, jeuneId]
+    );
+  };
+
+  // Fonction pour formater une date de manière sécurisée en JJ/MM/AAAA
   const formatDateSafely = (dateString: string) => {
     try {
       if (!dateString) return 'Date non définie';
       const dateObj = new Date(dateString);
       if (!isValid(dateObj)) return 'Date invalide';
-      return format(dateObj, 'EEEE dd MMMM yyyy', { locale: fr });
+      return format(dateObj, 'dd/MM/yyyy', { locale: fr });
     } catch (error) {
       console.error('Erreur de formatage de date:', error);
       return 'Erreur de date';
@@ -101,7 +140,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {currentEvent ? 'Modifier l\'événement' : 'Ajouter un événement'}
@@ -135,6 +174,29 @@ const EventDialog: React.FC<EventDialogProps> = ({
                   </SelectContent>
                 </Select>
               </div>
+
+              {isActivity && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-time">Heure de début</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-time">Heure de fin</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
+                </div>
+              )}
             </>
           )}
 
@@ -161,6 +223,64 @@ const EventDialog: React.FC<EventDialogProps> = ({
               )}
             </div>
           </div>
+
+          {isActivity && (
+            <div>
+              <Label>Participants</Label>
+              <Tabs defaultValue="groups" className="mt-2">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="groups">Groupes</TabsTrigger>
+                  <TabsTrigger value="individuals">Jeunes individuels</TabsTrigger>
+                </TabsList>
+                
+                <TabsContent value="groups" className="space-y-2">
+                  <div className="max-h-40 overflow-y-auto border rounded p-2">
+                    {groupes.length > 0 ? (
+                      groupes.map((groupe) => (
+                        <div key={groupe.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`group-${groupe.id}`}
+                            checked={selectedGroups.includes(groupe.id)}
+                            onCheckedChange={() => handleGroupToggle(groupe.id)}
+                          />
+                          <Label htmlFor={`group-${groupe.id}`} className="text-sm">
+                            {groupe.nom} ({groupe.jeunesIds.length} jeunes)
+                          </Label>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500">
+                        Aucun groupe créé. Ajoutez des groupes depuis le module Gestion des jeunes.
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+                
+                <TabsContent value="individuals" className="space-y-2">
+                  <div className="max-h-40 overflow-y-auto border rounded p-2">
+                    {jeunes.length > 0 ? (
+                      jeunes.map((jeune) => (
+                        <div key={jeune.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`jeune-${jeune.id}`}
+                            checked={selectedJeunes.includes(jeune.id)}
+                            onCheckedChange={() => handleJeuneToggle(jeune.id)}
+                          />
+                          <Label htmlFor={`jeune-${jeune.id}`} className="text-sm">
+                            {jeune.prenom} {jeune.nom}
+                          </Label>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-gray-500">
+                        Aucun jeune inscrit. Ajoutez des jeunes depuis le module Gestion des jeunes.
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4">
             <div>

@@ -27,6 +27,10 @@ interface PlanningEvent {
   assignedMembers?: TeamMember[];
   startDate?: string;
   endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  selectedGroups?: string[];
+  selectedJeunes?: string[];
 }
 
 interface PlanningCell {
@@ -113,10 +117,10 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string) => {
+  const handleSaveEvent = (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[]) => {
     if (!selectedCell) return;
     
-    console.log('Saving event:', eventName, memberIds, type);
+    console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes);
     const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
     const members = memberIds ? teamMembers.filter(m => memberIds.includes(m.id)) : undefined;
@@ -130,7 +134,11 @@ const PlanningTableGenerator = () => {
       type: (type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
       assignedMembers: members,
       startDate,
-      endDate
+      endDate,
+      startTime,
+      endTime,
+      selectedGroups,
+      selectedJeunes
     };
     
     setPlanningData(newData);
@@ -384,6 +392,11 @@ const PlanningTableGenerator = () => {
                               <div className="font-medium text-sm text-gray-900">
                                 {cell.event.name}
                               </div>
+                              {cell.event.startTime && cell.event.endTime && (
+                                <div className="text-xs text-blue-600">
+                                  {cell.event.startTime} - {cell.event.endTime}
+                                </div>
+                              )}
                               {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
                                 <div className="text-xs text-gray-600">
                                   {cell.event.assignedMembers.map(member => 
