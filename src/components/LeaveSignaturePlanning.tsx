@@ -1,36 +1,16 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { UserCheck, Download, FileSignature, Trash2 } from "lucide-react";
-import { format, isValid } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar, Edit, Trash2, PenTool, Download } from "lucide-react";
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
-import { toast } from '@/components/ui/use-toast';
-import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
-
-interface LeaveEntry {
-  id: string;
-  staffName: string;
-  type: 'leave' | 'recovery';
-  startDate: string;
-  endDate: string;
-  notes?: string;
-  isSigned: boolean;
-  signedAt?: string;
-}
-
-interface SignatureData {
-  id: string;
-  sessionId?: string;
-  entryId: string;
-  signature: string;
-  signedAt: string;
-  createdAt: string;
-}
+import { toast } from "sonner";
 
 interface PlanningEvent {
   id: string;
@@ -51,476 +31,266 @@ interface PlanningEvent {
   notes?: string;
 }
 
-const LeaveSignaturePlanning = () => {
-  const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
-  const [signatures, setSignatures] = useState<SignatureData[]>([]);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [selectedEntry, setSelectedEntry] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const reportRef = useRef<HTMLDivElement>(null);
+interface SignatureEntry {
+  id: string;
+  sessionId?: string;
+  eventId: string;
+  eventName: string;
+  memberName: string;
+  startDate: string;
+  endDate: string;
+  notes: string;
+  signature?: string;
+  signedAt?: string;
+  createdAt: string;
+}
+
+const QuartiersLibres = () => {
+  const [signatureEntries, setSignatureEntries] = useState<SignatureEntry[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<PlanningEvent | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<SignatureEntry | null>(null);
+  const [signature, setSignature] = useState('');
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
 
-  // Charger les données au démarrage
   useEffect(() => {
-    if (isInitialized && currentSession) {
-      loadLeaveEntries();
-      loadSignatures();
-    }
-  }, [isInitialized, currentSession]);
-
-  const loadLeaveEntries = async () => {
-    if (!isInitialized || !currentSession) return;
-
-    try {
-      const plannings = await db.getAll('plannings', currentSession.id);
-      const entries: LeaveEntry[] = [];
+    const loadSignatureEntries = async () => {
+      if (!isInitialized || !currentSession) {
+        setSignatureEntries([]);
+        return;
+      }
       
-      plannings.forEach(planning => {
-        if (planning.data) {
-          planning.data.forEach((row, rowIndex) => {
-            row.forEach((cell, cellIndex) => {
-              if (cell.event && 
-                  (cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs') &&
-                  cell.event.assignedMembers) {
-                
-                cell.event.assignedMembers.forEach(member => {
-                  const entryId = `${member.id}-${cell.event!.id}`;
-                  entries.push({
-                    id: entryId,
-                    staffName: `${member.prenom} ${member.nom}`,
-                    type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
-                    startDate: cell.event!.startDate || cell.date,
-                    endDate: cell.event!.endDate || cell.date,
-                    notes: cell.event!.notes,
-                    isSigned: false,
-                    signedAt: undefined
-                  });
-                });
-              }
-            });
-          });
-        }
-      });
+      try {
+        const entries = await db.getAll('signatures', currentSession.id);
+        setSignatureEntries(entries);
+      } catch (error) {
+        console.error('Erreur lors du chargement des entrées de signature:', error);
+      }
+    };
 
-      setLeaveEntries(entries);
-      console.log('Entrées de congés/repos chargées:', entries);
-    } catch (error) {
-      console.error('Erreur lors du chargement des entrées:', error);
+    loadSignatureEntries();
+  }, [isInitialized, currentSession, db]);
+
+  const generateSignatureEntry = (event: PlanningEvent) => {
+    if (!event.notes) {
+      toast.error("Veuillez ajouter des notes avant de générer l'entrée de signature");
+      return;
     }
-  };
-
-  const loadSignatures = async () => {
-    if (!isInitialized || !currentSession) return;
-
-    try {
-      const dbSignatures = await db.getAll('signatures', currentSession.id);
-      setSignatures(dbSignatures);
-      console.log('Signatures chargées:', dbSignatures);
-    } catch (error) {
-      console.error('Erreur lors du chargement des signatures:', error);
-    }
-  };
-
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    setIsDrawing(true);
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.beginPath();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-  };
-
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.stroke();
-  };
-
-  const stopDrawing = () => {
-    setIsDrawing(false);
-  };
-
-  const clearSignature = () => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-  };
-
-  const saveSignature = async () => {
-    if (!selectedEntry || !canvasRef.current) return;
-
-    const canvas = canvasRef.current;
-    const signatureData = canvas.toDataURL();
-
-    try {
-      const newSignature: SignatureData = {
-        id: `sig_${selectedEntry}_${Date.now()}`,
-        sessionId: currentSession?.id,
-        entryId: selectedEntry,
-        signature: signatureData,
-        signedAt: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-
-      await db.save('signatures', newSignature);
-      
-      setSignatures(prev => [...prev, newSignature]);
-      setLeaveEntries(prev => prev.map(entry => 
-        entry.id === selectedEntry 
-          ? { ...entry, isSigned: true, signedAt: newSignature.signedAt }
-          : entry
-      ));
-
-      setSelectedEntry(null);
-      clearSignature();
-
-      toast({
-        title: "Signature enregistrée",
-        description: "La signature a été enregistrée avec succès.",
-      });
-    } catch (error) {
-      console.error('Erreur lors de la sauvegarde de la signature:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible d'enregistrer la signature.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const deleteSignature = async (entryId: string) => {
-    try {
-      const signature = signatures.find(s => s.entryId === entryId);
-      if (!signature) return;
-
-      await db.delete('signatures', signature.id);
-      
-      setSignatures(prev => prev.filter(s => s.entryId !== entryId));
-      setLeaveEntries(prev => prev.map(entry => 
-        entry.id === entryId 
-          ? { ...entry, isSigned: false, signedAt: undefined }
-          : entry
-      ));
-
-      toast({
-        title: "Signature supprimée",
-        description: "La signature a été supprimée avec succès.",
-      });
-    } catch (error) {
-      console.error('Erreur lors de la suppression de la signature:', error);
-      toast({
-        title: "Erreur",
-        description: "Impossible de supprimer la signature.",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const exportToPDF = async () => {
-    if (!reportRef.current) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'exporter le rapport",
-        variant: "destructive"
-      });
+    
+    if (!currentSession) {
+      toast.error("Aucune session active");
       return;
     }
 
-    try {
-      console.log('Export PDF rapport signatures démarré...');
-
-      const originalElement = reportRef.current;
-      
-      const exportElement = document.createElement('div');
-      exportElement.innerHTML = originalElement.innerHTML;
-      exportElement.style.position = 'absolute';
-      exportElement.style.left = '-9999px';
-      exportElement.style.top = '0';
-      exportElement.style.backgroundColor = 'white';
-      exportElement.style.padding = '20px';
-      exportElement.style.width = '800px';
-      exportElement.style.fontFamily = 'Arial, sans-serif';
-      
-      // Supprimer les boutons d'action mais garder les signatures
-      const buttons = exportElement.querySelectorAll('button');
-      buttons.forEach(button => button.remove());
-      
-      document.body.appendChild(exportElement);
-
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      const canvas = await html2canvas(exportElement, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: 800
-      });
-      
-      document.body.removeChild(exportElement);
-
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // En-tête
-      pdf.setFillColor(147, 51, 234);
-      pdf.rect(0, 0, 210, 25, 'F');
-      
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(18);
-      pdf.text('CVJ MG', 15, 17);
-      
-      pdf.setFontSize(14);
-      pdf.text('Rapport des signatures - Repos des personnels', 60, 17);
-      
-      // Date
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
-      pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, 15, 35);
-      
-      // Image
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 30;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      let yPosition = 45;
-      let remainingHeight = imgHeight;
-      
-      while (remainingHeight > 0) {
-        const pageHeight = pdfHeight - yPosition - 10;
-        const currentHeight = Math.min(remainingHeight, pageHeight);
-        
-        pdf.addImage(
-          imgData, 
-          'PNG', 
-          15, 
-          yPosition, 
-          imgWidth, 
-          currentHeight
-        );
-        
-        remainingHeight -= currentHeight;
-        
-        if (remainingHeight > 0) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-      }
-      
-      const fileName = `Signatures_Repos_${format(new Date(), 'dd-MM-yyyy')}.pdf`;
-      pdf.save(fileName);
-      
-      toast({
-        title: "Export réussi",
-        description: "Le rapport des signatures a été exporté en PDF",
-      });
-      
-    } catch (error) {
-      console.error('Erreur lors de l\'export PDF:', error);
-      toast({
-        title: "Erreur d'export",
-        description: "Impossible d'exporter le rapport en PDF",
-        variant: "destructive"
-      });
-    }
-  };
-
-  const formatDateSafely = (dateString: string) => {
-    try {
-      if (!dateString) return 'Date non définie';
-      const dateObj = new Date(dateString);
-      if (!isValid(dateObj)) return 'Date invalide';
-      return format(dateObj, 'dd/MM/yyyy', { locale: fr });
-    } catch (error) {
-      console.error('Erreur de formatage de date:', error);
-      return 'Erreur de date';
-    }
-  };
-
-  // Mettre à jour le statut des signatures
-  const entriesWithSignatureStatus = leaveEntries.map(entry => {
-    const signature = signatures.find(s => s.entryId === entry.id);
-    return {
-      ...entry,
-      isSigned: !!signature,
-      signedAt: signature?.signedAt,
-      signatureImage: signature?.signature
+    const newEntry: SignatureEntry = {
+      id: Date.now().toString(),
+      sessionId: currentSession.id,
+      eventId: event.id,
+      eventName: event.name,
+      memberName: event.assignedMembers?.[0] ? `${event.assignedMembers[0].prenom} ${event.assignedMembers[0].nom}` : 'Non assigné',
+      startDate: event.startDate || '',
+      endDate: event.endDate || '',
+      notes: event.notes,
+      createdAt: new Date().toISOString()
     };
-  });
+
+    saveSignatureEntry(newEntry);
+  };
+
+  const saveSignatureEntry = async (entry: SignatureEntry) => {
+    if (!currentSession) return;
+
+    try {
+      await db.save('signatures', entry);
+      setSignatureEntries(prev => [...prev, entry]);
+      toast.success("Entrée de signature créée avec succès");
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast.error("Erreur lors de la création de l'entrée");
+    }
+  };
+
+  const updateSignatureEntry = async (updatedEntry: SignatureEntry) => {
+    if (!currentSession) return;
+
+    try {
+      await db.save('signatures', updatedEntry);
+      setSignatureEntries(prev => prev.map(entry => 
+        entry.id === updatedEntry.id ? updatedEntry : entry
+      ));
+      toast.success("Entrée mise à jour avec succès");
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      toast.error("Erreur lors de la mise à jour");
+    }
+  };
+
+  const deleteSignatureEntry = async (entryId: string) => {
+    if (!currentSession) return;
+
+    try {
+      await db.delete('signatures', entryId);
+      setSignatureEntries(prev => prev.filter(entry => entry.id !== entryId));
+      toast.success("Entrée supprimée avec succès");
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast.error("Erreur lors de la suppression");
+    }
+  };
+
+  const signEntry = async (entryId: string) => {
+    if (!signature.trim()) {
+      toast.error("Veuillez saisir votre signature");
+      return;
+    }
+
+    const entry = signatureEntries.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const updatedEntry = {
+      ...entry,
+      signature: signature.trim(),
+      signedAt: new Date().toISOString()
+    };
+
+    await updateSignatureEntry(updatedEntry);
+    setSignature('');
+    setEditingEntry(null);
+  };
+
+  const exportToPDF = () => {
+    // Implementation for PDF export would go here
+    toast.info("Fonctionnalité d'export PDF à implémenter");
+  };
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
-            <UserCheck className="h-5 w-5" />
-            <span>Signatures électroniques - Repos des personnels</span>
+            <Calendar className="h-5 w-5" />
+            <span>Gestion des Quartiers Libres</span>
           </CardTitle>
-          <CardDescription>
-            Les membres du personnel doivent signer leurs congés et repos récupérateurs. Une seule signature par entrée est requise.
-          </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex justify-end mb-4">
-            <Button onClick={exportToPDF}>
+          <div className="flex justify-between items-center mb-4">
+            <p className="text-sm text-muted-foreground">
+              Gérez les entrées de signature pour les congés et repos du personnel
+            </p>
+            <Button onClick={exportToPDF} variant="outline">
               <Download className="h-4 w-4 mr-2" />
-              Exporter le rapport
+              Exporter PDF
             </Button>
           </div>
 
-          <div ref={reportRef} className="bg-white">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Personnel</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Période</TableHead>
-                  <TableHead>Précisions</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Signature</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {entriesWithSignatureStatus.length > 0 ? (
-                  entriesWithSignatureStatus.map((entry) => (
+          {signatureEntries.length === 0 ? (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Aucune entrée de signature</h3>
+              <p className="text-gray-500">Les entrées de signature apparaîtront ici une fois créées depuis le planning</p>
+            </div>
+          ) : (
+            <div className="border rounded-lg">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Événement</TableHead>
+                    <TableHead>Membre</TableHead>
+                    <TableHead>Période</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {signatureEntries.map((entry) => (
                     <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.staffName}</TableCell>
+                      <TableCell className="font-medium">{entry.eventName}</TableCell>
+                      <TableCell>{entry.memberName}</TableCell>
                       <TableCell>
-                        <Badge variant={entry.type === 'leave' ? 'default' : 'secondary'}>
-                          {entry.type === 'leave' ? 'Congé' : 'Repos récupérateur'}
-                        </Badge>
+                        <div className="text-sm">
+                          <div>Du {new Date(entry.startDate).toLocaleDateString('fr-FR')}</div>
+                          <div>Au {new Date(entry.endDate).toLocaleDateString('fr-FR')}</div>
+                        </div>
                       </TableCell>
                       <TableCell>
-                        {entry.startDate === entry.endDate 
-                          ? formatDateSafely(entry.startDate)
-                          : `${formatDateSafely(entry.startDate)} - ${formatDateSafely(entry.endDate)}`
-                        }
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {entry.notes || '-'}
-                      </TableCell>
-                      <TableCell>
-                        {entry.isSigned ? (
-                          <div className="flex flex-col">
-                            <Badge variant="default" className="bg-green-500">
-                              Signé
-                            </Badge>
-                            {entry.signedAt && (
-                              <span className="text-xs text-gray-500 mt-1">
-                                {formatDateSafely(entry.signedAt)}
-                              </span>
-                            )}
-                          </div>
+                        {entry.signature ? (
+                          <Badge variant="default">Signé</Badge>
                         ) : (
-                          <Badge variant="outline">
-                            En attente
-                          </Badge>
+                          <Badge variant="secondary">En attente</Badge>
                         )}
                       </TableCell>
                       <TableCell>
-                        {entry.signatureImage && (
-                          <img 
-                            src={entry.signatureImage} 
-                            alt="Signature" 
-                            className="w-20 h-10 border border-gray-300 rounded"
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {entry.isSigned ? (
+                        <div className="flex space-x-1">
+                          {!entry.signature && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setEditingEntry(entry)}
+                            >
+                              <PenTool className="h-3 w-3 mr-1" />
+                              Signer
+                            </Button>
+                          )}
                           <Button
-                            variant="outline"
                             size="sm"
-                            onClick={() => deleteSignature(entry.id)}
+                            variant="ghost"
+                            onClick={() => deleteSignatureEntry(entry.id)}
                           >
-                            <Trash2 className="h-4 w-4 mr-1" />
-                            Supprimer
+                            <Trash2 className="h-3 w-3" />
                           </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setSelectedEntry(entry.id)}
-                          >
-                            <FileSignature className="h-4 w-4 mr-1" />
-                            Signer
-                          </Button>
-                        )}
+                        </div>
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500">
-                      Aucun congé ou repos récupérateur à signer. 
-                      Ajoutez des entrées dans le planning principal.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-
-          {selectedEntry && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Signature électronique</CardTitle>
-                <CardDescription>
-                  Signez avec votre souris ou votre doigt dans la zone ci-dessous
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-                    <canvas
-                      ref={canvasRef}
-                      width={500}
-                      height={200}
-                      className="border border-gray-300 cursor-crosshair bg-white"
-                      onMouseDown={startDrawing}
-                      onMouseMove={draw}
-                      onMouseUp={stopDrawing}
-                      onMouseLeave={stopDrawing}
-                    />
-                  </div>
-                  <div className="flex space-x-2">
-                    <Button onClick={saveSignature}>
-                      Enregistrer la signature
-                    </Button>
-                    <Button variant="outline" onClick={clearSignature}>
-                      Effacer
-                    </Button>
-                    <Button variant="outline" onClick={() => setSelectedEntry(null)}>
-                      Annuler
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog de signature */}
+      <Dialog open={!!editingEntry} onOpenChange={() => setEditingEntry(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Signer l'entrée</DialogTitle>
+          </DialogHeader>
+          {editingEntry && (
+            <div className="space-y-4">
+              <div>
+                <Label>Événement</Label>
+                <p className="text-sm font-medium">{editingEntry.eventName}</p>
+              </div>
+              <div>
+                <Label>Membre</Label>
+                <p className="text-sm">{editingEntry.memberName}</p>
+              </div>
+              <div>
+                <Label>Notes</Label>
+                <p className="text-sm text-muted-foreground">{editingEntry.notes}</p>
+              </div>
+              <div>
+                <Label htmlFor="signature">Signature électronique</Label>
+                <Input
+                  id="signature"
+                  value={signature}
+                  onChange={(e) => setSignature(e.target.value)}
+                  placeholder="Tapez votre nom complet pour signer"
+                />
+              </div>
+              <Button 
+                className="w-full"
+                onClick={() => signEntry(editingEntry.id)}
+              >
+                Signer
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
 
-export default LeaveSignaturePlanning;
+export default QuartiersLibres;
