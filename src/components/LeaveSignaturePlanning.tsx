@@ -404,7 +404,7 @@ const LeaveSignaturePlanning = () => {
         
         // Types de congés/repos
         const uniqueTypes = Array.from(new Set(entry.leaves.map(l => l.type)));
-        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Congé' : 'Repos R.').join(' + ');
+        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Conge' : 'Repos R.').join(' + ');
         pdf.text(typesText, 72, yPosition);
         
         // Nombre de périodes
@@ -413,7 +413,7 @@ const LeaveSignaturePlanning = () => {
         // Statut avec couleur
         if (entry.isSigned) {
           pdf.setTextColor(0, 150, 0); // Vert
-          pdf.text('✓ SIGNÉ', 162, yPosition);
+          pdf.text('SIGNE', 162, yPosition);
           if (entry.signedAt) {
             pdf.setFontSize(7);
             pdf.setTextColor(100, 100, 100);
@@ -444,7 +444,7 @@ const LeaveSignaturePlanning = () => {
               ? formatDateSafely(leave.startDate)
               : `${formatDateSafely(leave.startDate)} → ${formatDateSafely(leave.endDate)}`;
             
-            pdf.text(`  → ${leave.type === 'leave' ? 'Congé' : 'Repos'}: ${periodText}`, 20, yPosition);
+            pdf.text(`  → ${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`, 20, yPosition);
             
             if (leave.notes) {
               pdf.text(`    (${leave.notes})`, 25, yPosition + 2);
@@ -492,12 +492,12 @@ const LeaveSignaturePlanning = () => {
           pdf.setFontSize(9);
           pdf.setFont('helvetica', 'normal');
           const leaveTypes = Array.from(new Set(entry.leaves.map(l => l.type)))
-            .map(t => t === 'leave' ? 'Congé' : 'Repos récupérateur').join(' + ');
+            .map(t => t === 'leave' ? 'Conge' : 'Repos recuperateur').join(' + ');
           pdf.text(leaveTypes, 20, yPosition + 5);
           
           if (entry.signature) {
             try {
-              pdf.addImage(entry.signature, 'PNG', 20, yPosition + 8, 60, 20);
+              pdf.addImage(entry.signature, 'PNG', 20, yPosition + 8, 40, 15);
             } catch (error) {
               console.error('Erreur ajout signature:', error);
               pdf.setFont('helvetica', 'italic');
