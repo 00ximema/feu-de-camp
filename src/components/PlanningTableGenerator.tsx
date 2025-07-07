@@ -226,7 +226,8 @@ const PlanningTableGenerator = () => {
       endTime: eventData.endTime,
       selectedGroups: eventData.selectedGroups,
       selectedJeunes: eventData.selectedJeunes,
-      notes: eventData.notes
+      notes: eventData.notes,
+      description: eventData.notes
     };
     
     setPlanningData(newData);
