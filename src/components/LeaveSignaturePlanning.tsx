@@ -260,15 +260,6 @@ const LeaveSignaturePlanning = () => {
   };
 
   const exportToPDF = async () => {
-    if (!reportRef.current) {
-      toast({
-        title: "Erreur",
-        description: "Impossible d'exporter le rapport",
-        variant: "destructive"
-      });
-      return;
-    }
-
     try {
       console.log('Export PDF rapport signatures démarré...');
 
