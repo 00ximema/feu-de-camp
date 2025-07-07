@@ -385,7 +385,7 @@ const LeaveSignaturePlanning = () => {
         
         // Types de conges/repos
         const uniqueTypes = Array.from(new Set(entry.leaves.map(l => l.type)));
-        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Conge' : 'Repos').join(' + ');
+        const typesText = uniqueTypes.map(t => t === 'leave' ? 'Conge' : 'Repos recuperateurs').join(' + ');
         pdf.text(typesText, 72, yPosition);
         
         // Nombre de periodes
@@ -420,7 +420,7 @@ const LeaveSignaturePlanning = () => {
               ? formatDateSafely(leave.startDate)
               : `${formatDateSafely(leave.startDate)} au ${formatDateSafely(leave.endDate)}`;
             
-            const leaveText = `${leave.type === 'leave' ? 'Conge' : 'Repos'}: ${periodText}`;
+            const leaveText = `${leave.type === 'leave' ? 'Conge' : 'Repos recuperateurs'}: ${periodText}`;
             const notes = leave.notes ? leave.notes.replace(/[^\w\s\-]/g, '') : '';
             const displayText = notes ? `${leaveText} ${notes}` : leaveText;
             
@@ -462,7 +462,7 @@ const LeaveSignaturePlanning = () => {
           pdf.setFontSize(7);
           pdf.setFont('helvetica', 'normal');
           const leaveTypes = Array.from(new Set(entry.leaves.map(l => l.type)))
-            .map(t => t === 'leave' ? 'Conge' : 'Repos').join(' + ');
+            .map(t => t === 'leave' ? 'Conge' : 'Repos recuperateurs').join(' + ');
           pdf.text(leaveTypes, 20, yPosition + 3);
           
           if (entry.signature) {
