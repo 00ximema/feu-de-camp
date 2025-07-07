@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
@@ -25,18 +24,28 @@ interface Planning {
   data: Array<Array<{
     date: string;
     timeSlot: string;
-    event: {
+    event?: {
       id: string;
       name: string;
-      type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'other';
-      assignedMember: {
-        id: number;
+      type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
+      assignedMembers?: Array<{
+        id: string;
         nom: string;
         prenom: string;
         role: string;
-      } | null;
-    } | null;
+      }>;
+      startDate?: string;
+      endDate?: string;
+      startTime?: string;
+      endTime?: string;
+      selectedGroups?: string[];
+      selectedJeunes?: string[];
+    };
   }>>;
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface Traitement {
@@ -71,7 +80,7 @@ const Index = () => {
         const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
         setAnimateurs(dbAnimateurs);
 
-        // Charger les plannings de la session courante - cast to match interface
+        // Charger les plannings de la session courante
         const dbPlannings = await db.getAll('plannings', currentSession.id);
         setPlannings(dbPlannings as Planning[]);
 
@@ -95,25 +104,22 @@ const Index = () => {
   const getAstreintes = () => {
     return plannings
       .flatMap(p => p.data.flat())
-      .filter(slot => slot.date === today && slot.timeSlot === 'Astreintes' && slot.event?.assignedMember)
-      .map(slot => slot.event?.assignedMember)
-      .filter(member => member !== null);
+      .filter(slot => slot.date === today && slot.timeSlot === 'Astreintes' && slot.event?.assignedMembers && slot.event.assignedMembers.length > 0)
+      .flatMap(slot => slot.event?.assignedMembers || []);
   };
 
   const getConges = () => {
     return plannings
       .flatMap(p => p.data.flat())
-      .filter(slot => slot.date === today && slot.timeSlot === 'Congés' && slot.event?.assignedMember)
-      .map(slot => slot.event?.assignedMember)
-      .filter(member => member !== null);
+      .filter(slot => slot.date === today && slot.timeSlot === 'Congés' && slot.event?.assignedMembers && slot.event.assignedMembers.length > 0)
+      .flatMap(slot => slot.event?.assignedMembers || []);
   };
 
   const getReposRecuperateurs = () => {
     return plannings
       .flatMap(p => p.data.flat())
-      .filter(slot => slot.date === today && slot.timeSlot === 'Repos récupérateurs' && slot.event?.assignedMember)
-      .map(slot => slot.event?.assignedMember)
-      .filter(member => member !== null);
+      .filter(slot => slot.date === today && slot.timeSlot === 'Repos récupérateurs' && slot.event?.assignedMembers && slot.event.assignedMembers.length > 0)
+      .flatMap(slot => slot.event?.assignedMembers || []);
   };
 
   const traitementsActifs = getTraitementsActifs();
@@ -329,9 +335,9 @@ const Index = () => {
                   {astreintes.map((member, index) => (
                     <div key={index} className="text-sm p-2 bg-red-50 rounded border-l-2 border-red-200">
                       <div className="font-medium text-red-900">
-                        {member?.prenom} {member?.nom}
+                        {member.prenom} {member.nom}
                       </div>
-                      <div className="text-red-600 text-xs">{member?.role}</div>
+                      <div className="text-red-600 text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>
@@ -351,9 +357,9 @@ const Index = () => {
                   {conges.map((member, index) => (
                     <div key={index} className="text-sm p-2 bg-blue-50 rounded border-l-2 border-blue-200">
                       <div className="font-medium text-blue-900">
-                        {member?.prenom} {member?.nom}
+                        {member.prenom} {member.nom}
                       </div>
-                      <div className="text-blue-600 text-xs">{member?.role}</div>
+                      <div className="text-blue-600 text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>
@@ -373,9 +379,9 @@ const Index = () => {
                   {reposRecuperateurs.map((member, index) => (
                     <div key={index} className="text-sm p-2 bg-green-50 rounded border-l-2 border-green-200">
                       <div className="font-medium text-green-900">
-                        {member?.prenom} {member?.nom}
+                        {member.prenom} {member.nom}
                       </div>
-                      <div className="text-green-600 text-xs">{member?.role}</div>
+                      <div className="text-green-600 text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>

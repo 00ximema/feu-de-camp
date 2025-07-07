@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -174,25 +173,28 @@ const LeaveSignaturePlanning = () => {
             day.forEach(cell => {
               if (cell.event && 
                   (cell.event.type === 'leave' || cell.event.type === 'recovery') &&
-                  cell.event.assignedMember) {
+                  cell.event.assignedMembers && cell.event.assignedMembers.length > 0) {
                 
-                const existingEntry = leaves.find(entry => 
-                  entry.animateurId === cell.event!.assignedMember!.id &&
-                  entry.date === cell.date &&
-                  entry.timeSlot === cell.timeSlot
-                );
+                // Créer une entrée pour chaque membre assigné
+                cell.event.assignedMembers.forEach(member => {
+                  const existingEntry = leaves.find(entry => 
+                    entry.animateurId === parseInt(member.id) &&
+                    entry.date === cell.date &&
+                    entry.timeSlot === cell.timeSlot
+                  );
 
-                if (!existingEntry) {
-                  leaves.push({
-                    id: `${cell.event.assignedMember.id}_${cell.date}_${cell.timeSlot}`,
-                    animateurId: cell.event.assignedMember.id,
-                    animateurNom: cell.event.assignedMember.nom,
-                    animateurPrenom: cell.event.assignedMember.prenom,
-                    type: cell.event.type as 'leave' | 'recovery',
-                    date: cell.date,
-                    timeSlot: cell.timeSlot
-                  });
-                }
+                  if (!existingEntry) {
+                    leaves.push({
+                      id: `${member.id}_${cell.date}_${cell.timeSlot}`,
+                      animateurId: parseInt(member.id),
+                      animateurNom: member.nom,
+                      animateurPrenom: member.prenom,
+                      type: cell.event!.type as 'leave' | 'recovery',
+                      date: cell.date,
+                      timeSlot: cell.timeSlot
+                    });
+                  }
+                });
               }
             });
           });
