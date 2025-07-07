@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -650,7 +651,9 @@ const PlanningTableGenerator = () => {
           setDialogOpen(false);
           setSelectedCell(null);
         }}
-        onSave={handleSaveEvent}
+        onSave={(eventName, memberIds, type, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes, notes) => 
+          handleSaveEvent(eventName, memberIds, type, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes, notes)
+        }
         timeSlot={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.timeSlot || '' : ''}
         date={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.date || '' : ''}
         teamMembers={teamMembers}
