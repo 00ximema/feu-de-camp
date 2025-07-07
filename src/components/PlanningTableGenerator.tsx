@@ -319,40 +319,69 @@ const PlanningTableGenerator = () => {
     }
 
     try {
-      console.log('Export PDF démarré...');
+      console.log('Export PDF demarre...');
       
       const originalElement = planningRef.current;
       
-      // Créer un élément temporaire pour l'export
+      // Créer un élément temporaire optimisé pour l'export
       const exportElement = document.createElement('div');
       exportElement.innerHTML = originalElement.innerHTML;
       exportElement.style.position = 'absolute';
       exportElement.style.left = '-9999px';
       exportElement.style.top = '0';
       exportElement.style.backgroundColor = 'white';
-      exportElement.style.padding = '20px';
-      exportElement.style.width = '1400px';
+      exportElement.style.padding = '10px';
+      exportElement.style.width = '1200px'; // Réduire la largeur
       exportElement.style.fontFamily = 'Arial, sans-serif';
+      exportElement.style.fontSize = '10px'; // Police plus petite
       
-      // Supprimer tous les boutons de l'export
+      // Optimiser le tableau pour l'export
+      const table = exportElement.querySelector('table');
+      if (table) {
+        (table as HTMLElement).style.fontSize = '9px';
+        (table as HTMLElement).style.width = '100%';
+        (table as HTMLElement).style.tableLayout = 'fixed';
+        (table as HTMLElement).style.borderCollapse = 'collapse';
+      }
+      
+      // Supprimer tous les boutons et éléments interactifs
       const buttons = exportElement.querySelectorAll('button');
       buttons.forEach(button => button.remove());
       
-      // Supprimer les éléments d'interaction
       const interactive = exportElement.querySelectorAll('.group-hover\\:opacity-100, .opacity-0');
       interactive.forEach(el => el.remove());
       
+      // Optimiser les cellules
+      const cells = exportElement.querySelectorAll('td, th');
+      cells.forEach(cell => {
+        const element = cell as HTMLElement;
+        element.style.padding = '3px';
+        element.style.fontSize = '8px';
+        element.style.lineHeight = '1.1';
+        element.style.overflow = 'hidden';
+        element.style.textOverflow = 'ellipsis';
+        element.style.wordWrap = 'break-word';
+        element.style.maxWidth = '120px';
+      });
+      
+      // Ajuster la largeur des colonnes de date
+      const dateHeaders = exportElement.querySelectorAll('th:not(:first-child)');
+      dateHeaders.forEach(header => {
+        (header as HTMLElement).style.width = '100px';
+        (header as HTMLElement).style.minWidth = '100px';
+      });
+      
       document.body.appendChild(exportElement);
 
-      // Attendre un court délai pour que l'élément soit rendu
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Attendre que l'element soit rendu
+      await new Promise(resolve => setTimeout(resolve, 200));
 
       const canvas = await html2canvas(exportElement, {
-        scale: 2,
+        scale: 1.5, // Réduire le scale pour optimiser
         useCORS: true,
         backgroundColor: '#ffffff',
         logging: false,
-        width: 1400,
+        width: Math.min(1200, exportElement.scrollWidth),
         height: exportElement.scrollHeight
       });
       
@@ -361,74 +390,126 @@ const PlanningTableGenerator = () => {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
       
-      // Ajouter l'en-tête
+      // Dimensions A4 paysage
+      const pageWidth = 297;
+      const pageHeight = 210;
+      const margin = 10;
+      const availableWidth = pageWidth - (margin * 2);
+      const availableHeight = pageHeight - 35; // Espace pour en-tete
+      
+      // En-tete compact
       pdf.setFillColor(147, 51, 234);
-      pdf.rect(0, 0, 297, 25, 'F');
+      pdf.rect(0, 0, pageWidth, 20, 'F');
       
       pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
-      pdf.text('CVJ MG', 15, 17);
-      
       pdf.setFontSize(16);
-      pdf.text('Planning Équipe', 60, 17);
+      pdf.text('CVJ MG', 15, 14);
       
-      // Ajouter la date
+      pdf.setFontSize(12);
+      pdf.text('Planning Equipe', 60, 14);
+      
+      // Date
       pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       try {
-        if (isValid(startDate)) {
-          pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
+        if (isValid(startDate) && isValid(endDate)) {
+          pdf.text(`Du ${format(startDate, 'dd/MM/yyyy')} au ${format(endDate, 'dd/MM/yyyy')}`, 15, 30);
         } else {
-          pdf.text('Planning', 15, 35);
+          pdf.text('Planning', 15, 30);
         }
       } catch (error) {
         console.error('Erreur formatage date PDF:', error);
-        pdf.text('Planning', 15, 35);
+        pdf.text('Planning', 15, 30);
       }
       
-      // Calculer les dimensions de l'image
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-      const imgWidth = pdfWidth - 30;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      // Calculer les dimensions de l'image optimisées
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
       
-      let yPosition = 45;
-      let remainingHeight = imgHeight;
+      const scaledWidth = imgWidth * ratio;
+      const scaledHeight = imgHeight * ratio;
       
-      // Ajouter l'image page par page si nécessaire
-      while (remainingHeight > 0) {
-        const pageHeight = pdfHeight - yPosition - 10;
-        const currentHeight = Math.min(remainingHeight, pageHeight);
-        
-        const sy = imgHeight - remainingHeight;
-        const sHeight = currentHeight;
-        
+      // Centrer l'image sur la page
+      const xPosition = margin + (availableWidth - scaledWidth) / 2;
+      const yPosition = 35;
+      
+      // Ajouter l'image en une seule fois si possible
+      if (scaledHeight <= availableHeight) {
         pdf.addImage(
-          imgData, 
-          'PNG', 
-          15, 
-          yPosition, 
-          imgWidth, 
-          currentHeight
+          imgData,
+          'PNG',
+          xPosition,
+          yPosition,
+          scaledWidth,
+          scaledHeight
         );
+      } else {
+        // Si trop grand, diviser intelligemment
+        const pagesNeeded = Math.ceil(scaledHeight / availableHeight);
+        const heightPerPage = availableHeight;
         
-        remainingHeight -= currentHeight;
-        
-        if (remainingHeight > 0) {
-          pdf.addPage();
-          yPosition = 20;
+        for (let page = 0; page < pagesNeeded; page++) {
+          if (page > 0) {
+            pdf.addPage();
+            
+            // Repeter l'en-tete
+            pdf.setFillColor(147, 51, 234);
+            pdf.rect(0, 0, pageWidth, 20, 'F');
+            pdf.setTextColor(255, 255, 255);
+            pdf.setFontSize(16);
+            pdf.text('CVJ MG', 15, 14);
+            pdf.setFontSize(12);
+            pdf.text('Planning Equipe', 60, 14);
+            pdf.setTextColor(0, 0, 0);
+            pdf.setFontSize(9);
+            pdf.text(`Page ${page + 1}/${pagesNeeded}`, 220, 30);
+          }
+          
+          const sourceY = (page * heightPerPage) / ratio;
+          const sourceHeight = Math.min(heightPerPage / ratio, imgHeight - sourceY);
+          
+          // Créer canvas temporaire pour cette portion
+          const tempCanvas = document.createElement('canvas');
+          const tempCtx = tempCanvas.getContext('2d');
+          tempCanvas.width = imgWidth;
+          tempCanvas.height = sourceHeight;
+          
+          if (tempCtx) {
+            tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight);
+            const tempImgData = tempCanvas.toDataURL('image/png');
+            
+            pdf.addImage(
+              tempImgData,
+              'PNG',
+              xPosition,
+              35,
+              scaledWidth,
+              sourceHeight * ratio
+            );
+          }
         }
+      }
+      
+      // Pied de page
+      const totalPages = pdf.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        pdf.setPage(i);
+        pdf.setFontSize(7);
+        pdf.setTextColor(128, 128, 128);
+        pdf.text(`CVJ MG - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
+        pdf.text(`Genere le ${format(new Date(), 'dd/MM/yyyy a HH:mm')}`, pageWidth - 80, pageHeight - 5);
       }
       
       const fileName = `Planning_${format(startDate, 'dd-MM-yyyy')}.pdf`;
       pdf.save(fileName);
       
       toast({
-        title: "Export réussi",
-        description: "Le planning a été exporté en PDF avec succès",
+        title: "Export reussi",
+        description: "Le planning a ete exporte en PDF avec succes",
       });
       
-      console.log('PDF exporté avec succès');
+      console.log('PDF exporte avec succes');
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
       toast({

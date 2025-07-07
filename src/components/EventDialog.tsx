@@ -201,26 +201,53 @@ const EventDialog: React.FC<EventDialogProps> = ({
                 </Select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start-time">Heure de début</Label>
-                  <Input
-                    id="start-time"
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
+              {timeSlot !== 'Repos récupérateurs' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-time">Heure de début</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-time">Heure de fin</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label htmlFor="end-time">Heure de fin</Label>
-                  <Input
-                    id="end-time"
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                  />
+              )}
+              
+              {timeSlot === 'Repos récupérateurs' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="start-time">Heure de début (optionnelle)</Label>
+                    <Input
+                      id="start-time"
+                      type="time"
+                      value={startTime}
+                      onChange={(e) => setStartTime(e.target.value)}
+                      placeholder="Non définie"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="end-time">Heure de fin (optionnelle)</Label>
+                    <Input
+                      id="end-time"
+                      type="time"
+                      value={endTime}
+                      onChange={(e) => setEndTime(e.target.value)}
+                      placeholder="Non définie"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           )}
 
