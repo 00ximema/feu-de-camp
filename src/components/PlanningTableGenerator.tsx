@@ -192,7 +192,18 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = async (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[], notes?: string) => {
+  const handleSaveEvent = async (
+    eventName: string, 
+    memberIds?: string[], 
+    type?: string, 
+    startDate?: string, 
+    endDate?: string, 
+    startTime?: string, 
+    endTime?: string, 
+    selectedGroups?: string[], 
+    selectedJeunes?: string[], 
+    notes?: string
+  ) => {
     if (!selectedCell) return;
     
     console.log('Saving event:', eventName, memberIds, type, startTime, endTime, selectedGroups, selectedJeunes, notes);

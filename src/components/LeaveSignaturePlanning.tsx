@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,6 +30,25 @@ interface SignatureData {
   signature: string;
   signedAt: string;
   createdAt: string;
+}
+
+interface PlanningEvent {
+  id: string;
+  name: string;
+  type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
+  assignedMembers?: Array<{
+    id: string;
+    nom: string;
+    prenom: string;
+    role: string;
+  }>;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  selectedGroups?: string[];
+  selectedJeunes?: string[];
+  notes?: string;
 }
 
 const LeaveSignaturePlanning = () => {
