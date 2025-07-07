@@ -77,12 +77,10 @@ const PlanningTableGenerator = () => {
     }
   };
 
-  const [startDate, setStartDate] = useState<Date>(getDefaultStartDate());
-  const [endDate, setEndDate] = useState<Date>(() => {
-    const start = getDefaultStartDate();
-    return addDays(start, 6);
-  });
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
+  const [showPlanning, setShowPlanning] = useState(false);
   const { team } = useTeamManagement();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
@@ -114,7 +112,7 @@ const PlanningTableGenerator = () => {
     }
   };
 
-  const dateRange = generateDateRange(startDate, endDate);
+  const dateRange = startDate && endDate ? generateDateRange(startDate, endDate) : [];
 
   const formatDateSafely = (date: Date) => {
     try {
@@ -138,7 +136,7 @@ const PlanningTableGenerator = () => {
   };
 
   const savePlanning = async (updatedData: PlanningCell[][]) => {
-    if (!isInitialized || !currentSession) return;
+    if (!isInitialized || !currentSession || !startDate || !endDate) return;
 
     try {
       const planningToSave = {
@@ -309,7 +307,7 @@ const PlanningTableGenerator = () => {
   }, [startDate, endDate]);
 
   const exportToPDF = async () => {
-    if (!planningRef.current) {
+    if (!planningRef.current || !startDate || !endDate) {
       toast({
         title: "Erreur",
         description: "Impossible d'exporter le planning",
@@ -530,7 +528,7 @@ const PlanningTableGenerator = () => {
       const newDate = new Date(inputValue);
       if (isValid(newDate)) {
         setStartDate(newDate);
-        if (endDate < newDate) {
+        if (endDate && endDate < newDate) {
           setEndDate(addDays(newDate, 6));
         }
       }
@@ -545,7 +543,7 @@ const PlanningTableGenerator = () => {
       if (!inputValue) return;
       
       const newDate = new Date(inputValue);
-      if (isValid(newDate) && newDate >= startDate) {
+      if (isValid(newDate) && startDate && newDate >= startDate) {
         setEndDate(newDate);
       }
     } catch (error) {
@@ -553,21 +551,33 @@ const PlanningTableGenerator = () => {
     }
   };
 
+  const generatePlanning = () => {
+    if (!startDate || !endDate) {
+      toast({
+        title: "Dates manquantes",
+        description: "Veuillez sélectionner les dates de début et de fin.",
+        variant: "destructive"
+      });
+      return;
+    }
+    setShowPlanning(true);
+  };
+
   const getStartDateValue = () => {
     try {
-      return isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : '2024-01-01';
+      return startDate && isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : '';
     } catch (error) {
       console.error('Erreur formatage date input:', error);
-      return '2024-01-01';
+      return '';
     }
   };
 
   const getEndDateValue = () => {
     try {
-      return isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : '2024-01-07';
+      return endDate && isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : '';
     } catch (error) {
       console.error('Erreur formatage date input:', error);
-      return '2024-01-07';
+      return '';
     }
   };
 
@@ -592,6 +602,7 @@ const PlanningTableGenerator = () => {
                 type="date"
                 value={getStartDateValue()}
                 onChange={handleStartDateChange}
+                placeholder="Sélectionnez la date de début"
               />
             </div>
             <div>
@@ -602,121 +613,142 @@ const PlanningTableGenerator = () => {
                 value={getEndDateValue()}
                 onChange={handleEndDateChange}
                 min={getStartDateValue()}
+                placeholder="Sélectionnez la date de fin"
               />
             </div>
-            <Button onClick={exportToPDF} className="mt-6">
-              <Download className="h-4 w-4 mr-2" />
-              Exporter en PDF
-            </Button>
-          </div>
-
-          <div ref={planningRef} className="bg-white p-4" id="planning-table">
-            <div className="overflow-x-auto">
-              <Table className="border">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
-                    {dateRange.map((date, index) => (
-                      <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
-                        {(() => {
-                          try {
-                            if (isValid(date)) {
-                              return (
-                                <>
-                                  <div>{format(date, 'EEEE', { locale: fr })}</div>
-                                  <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
-                                </>
-                              );
-                            } else {
-                              return <div>Date invalide</div>;
-                            }
-                          } catch (error) {
-                            console.error('Erreur formatage en-tête:', error);
-                            return <div>Erreur date</div>;
-                          }
-                        })()}
-                      </TableHead>
-                    ))}
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {planningData.map((row, rowIndex) => (
-                    <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-purple-50' : ''}>
-                      <TableCell className="font-medium bg-gray-50 border-r">
-                        {row[0]?.timeSlot}
-                      </TableCell>
-                      {row.map((cell, cellIndex) => (
-                        <TableCell 
-                          key={cellIndex} 
-                          className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
-                          onClick={() => handleCellClick(rowIndex, cellIndex)}
-                        >
-                          {cell.event ? (
-                            <div className="space-y-1">
-                              <div className="font-medium text-sm text-gray-900">
-                                {cell.event.name}
-                              </div>
-                              {cell.event.startTime && cell.event.endTime && (
-                                <div className="text-xs text-blue-600">
-                                  {cell.event.startTime} - {cell.event.endTime}
-                                </div>
-                              )}
-                              {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
-                                <div className="text-xs text-gray-600">
-                                  {cell.event.assignedMembers.map(member => 
-                                    `${member.prenom} ${member.nom}`
-                                  ).join(', ')}
-                                </div>
-                              )}
-                              {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
-                                <div className="text-xs text-green-600">
-                                  Groupes sélectionnés
-                                </div>
-                              )}
-                              {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
-                                <div className="text-xs text-green-600">
-                                  Jeunes individuels
-                                </div>
-                              )}
-                              {cell.event.notes && (
-                                <div className="text-xs text-purple-600 italic">
-                                  {cell.event.notes}
-                                </div>
-                              )}
-                              {cell.event.startDate && cell.event.endDate && 
-                               cell.event.startDate !== cell.event.endDate && (
-                                <div className="text-xs text-blue-600">
-                                  {isValid(new Date(cell.event.startDate)) && isValid(new Date(cell.event.endDate)) ? (
-                                    <>
-                                      {format(new Date(cell.event.startDate), 'dd/MM')} - {format(new Date(cell.event.endDate), 'dd/MM')}
-                                    </>
-                                  ) : (
-                                    'Dates invalides'
-                                  )}
-                                </div>
-                              )}
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 h-6 w-6 p-0"
-                                onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, e)}
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="h-12 flex items-center justify-center text-gray-400 group-hover:text-gray-600">
-                              <Plus className="h-4 w-4" />
-                            </div>
-                          )}
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+            <div className="flex items-center space-x-2 mt-6">
+              <Button 
+                onClick={generatePlanning}
+                disabled={!startDate || !endDate}
+                variant="default"
+              >
+                <Calendar className="h-4 w-4 mr-2" />
+                Générer le planning
+              </Button>
+              {showPlanning && startDate && endDate && (
+                <Button onClick={exportToPDF} variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Exporter en PDF
+                </Button>
+              )}
             </div>
           </div>
+
+          {!showPlanning ? (
+            <div className="text-center py-12 text-gray-500">
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-medium mb-2">Aucun planning généré</h3>
+              <p className="text-sm">Sélectionnez les dates de début et de fin, puis cliquez sur "Générer le planning"</p>
+            </div>
+           ) : (
+            <div ref={planningRef} className="bg-white p-4" id="planning-table">
+              <div className="overflow-x-auto">
+                <Table className="border">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
+                      {dateRange.map((date, index) => (
+                        <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
+                          {(() => {
+                            try {
+                              if (isValid(date)) {
+                                return (
+                                  <>
+                                    <div>{format(date, 'EEEE', { locale: fr })}</div>
+                                    <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
+                                  </>
+                                );
+                              } else {
+                                return <div>Date invalide</div>;
+                              }
+                            } catch (error) {
+                              console.error('Erreur formatage en-tête:', error);
+                              return <div>Erreur date</div>;
+                            }
+                          })()}
+                        </TableHead>
+                      ))}
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {planningData.map((row, rowIndex) => (
+                      <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-purple-50' : ''}>
+                        <TableCell className="font-medium bg-gray-50 border-r">
+                          {row[0]?.timeSlot}
+                        </TableCell>
+                        {row.map((cell, cellIndex) => (
+                          <TableCell 
+                            key={cellIndex} 
+                            className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
+                            onClick={() => handleCellClick(rowIndex, cellIndex)}
+                          >
+                            {cell.event ? (
+                              <div className="space-y-1">
+                                <div className="font-medium text-sm text-gray-900">
+                                  {cell.event.name}
+                                </div>
+                                {cell.event.startTime && cell.event.endTime && (
+                                  <div className="text-xs text-blue-600">
+                                    {cell.event.startTime} - {cell.event.endTime}
+                                  </div>
+                                )}
+                                {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
+                                  <div className="text-xs text-gray-600">
+                                    {cell.event.assignedMembers.map(member => 
+                                      `${member.prenom} ${member.nom}`
+                                    ).join(', ')}
+                                  </div>
+                                )}
+                                {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
+                                  <div className="text-xs text-green-600">
+                                    Groupes sélectionnés
+                                  </div>
+                                )}
+                                {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
+                                  <div className="text-xs text-green-600">
+                                    Jeunes individuels
+                                  </div>
+                                )}
+                                {cell.event.notes && (
+                                  <div className="text-xs text-purple-600 italic">
+                                    {cell.event.notes}
+                                  </div>
+                                )}
+                                {cell.event.startDate && cell.event.endDate && 
+                                 cell.event.startDate !== cell.event.endDate && (
+                                  <div className="text-xs text-blue-600">
+                                    {isValid(new Date(cell.event.startDate)) && isValid(new Date(cell.event.endDate)) ? (
+                                      <>
+                                        {format(new Date(cell.event.startDate), 'dd/MM')} - {format(new Date(cell.event.endDate), 'dd/MM')}
+                                      </>
+                                    ) : (
+                                      'Dates invalides'
+                                    )}
+                                  </div>
+                                )}
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 h-6 w-6 p-0"
+                                  onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, e)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="h-12 flex items-center justify-center text-gray-400 group-hover:text-gray-600">
+                                <Plus className="h-4 w-4" />
+                              </div>
+                            )}
+                          </TableCell>
+                        ))}
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
