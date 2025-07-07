@@ -15,10 +15,12 @@ import html2canvas from 'html2canvas';
 interface LeaveEntry {
   id: string;
   staffName: string;
-  type: 'leave' | 'recovery';
-  startDate: string;
-  endDate: string;
-  notes?: string;
+  leaves: Array<{
+    type: 'leave' | 'recovery';
+    startDate: string;
+    endDate: string;
+    notes?: string;
+  }>;
   isSigned: boolean;
   signedAt?: string;
 }
@@ -116,34 +118,12 @@ const LeaveSignaturePlanning = () => {
         }
       });
 
-      // Créer une seule entrée par membre
+      // Créer une seule entrée par membre avec tous ses congés/repos
       const entries: LeaveEntry[] = Object.values(memberLeaveData).map(({ member, leaves }) => {
-        // Trier les congés par date pour déterminer la période globale
-        const sortedLeaves = leaves.sort((a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-        const firstLeave = sortedLeaves[0];
-        const lastLeave = sortedLeaves[sortedLeaves.length - 1];
-        
-        // Déterminer les types de congés
-        const hasLeave = leaves.some(l => l.type === 'leave');
-        const hasRecovery = leaves.some(l => l.type === 'recovery');
-        
-        let type: 'leave' | 'recovery';
-        if (hasLeave && hasRecovery) {
-          type = 'leave'; // Priorité aux congés si les deux types existent
-        } else {
-          type = hasLeave ? 'leave' : 'recovery';
-        }
-        
-        // Compiler les notes de tous les congés
-        const allNotes = leaves.map(l => l.notes).filter(Boolean).join(' | ');
-        
         return {
-          id: member.id, // Une seule entrée par membre, basée sur son ID
+          id: member.id, // Une seule entrée par membre
           staffName: `${member.prenom} ${member.nom}`,
-          type,
-          startDate: firstLeave.startDate,
-          endDate: lastLeave.endDate,
-          notes: allNotes || `${leaves.length} période(s) de repos/congés`,
+          leaves: leaves, // Garder le détail de tous les congés/repos
           isSigned: false,
           signedAt: undefined
         };
@@ -314,12 +294,18 @@ const LeaveSignaturePlanning = () => {
       
       // Tableau des entrées avec signatures
       const entriesWithSignatureStatus = leaveEntries.map(entry => {
-        const signature = signatures.find(s => s.entryId === entry.id);
+        const memberSignatures = signatures.filter(s => 
+          s.entryId === entry.id || s.entryId.startsWith(`${entry.id}-`)
+        );
+        const latestSignature = memberSignatures.sort((a, b) => 
+          new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime()
+        )[0];
+        
         return {
           ...entry,
-          isSigned: !!signature,
-          signedAt: signature?.signedAt,
-          signature: signature?.signature
+          isSigned: memberSignatures.length > 0,
+          signedAt: latestSignature?.signedAt,
+          signature: latestSignature?.signature
         };
       });
 
@@ -332,8 +318,8 @@ const LeaveSignaturePlanning = () => {
       pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Personnel', 15, yPosition);
-      pdf.text('Type', 60, yPosition);
-      pdf.text('Période', 90, yPosition);
+      pdf.text('Types', 60, yPosition);
+      pdf.text('Périodes', 90, yPosition);
       pdf.text('Statut', 150, yPosition);
       yPosition += 7;
 
@@ -346,12 +332,18 @@ const LeaveSignaturePlanning = () => {
         }
 
         pdf.text(entry.staffName, 15, yPosition);
-        pdf.text(entry.type === 'leave' ? 'Congé' : 'Repos récup.', 60, yPosition);
         
-        const dateText = entry.startDate === entry.endDate 
-          ? formatDateSafely(entry.startDate)
-          : `${formatDateSafely(entry.startDate)} - ${formatDateSafely(entry.endDate)}`;
-        pdf.text(dateText, 90, yPosition);
+        // Types de congés/repos
+        const types = entry.leaves.map(l => l.type === 'leave' ? 'Congé' : 'Repos récup.').join(', ');
+        pdf.text(types, 60, yPosition);
+        
+        // Périodes
+        const periods = entry.leaves.map(l => 
+          l.startDate === l.endDate 
+            ? formatDateSafely(l.startDate)
+            : `${formatDateSafely(l.startDate)}-${formatDateSafely(l.endDate)}`
+        ).join(', ');
+        pdf.text(periods, 90, yPosition);
         
         pdf.text(entry.isSigned ? 'Signé' : 'En attente', 150, yPosition);
         
@@ -382,7 +374,8 @@ const LeaveSignaturePlanning = () => {
 
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'bold');
-          pdf.text(`${entry.staffName} - ${entry.type === 'leave' ? 'Congé' : 'Repos récupérateur'}`, 15, yPosition);
+          const leaveTypes = entry.leaves.map(l => l.type === 'leave' ? 'Congé' : 'Repos récupérateur').join(' + ');
+          pdf.text(`${entry.staffName} - ${leaveTypes}`, 15, yPosition);
           yPosition += 5;
           
           if (entry.signature) {
@@ -487,22 +480,42 @@ const LeaveSignaturePlanning = () => {
               <TableBody>
                 {entriesWithSignatureStatus.length > 0 ? (
                   entriesWithSignatureStatus.map((entry) => (
-                    <TableRow key={entry.id}>
-                      <TableCell className="font-medium">{entry.staffName}</TableCell>
-                      <TableCell>
-                        <Badge variant={entry.type === 'leave' ? 'default' : 'secondary'}>
-                          {entry.type === 'leave' ? 'Congé' : 'Repos récupérateur'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {entry.startDate === entry.endDate 
-                          ? formatDateSafely(entry.startDate)
-                          : `${formatDateSafely(entry.startDate)} - ${formatDateSafely(entry.endDate)}`
-                        }
-                      </TableCell>
-                      <TableCell className="text-sm text-gray-600">
-                        {entry.notes || '-'}
-                      </TableCell>
+                     <TableRow key={entry.id}>
+                       <TableCell className="font-medium">{entry.staffName}</TableCell>
+                       <TableCell>
+                         <div className="space-y-1">
+                           {entry.leaves.map((leave, index) => (
+                             <Badge 
+                               key={index}
+                               variant={leave.type === 'leave' ? 'default' : 'secondary'}
+                               className="mr-1"
+                             >
+                               {leave.type === 'leave' ? 'Congé' : 'Repos récup.'}
+                             </Badge>
+                           ))}
+                         </div>
+                       </TableCell>
+                       <TableCell>
+                         <div className="space-y-1 text-sm">
+                           {entry.leaves.map((leave, index) => (
+                             <div key={index}>
+                               {leave.startDate === leave.endDate 
+                                 ? formatDateSafely(leave.startDate)
+                                 : `${formatDateSafely(leave.startDate)} - ${formatDateSafely(leave.endDate)}`
+                               }
+                             </div>
+                           ))}
+                         </div>
+                       </TableCell>
+                       <TableCell className="text-sm text-gray-600">
+                         <div className="space-y-1">
+                           {entry.leaves.map((leave, index) => (
+                             <div key={index}>
+                               {leave.notes || '-'}
+                             </div>
+                           ))}
+                         </div>
+                       </TableCell>
                       <TableCell>
                         {entry.isSigned ? (
                           <div className="flex flex-col">
