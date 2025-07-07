@@ -82,7 +82,7 @@ const Index = () => {
 
         // Charger les plannings de la session courante
         const dbPlannings = await db.getAll('plannings', currentSession.id);
-        setPlannings(dbPlannings as Planning[]);
+        setPlannings(dbPlannings);
 
         // Charger les traitements de la session courante
         const dbTraitements = await db.getAll('traitements', currentSession.id);
