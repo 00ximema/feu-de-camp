@@ -37,7 +37,18 @@ interface PlanningEvent {
 interface EventDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string, startTime?: string, endTime?: string, selectedGroups?: string[], selectedJeunes?: string[], notes?: string) => void;
+  onSave: (eventData: {
+    eventName: string;
+    memberIds?: string[];
+    type?: string;
+    startDate?: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    selectedGroups?: string[];
+    selectedJeunes?: string[];
+    notes?: string;
+  }) => void;
   timeSlot: string;
   date: string;
   teamMembers: TeamMember[];
@@ -102,7 +113,18 @@ const EventDialog: React.FC<EventDialogProps> = ({
     if (!isSpecialTimeSlot && !eventName.trim()) return;
     if (selectedMembers.length === 0) return;
     
-    onSave(eventName, selectedMembers, eventType, startDate, endDate, startTime, endTime, selectedGroups, selectedJeunes, notes);
+    onSave({
+      eventName,
+      memberIds: selectedMembers,
+      type: eventType,
+      startDate,
+      endDate,
+      startTime,
+      endTime,
+      selectedGroups,
+      selectedJeunes,
+      notes
+    });
     onClose();
   };
 
