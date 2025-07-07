@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format } from 'date-fns';
+import { format, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface TeamMember {
@@ -76,6 +76,19 @@ const EventDialog: React.FC<EventDialogProps> = ({
   };
 
   const isSpecialTimeSlot = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
+
+  // Fonction pour formater une date de manière sécurisée
+  const formatDateSafely = (dateString: string) => {
+    try {
+      if (!dateString) return 'Date non définie';
+      const dateObj = new Date(dateString);
+      if (!isValid(dateObj)) return 'Date invalide';
+      return format(dateObj, 'EEEE dd MMMM yyyy', { locale: fr });
+    } catch (error) {
+      console.error('Erreur de formatage de date:', error);
+      return 'Erreur de date';
+    }
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -156,7 +169,7 @@ const EventDialog: React.FC<EventDialogProps> = ({
 
           <div className="text-sm text-gray-600">
             <div><strong>Créneau:</strong> {timeSlot}</div>
-            <div><strong>Date initiale:</strong> {format(new Date(date), 'EEEE dd MMMM yyyy', { locale: fr })}</div>
+            <div><strong>Date initiale:</strong> {formatDateSafely(date)}</div>
           </div>
 
           <div className="flex space-x-2">
