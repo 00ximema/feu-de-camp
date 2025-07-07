@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -62,10 +63,28 @@ const QuartiersLibres = () => {
       }
       
       try {
-        const entries = await db.getAll('signatures', currentSession.id);
-        setSignatureEntries(entries);
+        const dbEntries = await db.getAll('signatures', currentSession.id);
+        console.log('Entrées de signature chargées depuis la DB:', dbEntries);
+        
+        // Map database entries to SignatureEntry interface
+        const formattedEntries = dbEntries.map((entry: any) => ({
+          id: String(entry.id),
+          sessionId: entry.sessionId,
+          eventId: entry.eventId || '',
+          eventName: entry.eventName || '',
+          memberName: entry.memberName || '',
+          startDate: entry.startDate || '',
+          endDate: entry.endDate || '',
+          notes: entry.notes || '',
+          signature: entry.signature,
+          signedAt: entry.signedAt,
+          createdAt: entry.createdAt || new Date().toISOString()
+        }));
+        
+        setSignatureEntries(formattedEntries);
       } catch (error) {
         console.error('Erreur lors du chargement des entrées de signature:', error);
+        setSignatureEntries([]);
       }
     };
 
@@ -102,7 +121,22 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      await db.save('signatures', entry);
+      // Convert to database format
+      const dbEntry = {
+        id: parseInt(entry.id),
+        sessionId: entry.sessionId,
+        eventId: entry.eventId,
+        eventName: entry.eventName,
+        memberName: entry.memberName,
+        startDate: entry.startDate,
+        endDate: entry.endDate,
+        notes: entry.notes,
+        signature: entry.signature,
+        signedAt: entry.signedAt,
+        createdAt: entry.createdAt
+      };
+      
+      await db.save('signatures', dbEntry);
       setSignatureEntries(prev => [...prev, entry]);
       toast.success("Entrée de signature créée avec succès");
     } catch (error) {
@@ -115,7 +149,22 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      await db.save('signatures', updatedEntry);
+      // Convert to database format
+      const dbEntry = {
+        id: parseInt(updatedEntry.id),
+        sessionId: updatedEntry.sessionId,
+        eventId: updatedEntry.eventId,
+        eventName: updatedEntry.eventName,
+        memberName: updatedEntry.memberName,
+        startDate: updatedEntry.startDate,
+        endDate: updatedEntry.endDate,
+        notes: updatedEntry.notes,
+        signature: updatedEntry.signature,
+        signedAt: updatedEntry.signedAt,
+        createdAt: updatedEntry.createdAt
+      };
+      
+      await db.save('signatures', dbEntry);
       setSignatureEntries(prev => prev.map(entry => 
         entry.id === updatedEntry.id ? updatedEntry : entry
       ));
@@ -130,7 +179,7 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      await db.delete('signatures', entryId);
+      await db.delete('signatures', parseInt(entryId));
       setSignatureEntries(prev => prev.filter(entry => entry.id !== entryId));
       toast.success("Entrée supprimée avec succès");
     } catch (error) {

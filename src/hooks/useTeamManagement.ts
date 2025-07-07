@@ -56,7 +56,13 @@ export const useTeamManagement = () => {
           diplomes: member.formations || [],
           notes: member.notes,
           createdAt: member.createdAt || new Date().toISOString(),
-          documents: member.documents || []
+          documents: (member.documents || []).map((doc: any) => ({
+            id: String(doc.id || doc.nom || Date.now()),
+            name: doc.name || doc.nom || '',
+            type: doc.type || '',
+            uploadDate: doc.uploadDate || doc.dateUpload || new Date().toISOString(),
+            data: doc.data || doc.url || ''
+          }))
         }));
         
         setTeam(formattedTeam);
@@ -108,7 +114,7 @@ export const useTeamManagement = () => {
         diplomes: member.formations,
         notes: member.notes,
         createdAt: new Date().toISOString(),
-        documents: member.documents
+        documents: []
       };
 
       setTeam(prev => [...prev, formattedMember]);
@@ -131,6 +137,15 @@ export const useTeamManagement = () => {
     if (!currentSession) return;
 
     try {
+      // Convert documents to database format
+      const dbDocuments = (updatedMember.documents || []).map(doc => ({
+        id: parseInt(doc.id) || Date.now(),
+        nom: doc.name,
+        type: doc.type,
+        dateUpload: doc.uploadDate,
+        url: doc.data || ''
+      }));
+
       const dbMember = {
         id: parseInt(updatedMember.id),
         sessionId: currentSession.id,
@@ -141,7 +156,7 @@ export const useTeamManagement = () => {
         email: updatedMember.email,
         role: updatedMember.role,
         formations: updatedMember.diplomes,
-        documents: updatedMember.documents || [],
+        documents: dbDocuments,
         notes: updatedMember.notes
       };
 
