@@ -295,19 +295,46 @@ const PlanningTableGenerator = () => {
   }, [startDate, endDate]);
 
   const exportToPDF = async () => {
-    if (!planningRef.current) return;
+    if (!planningRef.current) {
+      toast({
+        title: "Erreur",
+        description: "Impossible d'exporter le planning",
+        variant: "destructive"
+      });
+      return;
+    }
 
     try {
-      console.log('Export PDF...');
-      const canvas = await html2canvas(planningRef.current, {
-        scale: 2,
+      console.log('Export PDF démarré...');
+      
+      // Créer une version simplifiée pour l'export
+      const exportElement = planningRef.current.cloneNode(true) as HTMLElement;
+      exportElement.style.position = 'absolute';
+      exportElement.style.left = '-9999px';
+      exportElement.style.backgroundColor = 'white';
+      exportElement.style.padding = '20px';
+      exportElement.style.width = '1200px';
+      
+      // Supprimer les boutons d'action pour l'export
+      const buttons = exportElement.querySelectorAll('button');
+      buttons.forEach(button => button.remove());
+      
+      document.body.appendChild(exportElement);
+
+      const canvas = await html2canvas(exportElement, {
+        scale: 1.5,
         useCORS: true,
-        backgroundColor: '#ffffff'
+        backgroundColor: '#ffffff',
+        width: 1200,
+        logging: false
       });
       
+      document.body.removeChild(exportElement);
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
       
+      // Header
       pdf.setFillColor(147, 51, 234);
       pdf.rect(0, 0, 297, 25, 'F');
       
@@ -318,6 +345,7 @@ const PlanningTableGenerator = () => {
       pdf.setFontSize(16);
       pdf.text('Planning Équipe', 50, 17);
       
+      // Date
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
       try {
@@ -331,16 +359,52 @@ const PlanningTableGenerator = () => {
         pdf.text('Planning', 15, 35);
       }
       
-      const imgWidth = 267;
+      // Image
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = pdfWidth - 30;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
-      pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
+      let yPosition = 45;
+      let remainingHeight = imgHeight;
       
-      const fileName = 'Planning.pdf';
+      while (remainingHeight > 0) {
+        const pageHeight = pdfHeight - yPosition - 10;
+        const currentHeight = Math.min(remainingHeight, pageHeight);
+        
+        pdf.addImage(
+          imgData, 
+          'PNG', 
+          15, 
+          yPosition, 
+          imgWidth, 
+          currentHeight
+        );
+        
+        remainingHeight -= currentHeight;
+        
+        if (remainingHeight > 0) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+      }
+      
+      const fileName = `Planning_${format(startDate, 'dd-MM-yyyy')}.pdf`;
       pdf.save(fileName);
+      
+      toast({
+        title: "Export réussi",
+        description: "Le planning a été exporté en PDF avec succès",
+      });
+      
       console.log('PDF exporté avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter le planning en PDF",
+        variant: "destructive"
+      });
     }
   };
 
@@ -404,7 +468,7 @@ const PlanningTableGenerator = () => {
             <span>Planning interactif</span>
           </CardTitle>
           <CardDescription>
-            Cliquez sur une case pour ajouter ou modifier un événement. Les données sont automatiquement sauvegardées.
+            Cliquez sur une case pour ajouter ou modifier un événement. Les congés et repos récupérateurs seront disponibles pour signature dans l'onglet "Repos des personnels".
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -434,7 +498,7 @@ const PlanningTableGenerator = () => {
             </Button>
           </div>
 
-          <div ref={planningRef} className="bg-white p-4">
+          <div ref={planningRef} className="bg-white p-4" id="planning-table">
             <div className="overflow-x-auto">
               <Table className="border">
                 <TableHeader>

@@ -1,10 +1,11 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { UserCheck, FileDown, Trash2, Edit, Info } from "lucide-react";
+import { UserCheck, FileDown, Trash2, Edit, Info, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
@@ -116,12 +117,12 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCancel }) =
   return (
     <div className="space-y-4 p-4">
       <div className="text-center">
-        <p className="text-sm text-gray-600 mb-2">Signez dans le cadre ci-dessous</p>
+        <p className="text-sm text-gray-600 mb-2">Signez dans le cadre ci-dessous avec votre souris</p>
         <canvas
           ref={canvasRef}
           width={400}
           height={200}
-          className="border border-gray-300 rounded cursor-crosshair"
+          className="border border-gray-300 rounded cursor-crosshair bg-white"
           onMouseDown={startDrawing}
           onMouseMove={draw}
           onMouseUp={stopDrawing}
@@ -145,51 +146,49 @@ const SignatureCanvas: React.FC<SignatureCanvasProps> = ({ onSave, onCancel }) =
 
 const LeaveSignaturePlanning = () => {
   const [leaveEntries, setLeaveEntries] = useState<LeaveEntry[]>([]);
-  const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
   const [selectedEntry, setSelectedEntry] = useState<LeaveEntry | null>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const planningRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
 
-  useEffect(() => {
-    const loadData = async () => {
-      if (!isInitialized || !currentSession) return;
+  const loadLeaveData = async () => {
+    if (!isInitialized || !currentSession) return;
+    
+    setIsLoading(true);
+    
+    try {
+      console.log('Chargement des congés et repos récupérateurs...');
       
-      try {
-        // Charger les animateurs
-        const dbAnimateurs = await db.getAll('animateurs', currentSession.id);
-        setAnimateurs(dbAnimateurs);
+      // Charger les plannings pour extraire les congés et RR
+      const plannings = await db.getAll('plannings', currentSession.id);
+      const leaves: LeaveEntry[] = [];
 
-        // Charger les plannings pour extraire les congés et RR
-        const plannings = await db.getAll('plannings', currentSession.id);
-        const leaves: LeaveEntry[] = [];
-
-        plannings.forEach(planning => {
-          // planning.data is PlanningCell[][], so we need to iterate over each day (array) and then each cell
-          planning.data.forEach(day => {
-            day.forEach(cell => {
+      plannings.forEach(planning => {
+        if (planning.data && Array.isArray(planning.data)) {
+          planning.data.forEach((row: any[]) => {
+            row.forEach((cell: any) => {
               if (cell.event && 
-                  (cell.event.type === 'leave' || cell.event.type === 'recovery') &&
+                  (cell.event.type === 'leave' || cell.event.type === 'recovery' || 
+                   cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs') &&
                   cell.event.assignedMembers && cell.event.assignedMembers.length > 0) {
                 
                 // Créer une entrée pour chaque membre assigné
-                cell.event.assignedMembers.forEach(member => {
-                  const existingEntry = leaves.find(entry => 
-                    entry.animateurId === parseInt(member.id) &&
-                    entry.date === cell.date &&
-                    entry.timeSlot === cell.timeSlot
-                  );
+                cell.event.assignedMembers.forEach((member: any) => {
+                  const entryId = `${member.id}_${cell.date}_${cell.timeSlot}`;
+                  
+                  const existingEntry = leaves.find(entry => entry.id === entryId);
 
                   if (!existingEntry) {
                     leaves.push({
-                      id: `${member.id}_${cell.date}_${cell.timeSlot}`,
+                      id: entryId,
                       animateurId: parseInt(member.id),
                       animateurNom: member.nom,
                       animateurPrenom: member.prenom,
-                      type: cell.event!.type as 'leave' | 'recovery',
+                      type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
                       date: cell.date,
                       timeSlot: cell.timeSlot
                     });
@@ -198,56 +197,121 @@ const LeaveSignaturePlanning = () => {
               }
             });
           });
-        });
+        }
+      });
 
-        setLeaveEntries(leaves);
-        console.log('Congés et RR chargés:', leaves);
-      } catch (error) {
-        console.error('Erreur lors du chargement des données:', error);
-      }
-    };
+      // Charger les signatures existantes
+      const signatures = await db.getAll('signatures', currentSession.id);
+      
+      // Associer les signatures aux entrées
+      const leavesWithSignatures = leaves.map(entry => {
+        const signature = signatures.find(sig => sig.entryId === entry.id);
+        return signature ? { ...entry, signature: signature.signature, signedAt: signature.signedAt } : entry;
+      });
 
-    loadData();
-  }, [isInitialized, db, currentSession]);
-
-  const handleSignature = (signature: string) => {
-    if (!selectedEntry) return;
-
-    const updatedEntries = leaveEntries.map(entry => {
-      if (entry.id === selectedEntry.id) {
-        return {
-          ...entry,
-          signature,
-          signedAt: new Date().toISOString()
-        };
-      }
-      return entry;
-    });
-
-    setLeaveEntries(updatedEntries);
-    setShowSignature(false);
-    setSelectedEntry(null);
-
-    toast({
-      title: "Signature enregistrée",
-      description: `Signature de ${selectedEntry.animateurPrenom} ${selectedEntry.animateurNom} enregistrée`
-    });
+      setLeaveEntries(leavesWithSignatures);
+      console.log('Congés et RR chargés:', leavesWithSignatures.length);
+      
+      toast({
+        title: "Données actualisées",
+        description: `${leavesWithSignatures.length} congé(s) et repos récupérateur(s) trouvé(s)`,
+      });
+    } catch (error) {
+      console.error('Erreur lors du chargement des données:', error);
+      toast({
+        title: "Erreur de chargement",
+        description: "Impossible de charger les données du planning",
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const removeSignature = (entryId: string) => {
-    const updatedEntries = leaveEntries.map(entry => {
-      if (entry.id === entryId) {
-        const { signature, signedAt, ...entryWithoutSignature } = entry;
-        return entryWithoutSignature;
-      }
-      return entry;
-    });
+  useEffect(() => {
+    loadLeaveData();
+  }, [isInitialized, currentSession]);
 
-    setLeaveEntries(updatedEntries);
-    toast({
-      title: "Signature supprimée",
-      description: "La signature a été supprimée"
-    });
+  const handleSignature = async (signature: string) => {
+    if (!selectedEntry || !currentSession) return;
+
+    try {
+      // Sauvegarder la signature en base
+      const signatureData = {
+        id: `signature_${selectedEntry.id}_${Date.now()}`,
+        sessionId: currentSession.id,
+        entryId: selectedEntry.id,
+        signature,
+        signedAt: new Date().toISOString(),
+        createdAt: new Date().toISOString()
+      };
+
+      await db.save('signatures', signatureData);
+
+      // Mettre à jour l'état local
+      const updatedEntries = leaveEntries.map(entry => {
+        if (entry.id === selectedEntry.id) {
+          return {
+            ...entry,
+            signature,
+            signedAt: new Date().toISOString()
+          };
+        }
+        return entry;
+      });
+
+      setLeaveEntries(updatedEntries);
+      setShowSignature(false);
+      setSelectedEntry(null);
+
+      toast({
+        title: "Signature enregistrée",
+        description: `Signature de ${selectedEntry.animateurPrenom} ${selectedEntry.animateurNom} enregistrée`
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de la signature:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible d'enregistrer la signature",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const removeSignature = async (entryId: string) => {
+    if (!currentSession) return;
+
+    try {
+      // Supprimer la signature de la base
+      const signatures = await db.getAll('signatures', currentSession.id);
+      const signatureToDelete = signatures.find(sig => sig.entryId === entryId);
+      
+      if (signatureToDelete) {
+        await db.delete('signatures', signatureToDelete.id);
+      }
+
+      // Mettre à jour l'état local
+      const updatedEntries = leaveEntries.map(entry => {
+        if (entry.id === entryId) {
+          const { signature, signedAt, ...entryWithoutSignature } = entry;
+          return entryWithoutSignature;
+        }
+        return entry;
+      });
+
+      setLeaveEntries(updatedEntries);
+      toast({
+        title: "Signature supprimée",
+        description: "La signature a été supprimée"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la signature:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la signature",
+        variant: "destructive"
+      });
+    }
   };
 
   const exportToPDF = async () => {
@@ -329,7 +393,7 @@ const LeaveSignaturePlanning = () => {
     }
   };
 
-  if (leaveEntries.length === 0) {
+  if (leaveEntries.length === 0 && !isLoading) {
     return (
       <div className="space-y-6">
         {/* Information sur les repos */}
@@ -352,9 +416,15 @@ const LeaveSignaturePlanning = () => {
 
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <UserCheck className="h-5 w-5" />
-              <span>Repos des personnels</span>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <UserCheck className="h-5 w-5" />
+                <span>Repos des personnels</span>
+              </div>
+              <Button onClick={loadLeaveData} variant="outline" disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
             </CardTitle>
             <CardDescription>
               Aucun congé ou repos récupérateur trouvé dans les plannings actuels
@@ -363,6 +433,7 @@ const LeaveSignaturePlanning = () => {
           <CardContent>
             <p className="text-gray-600">
               Les congés et repos récupérateurs définis dans le planning principal apparaîtront ici pour signature.
+              Cliquez sur "Actualiser" pour recharger les données du planning.
             </p>
           </CardContent>
         </Card>
@@ -402,98 +473,111 @@ const LeaveSignaturePlanning = () => {
                 Signature électronique des congés et repos récupérateurs
               </CardDescription>
             </div>
-            <Button 
-              onClick={exportToPDF} 
-              disabled={isExporting}
-              className="bg-red-600 hover:bg-red-700"
-            >
-              <FileDown className="h-4 w-4 mr-2" />
-              {isExporting ? 'Export...' : 'Exporter PDF'}
-            </Button>
+            <div className="flex space-x-2">
+              <Button onClick={loadLeaveData} variant="outline" disabled={isLoading}>
+                <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                Actualiser
+              </Button>
+              <Button 
+                onClick={exportToPDF} 
+                disabled={isExporting}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <FileDown className="h-4 w-4 mr-2" />
+                {isExporting ? 'Export...' : 'Exporter PDF'}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div ref={planningRef}>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Membre de l'équipe</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Créneau</TableHead>
-                  <TableHead>Statut</TableHead>
-                  <TableHead>Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {leaveEntries.map(entry => (
-                  <TableRow key={entry.id}>
-                    <TableCell className="font-medium">
-                      {entry.animateurPrenom} {entry.animateurNom}
-                    </TableCell>
-                    <TableCell>
-                      <Badge 
-                        variant={entry.type === 'leave' ? 'secondary' : 'outline'}
-                        className={entry.type === 'leave' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}
-                      >
-                        {entry.type === 'leave' ? 'Congé' : 'Repos Récup.'}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {new Date(entry.date).toLocaleDateString('fr-FR', { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
-                        day: 'numeric' 
-                      })}
-                    </TableCell>
-                    <TableCell>{entry.timeSlot}</TableCell>
-                    <TableCell>
-                      {entry.signature ? (
-                        <div className="flex items-center space-x-2">
-                          <UserCheck className="h-4 w-4 text-green-600" />
-                          <span className="text-sm text-green-600 font-medium">Signé</span>
-                          <img 
-                            src={entry.signature} 
-                            alt="Signature" 
-                            className="h-6 w-12 object-contain border rounded"
-                          />
-                        </div>
-                      ) : (
-                        <span className="text-sm text-gray-600">Non signé</span>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        {entry.signature ? (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeSignature(entry.id)}
-                            className="h-8 w-8 p-0 hover:bg-red-100"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </Button>
-                        ) : (
-                          <Button
-                            onClick={() => {
-                              setSelectedEntry(entry);
-                              setShowSignature(true);
-                            }}
-                            size="sm"
-                            className="bg-green-600 hover:bg-green-700"
-                          >
-                            <Edit className="h-4 w-4 mr-1" />
-                            Signer
-                          </Button>
-                        )}
-                      </div>
-                    </TableCell>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <RefreshCw className="h-6 w-6 animate-spin mr-2" />
+              <span>Chargement des données...</span>
+            </div>
+          ) : (
+            <div ref={planningRef}>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Membre de l'équipe</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Créneau</TableHead>
+                    <TableHead>Statut</TableHead>
+                    <TableHead>Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {leaveEntries.map(entry => (
+                    <TableRow key={entry.id}>
+                      <TableCell className="font-medium">
+                        {entry.animateurPrenom} {entry.animateurNom}
+                      </TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={entry.type === 'leave' ? 'secondary' : 'outline'}
+                          className={entry.type === 'leave' ? 'bg-blue-100 text-blue-800' : 'bg-orange-100 text-orange-800'}
+                        >
+                          {entry.type === 'leave' ? 'Congé' : 'Repos Récup.'}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {new Date(entry.date).toLocaleDateString('fr-FR', { 
+                          weekday: 'long', 
+                          year: 'numeric', 
+                          month: 'long', 
+                          day: 'numeric' 
+                        })}
+                      </TableCell>
+                      <TableCell>{entry.timeSlot}</TableCell>
+                      <TableCell>
+                        {entry.signature ? (
+                          <div className="flex items-center space-x-2">
+                            <UserCheck className="h-4 w-4 text-green-600" />
+                            <span className="text-sm text-green-600 font-medium">Signé</span>
+                            <img 
+                              src={entry.signature} 
+                              alt="Signature" 
+                              className="h-6 w-12 object-contain border rounded"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-sm text-gray-600">Non signé</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          {entry.signature ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeSignature(entry.id)}
+                              className="h-8 w-8 p-0 hover:bg-red-100"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          ) : (
+                            <Button
+                              onClick={() => {
+                                setSelectedEntry(entry);
+                                setShowSignature(true);
+                              }}
+                              size="sm"
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              <Edit className="h-4 w-4 mr-1" />
+                              Signer
+                            </Button>
+                          )}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
