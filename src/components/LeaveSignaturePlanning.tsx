@@ -430,14 +430,24 @@ const LeaveSignaturePlanning = () => {
     }
   };
 
-  // Mettre à jour le statut des signatures
+  // Mettre à jour le statut des signatures en tenant compte des anciennes signatures
   const entriesWithSignatureStatus = leaveEntries.map(entry => {
-    const signature = signatures.find(s => s.entryId === entry.id);
+    // Chercher toutes les signatures qui pourraient correspondre à ce membre
+    // (anciennes signatures avec l'ancien format d'ID et nouvelles avec le nouveau format)
+    const memberSignatures = signatures.filter(s => 
+      s.entryId === entry.id || // Nouveau format (juste l'ID du membre)
+      s.entryId.startsWith(`${entry.id}-`) // Ancien format (member.id-event.id)
+    );
+    
+    const latestSignature = memberSignatures.sort((a, b) => 
+      new Date(b.signedAt).getTime() - new Date(a.signedAt).getTime()
+    )[0];
+    
     return {
       ...entry,
-      isSigned: !!signature,
-      signedAt: signature?.signedAt,
-      signature: signature?.signature
+      isSigned: memberSignatures.length > 0,
+      signedAt: latestSignature?.signedAt,
+      signature: latestSignature?.signature
     };
   });
 
