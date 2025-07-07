@@ -346,18 +346,25 @@ const LeaveSignaturePlanning = () => {
       yPosition += 8;
 
       // En-tetes du tableau
-      pdf.setFontSize(8);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
-      pdf.setDrawColor(200, 200, 200);
-      pdf.line(15, yPosition - 1, 195, yPosition - 1);
+      pdf.setDrawColor(150, 150, 150);
+      pdf.setFillColor(240, 242, 247);
       
-      pdf.text('PERSONNEL', 15, yPosition);
-      pdf.text('TYPES', 70, yPosition);
-      pdf.text('PERIODES', 110, yPosition);
-      pdf.text('STATUT', 160, yPosition);
-      yPosition += 4;
-      pdf.line(15, yPosition, 195, yPosition);
-      yPosition += 6;
+      // Fond gris pour les en-tetes
+      pdf.rect(15, yPosition - 2, 180, 6, 'F');
+      
+      // Bordures du tableau
+      pdf.rect(15, yPosition - 2, 180, 6, 'S');
+      pdf.line(70, yPosition - 2, 70, yPosition + 4); // Separation PERSONNEL/TYPES
+      pdf.line(110, yPosition - 2, 110, yPosition + 4); // Separation TYPES/PERIODES
+      pdf.line(160, yPosition - 2, 160, yPosition + 4); // Separation PERIODES/STATUT
+      
+      pdf.text('PERSONNEL', 17, yPosition + 2);
+      pdf.text('TYPES', 72, yPosition + 2);
+      pdf.text('PERIODES', 112, yPosition + 2);
+      pdf.text('STATUT', 162, yPosition + 2);
+      yPosition += 8;
 
       // Lignes du tableau compactes
       pdf.setFont('helvetica', 'normal');
