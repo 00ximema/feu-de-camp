@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -121,16 +120,11 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      // Convert to database format
+      // Convert to database format - map eventId to entryId
       const dbEntry = {
         id: parseInt(entry.id),
         sessionId: entry.sessionId,
-        eventId: entry.eventId,
-        eventName: entry.eventName,
-        memberName: entry.memberName,
-        startDate: entry.startDate,
-        endDate: entry.endDate,
-        notes: entry.notes,
+        entryId: entry.eventId, // Map eventId to entryId for database
         signature: entry.signature,
         signedAt: entry.signedAt,
         createdAt: entry.createdAt
@@ -149,16 +143,11 @@ const QuartiersLibres = () => {
     if (!currentSession) return;
 
     try {
-      // Convert to database format
+      // Convert to database format - map eventId to entryId
       const dbEntry = {
         id: parseInt(updatedEntry.id),
         sessionId: updatedEntry.sessionId,
-        eventId: updatedEntry.eventId,
-        eventName: updatedEntry.eventName,
-        memberName: updatedEntry.memberName,
-        startDate: updatedEntry.startDate,
-        endDate: updatedEntry.endDate,
-        notes: updatedEntry.notes,
+        entryId: updatedEntry.eventId, // Map eventId to entryId for database
         signature: updatedEntry.signature,
         signedAt: updatedEntry.signedAt,
         createdAt: updatedEntry.createdAt
