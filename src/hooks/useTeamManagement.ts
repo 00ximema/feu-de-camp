@@ -1,6 +1,8 @@
 
 import { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
+import { useLocalDatabase } from '@/hooks/useLocalDatabase';
+import { useSession } from '@/hooks/useSession';
 
 interface TeamDocument {
   id: string;
@@ -27,34 +29,74 @@ interface TeamMember {
 export const useTeamManagement = () => {
   const [team, setTeam] = useState<TeamMember[]>([]);
   const { toast } = useToast();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
   useEffect(() => {
-    const savedTeam = localStorage.getItem('team-members');
-    if (savedTeam) {
-      try {
-        setTeam(JSON.parse(savedTeam));
-      } catch (error) {
-        console.error('Erreur lors du chargement de l\'équipe:', error);
-      }
-    }
-  }, []);
+    loadTeamMembers();
+  }, [isInitialized, currentSession]);
 
-  const saveTeam = (updatedTeam: TeamMember[]) => {
-    localStorage.setItem('team-members', JSON.stringify(updatedTeam));
-    setTeam(updatedTeam);
+  const loadTeamMembers = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const members = await db.getAll('animateurs', currentSession.id);
+      setTeam(members.map(member => ({
+        id: member.id.toString(),
+        nom: member.nom,
+        prenom: member.prenom,
+        age: member.age,
+        telephone: member.telephone,
+        email: member.email,
+        role: member.role,
+        diplomes: member.formations || [],
+        notes: member.notes,
+        createdAt: new Date().toISOString(),
+        documents: (member.documents || []).map(doc => ({
+          id: doc.id.toString(),
+          name: doc.nom,
+          type: doc.type,
+          uploadDate: doc.dateUpload,
+          data: doc.url
+        }))
+      })));
+    } catch (error) {
+      console.error('Erreur lors du chargement de l\'équipe:', error);
+    }
   };
 
-  const addMember = (memberData: Omit<TeamMember, 'id' | 'createdAt' | 'diplomes'> & { diplomes: string }) => {
-    const member: TeamMember = {
-      ...memberData,
-      id: Date.now().toString(),
+  const saveTeamMember = async (memberData: any) => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      await db.save('animateurs', {
+        ...memberData,
+        sessionId: currentSession.id
+      });
+      await loadTeamMembers();
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+    }
+  };
+
+  const addMember = async (memberData: Omit<TeamMember, 'id' | 'createdAt' | 'diplomes'> & { diplomes: string }) => {
+    if (!currentSession) return;
+
+    const member = {
+      id: Date.now(),
+      sessionId: currentSession.id,
       nom: memberData.nom.toUpperCase(),
-      diplomes: memberData.diplomes.split(',').map(d => d.trim()).filter(d => d),
-      createdAt: new Date().toISOString()
+      prenom: memberData.prenom,
+      age: memberData.age,
+      telephone: memberData.telephone,
+      email: memberData.email,
+      role: memberData.role,
+      formations: memberData.diplomes.split(',').map(d => d.trim()).filter(d => d),
+      documents: [],
+      notes: memberData.notes
     };
 
-    const updatedTeam = [...team, member];
-    saveTeam(updatedTeam);
+    await saveTeamMember(member);
 
     toast({
       title: "Membre ajouté",
@@ -62,27 +104,48 @@ export const useTeamManagement = () => {
     });
   };
 
-  const updateMember = (updatedMember: TeamMember) => {
-    const updatedTeam = team.map(member => 
-      member.id === updatedMember.id ? updatedMember : member
-    );
-    saveTeam(updatedTeam);
+  const updateMember = async (updatedMember: TeamMember) => {
+    if (!currentSession) return;
+
+    const member = {
+      id: parseInt(updatedMember.id),
+      sessionId: currentSession.id,
+      nom: updatedMember.nom,
+      prenom: updatedMember.prenom,
+      age: updatedMember.age,
+      telephone: updatedMember.telephone,
+      email: updatedMember.email,
+      role: updatedMember.role,
+      formations: updatedMember.diplomes,
+      documents: updatedMember.documents || [],
+      notes: updatedMember.notes
+    };
+
+    await saveTeamMember(member);
+    
     toast({
       title: "Membre mis à jour",
       description: "Les informations ont été mises à jour avec succès"
     });
   };
 
-  const deleteMember = (memberId: string) => {
-    const updatedTeam = team.filter(member => member.id !== memberId);
-    saveTeam(updatedTeam);
-    toast({
-      title: "Membre supprimé",
-      description: "Le membre a été supprimé de l'équipe"
-    });
+  const deleteMember = async (memberId: string) => {
+    if (!isInitialized) return;
+
+    try {
+      await db.delete('animateurs', parseInt(memberId));
+      await loadTeamMembers();
+      
+      toast({
+        title: "Membre supprimé",
+        description: "Le membre a été supprimé de l'équipe"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+    }
   };
 
-  const addDocument = (memberId: string, file: File) => {
+  const addDocument = async (memberId: string, file: File) => {
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "Fichier trop volumineux",
@@ -93,7 +156,7 @@ export const useTeamManagement = () => {
     }
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       const newDocument: TeamDocument = {
         id: Date.now().toString(),
         name: file.name,
@@ -102,36 +165,38 @@ export const useTeamManagement = () => {
         data: e.target?.result as string
       };
 
-      const updatedTeam = team.map(member => 
-        member.id === memberId 
-          ? { ...member, documents: [...(member.documents || []), newDocument] }
-          : member
-      );
-      
-      saveTeam(updatedTeam);
-      
-      toast({
-        title: "Document ajouté",
-        description: `${file.name} a été ajouté avec succès`
-      });
+      const member = team.find(m => m.id === memberId);
+      if (member) {
+        const updatedMember = {
+          ...member,
+          documents: [...(member.documents || []), newDocument]
+        };
+        await updateMember(updatedMember);
+        
+        toast({
+          title: "Document ajouté",
+          description: `${file.name} a été ajouté avec succès`
+        });
+      }
     };
     
     reader.readAsDataURL(file);
   };
 
-  const deleteDocument = (memberId: string, documentId: string) => {
-    const updatedTeam = team.map(member => 
-      member.id === memberId 
-        ? { ...member, documents: member.documents?.filter(doc => doc.id !== documentId) || [] }
-        : member
-    );
-    
-    saveTeam(updatedTeam);
-    
-    toast({
-      title: "Document supprimé",
-      description: "Le document a été supprimé avec succès"
-    });
+  const deleteDocument = async (memberId: string, documentId: string) => {
+    const member = team.find(m => m.id === memberId);
+    if (member) {
+      const updatedMember = {
+        ...member,
+        documents: member.documents?.filter(doc => doc.id !== documentId) || []
+      };
+      await updateMember(updatedMember);
+      
+      toast({
+        title: "Document supprimé",
+        description: "Le document a été supprimé avec succès"
+      });
+    }
   };
 
   const downloadDocument = (document: TeamDocument) => {
