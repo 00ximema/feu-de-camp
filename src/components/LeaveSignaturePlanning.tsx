@@ -118,12 +118,22 @@ const LeaveSignaturePlanning = () => {
         }
       });
 
-      // Créer une seule entrée par membre avec tous ses congés/repos
+      // Créer une seule entrée par membre avec tous ses congés/repos (dédupliqués)
       const entries: LeaveEntry[] = Object.values(memberLeaveData).map(({ member, leaves }) => {
+        // Déduplication des congés/repos
+        const uniqueLeaves = leaves.filter((leave, index, array) => {
+          return array.findIndex(l => 
+            l.type === leave.type && 
+            l.startDate === leave.startDate && 
+            l.endDate === leave.endDate &&
+            (l.notes || '') === (leave.notes || '')
+          ) === index;
+        });
+
         return {
           id: member.id, // Une seule entrée par membre
           staffName: `${member.prenom} ${member.nom}`,
-          leaves: leaves, // Garder le détail de tous les congés/repos
+          leaves: uniqueLeaves, // Congés/repos dédupliqués
           isSigned: false,
           signedAt: undefined
         };
