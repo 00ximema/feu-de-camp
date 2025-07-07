@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -49,17 +48,29 @@ const SPECIAL_ROWS = [
 ];
 
 const PlanningTableGenerator = () => {
-  // Initialize with a valid date
-  const getValidStartDate = () => {
-    const today = new Date();
-    if (!isValid(today)) {
-      return new Date('2024-01-01'); // Fallback date
+  // Initialisation avec une date simple et valide
+  const getDefaultStartDate = () => {
+    try {
+      const today = new Date();
+      // Vérifier si la date est valide
+      if (!isValid(today)) {
+        return new Date(2024, 0, 1); // 1er janvier 2024
+      }
+      
+      // Calculer le début de semaine de manière sûre
+      const mondayStart = startOfWeek(today, { weekStartsOn: 1 });
+      if (!isValid(mondayStart)) {
+        return new Date(2024, 0, 1);
+      }
+      
+      return mondayStart;
+    } catch (error) {
+      console.error('Erreur lors du calcul de la date de début:', error);
+      return new Date(2024, 0, 1);
     }
-    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
-    return isValid(weekStart) ? weekStart : new Date('2024-01-01');
   };
 
-  const [startDate, setStartDate] = useState<Date>(getValidStartDate);
+  const [startDate, setStartDate] = useState<Date>(getDefaultStartDate());
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
   const [teamMembers] = useState<TeamMember[]>([
     { id: 1, nom: 'Dupont', prenom: 'Jean', role: 'Directeur' },
@@ -70,67 +81,89 @@ const PlanningTableGenerator = () => {
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const planningRef = useRef<HTMLDivElement>(null);
 
-  // Generate 7 days from start date with validation
-  const generateDates = () => {
+  // Génération sécurisée des dates
+  const generateWeekDates = (baseDate: Date) => {
     const dates = [];
-    for (let i = 0; i < 7; i++) {
-      const newDate = addDays(startDate, i);
-      if (isValid(newDate)) {
-        dates.push(newDate);
-      } else {
-        // Fallback date if invalid
-        dates.push(new Date('2024-01-01'));
+    try {
+      if (!isValid(baseDate)) {
+        throw new Error('Date de base invalide');
+      }
+      
+      for (let i = 0; i < 7; i++) {
+        const newDate = addDays(baseDate, i);
+        if (isValid(newDate)) {
+          dates.push(newDate);
+        } else {
+          // Date de fallback si addDays échoue
+          dates.push(new Date(2024, 0, 1 + i));
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors de la génération des dates:', error);
+      // Générer des dates de fallback
+      for (let i = 0; i < 7; i++) {
+        dates.push(new Date(2024, 0, 1 + i));
       }
     }
     return dates;
   };
 
-  const dates = generateDates();
+  const weekDates = generateWeekDates(startDate);
 
-  // Initialize planning data
+  // Initialisation du planning
   useEffect(() => {
-    console.log('Initializing planning data for date:', startDate);
+    console.log('Initialisation du planning pour la date:', startDate);
     
-    if (!isValid(startDate)) {
-      console.error('Invalid start date:', startDate);
-      return;
+    try {
+      const initialData: PlanningCell[][] = [];
+      
+      // Créneaux horaires réguliers
+      TIME_SLOTS.forEach(timeSlot => {
+        const row: PlanningCell[] = [];
+        weekDates.forEach(date => {
+          try {
+            const dateString = isValid(date) ? format(date, 'yyyy-MM-dd') : '2024-01-01';
+            row.push({
+              date: dateString,
+              timeSlot,
+            });
+          } catch (error) {
+            console.error('Erreur lors du formatage de date:', error);
+            row.push({
+              date: '2024-01-01',
+              timeSlot,
+            });
+          }
+        });
+        initialData.push(row);
+      });
+
+      // Lignes spéciales
+      SPECIAL_ROWS.forEach(specialRow => {
+        const row: PlanningCell[] = [];
+        weekDates.forEach(date => {
+          try {
+            const dateString = isValid(date) ? format(date, 'yyyy-MM-dd') : '2024-01-01';
+            row.push({
+              date: dateString,
+              timeSlot: specialRow,
+            });
+          } catch (error) {
+            console.error('Erreur lors du formatage de date spéciale:', error);
+            row.push({
+              date: '2024-01-01',
+              timeSlot: specialRow,
+            });
+          }
+        });
+        initialData.push(row);
+      });
+
+      setPlanningData(initialData);
+    } catch (error) {
+      console.error('Erreur lors de l\'initialisation du planning:', error);
+      setPlanningData([]);
     }
-
-    const initialData: PlanningCell[][] = [];
-    
-    // Regular time slots
-    TIME_SLOTS.forEach(timeSlot => {
-      const row: PlanningCell[] = [];
-      dates.forEach(date => {
-        if (isValid(date)) {
-          row.push({
-            date: format(date, 'yyyy-MM-dd'),
-            timeSlot,
-          });
-        }
-      });
-      if (row.length > 0) {
-        initialData.push(row);
-      }
-    });
-
-    // Special rows (Astreintes, Congés, Repos récupérateurs)
-    SPECIAL_ROWS.forEach(specialRow => {
-      const row: PlanningCell[] = [];
-      dates.forEach(date => {
-        if (isValid(date)) {
-          row.push({
-            date: format(date, 'yyyy-MM-dd'),
-            timeSlot: specialRow,
-          });
-        }
-      });
-      if (row.length > 0) {
-        initialData.push(row);
-      }
-    });
-
-    setPlanningData(initialData);
   }, [startDate]);
 
   const handleCellClick = (rowIndex: number, cellIndex: number) => {
@@ -171,7 +204,7 @@ const PlanningTableGenerator = () => {
     if (!planningRef.current) return;
 
     try {
-      console.log('Exporting to PDF...');
+      console.log('Export PDF...');
       const canvas = await html2canvas(planningRef.current, {
         scale: 2,
         useCORS: true,
@@ -181,7 +214,7 @@ const PlanningTableGenerator = () => {
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
       
-      // Header avec logo
+      // En-tête
       pdf.setFillColor(147, 51, 234);
       pdf.rect(0, 0, 297, 25, 'F');
       
@@ -195,21 +228,26 @@ const PlanningTableGenerator = () => {
       // Date
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
-      if (isValid(startDate)) {
-        pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
+      try {
+        if (isValid(startDate)) {
+          pdf.text(`Semaine du ${format(startDate, 'dd/MM/yyyy', { locale: fr })}`, 15, 35);
+        } else {
+          pdf.text('Planning', 15, 35);
+        }
+      } catch (error) {
+        console.error('Erreur formatage date PDF:', error);
+        pdf.text('Planning', 15, 35);
       }
       
-      // Add planning table
+      // Table du planning
       const imgWidth = 267;
       const imgHeight = (canvas.height * imgWidth) / canvas.width;
       
       pdf.addImage(imgData, 'PNG', 15, 45, imgWidth, imgHeight);
       
-      const fileName = isValid(startDate) ? 
-        `Planning_${format(startDate, 'yyyy-MM-dd')}.pdf` : 
-        'Planning.pdf';
+      const fileName = 'Planning.pdf';
       pdf.save(fileName);
-      console.log('PDF exported successfully');
+      console.log('PDF exporté avec succès');
     } catch (error) {
       console.error('Erreur lors de l\'export PDF:', error);
     }
@@ -218,9 +256,29 @@ const PlanningTableGenerator = () => {
   const isSpecialRow = (timeSlot: string) => SPECIAL_ROWS.includes(timeSlot);
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDate = new Date(e.target.value);
-    if (isValid(newDate)) {
-      setStartDate(startOfWeek(newDate, { weekStartsOn: 1 }));
+    try {
+      const inputValue = e.target.value;
+      if (!inputValue) return;
+      
+      const newDate = new Date(inputValue);
+      if (isValid(newDate)) {
+        const mondayStart = startOfWeek(newDate, { weekStartsOn: 1 });
+        if (isValid(mondayStart)) {
+          setStartDate(mondayStart);
+        }
+      }
+    } catch (error) {
+      console.error('Erreur lors du changement de date:', error);
+    }
+  };
+
+  // Rendu sécurisé de la date de début
+  const getStartDateValue = () => {
+    try {
+      return isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : '2024-01-01';
+    } catch (error) {
+      console.error('Erreur formatage date input:', error);
+      return '2024-01-01';
     }
   };
 
@@ -243,7 +301,7 @@ const PlanningTableGenerator = () => {
               <Input
                 id="start-date" 
                 type="date"
-                value={isValid(startDate) ? format(startDate, 'yyyy-MM-dd') : ''}
+                value={getStartDateValue()}
                 onChange={handleDateChange}
               />
             </div>
@@ -259,16 +317,25 @@ const PlanningTableGenerator = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
-                    {dates.map((date, index) => (
+                    {weekDates.map((date, index) => (
                       <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
-                        {isValid(date) ? (
-                          <>
-                            <div>{format(date, 'EEEE', { locale: fr })}</div>
-                            <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
-                          </>
-                        ) : (
-                          <div>Date invalide</div>
-                        )}
+                        {(() => {
+                          try {
+                            if (isValid(date)) {
+                              return (
+                                <>
+                                  <div>{format(date, 'EEEE', { locale: fr })}</div>
+                                  <div className="text-sm">{format(date, 'dd/MM', { locale: fr })}</div>
+                                </>
+                              );
+                            } else {
+                              return <div>Date invalide</div>;
+                            }
+                          } catch (error) {
+                            console.error('Erreur formatage en-tête:', error);
+                            return <div>Erreur date</div>;
+                          }
+                        })()}
                       </TableHead>
                     ))}
                   </TableRow>
@@ -346,6 +413,40 @@ const PlanningTableGenerator = () => {
       />
     </div>
   );
+};
+
+const handleCellClick = (rowIndex: number, cellIndex: number) => {
+  console.log('Cellule cliquée:', rowIndex, cellIndex);
+  setSelectedCell({ rowIndex, cellIndex });
+  setDialogOpen(true);
+};
+
+const handleSaveEvent = (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => {
+  if (!selectedCell) return;
+  
+  console.log('Sauvegarde événement:', eventName, memberId, type);
+  const { rowIndex, cellIndex } = selectedCell;
+  const newData = [...planningData];
+  const member = memberId ? teamMembers.find(m => m.id === memberId) : undefined;
+  
+  newData[rowIndex][cellIndex].event = {
+    id: `${rowIndex}-${cellIndex}`,
+    name: eventName,
+    type: (type as any) || (SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity'),
+    assignedMember: member,
+    startDate,
+    endDate
+  };
+  
+  setPlanningData(newData);
+};
+
+const handleDeleteEvent = (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
+  e.stopPropagation();
+  console.log('Suppression événement:', rowIndex, cellIndex);
+  const newData = [...planningData];
+  delete newData[rowIndex][cellIndex].event;
+  setPlanningData(newData);
 };
 
 export default PlanningTableGenerator;
