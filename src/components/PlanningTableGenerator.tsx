@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -5,14 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Download, Plus, Trash2 } from "lucide-react";
-import { format, addDays, startOfWeek, isValid } from 'date-fns';
+import { format, addDays, startOfWeek, isValid, differenceInDays, eachDayOfInterval } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import EventDialog from './EventDialog';
+import { useTeamManagement } from '@/hooks/useTeamManagement';
 
 interface TeamMember {
-  id: number;
+  id: string;
   nom: string;
   prenom: string;
   role: string;
@@ -22,7 +24,7 @@ interface PlanningEvent {
   id: string;
   name: string;
   type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
-  assignedMember?: TeamMember;
+  assignedMembers?: TeamMember[];
   startDate?: string;
   endDate?: string;
 }
@@ -34,11 +36,11 @@ interface PlanningCell {
 }
 
 const TIME_SLOTS = [
-  'Matin (8h-12h)',
-  'Midi (12h-14h)', 
-  'Après-midi (14h-18h)',
-  'Soir (18h-22h)',
-  'Nuit (22h-8h)'
+  'Matin',
+  'Midi', 
+  'Après-midi',
+  'Soir',
+  'Nuit'
 ];
 
 const SPECIAL_ROWS = [
@@ -68,41 +70,42 @@ const PlanningTableGenerator = () => {
   };
 
   const [startDate, setStartDate] = useState<Date>(getDefaultStartDate());
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const start = getDefaultStartDate();
+    return addDays(start, 6); // Par défaut, une semaine
+  });
   const [planningData, setPlanningData] = useState<PlanningCell[][]>([]);
-  const [teamMembers] = useState<TeamMember[]>([
-    { id: 1, nom: 'Dupont', prenom: 'Jean', role: 'Directeur' },
-    { id: 2, nom: 'Martin', prenom: 'Marie', role: 'Animateur' },
-    { id: 3, nom: 'Bernard', prenom: 'Paul', role: 'Animateur' },
-  ]);
+  const { team } = useTeamManagement();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedCell, setSelectedCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
   const planningRef = useRef<HTMLDivElement>(null);
 
-  const generateWeekDates = (baseDate: Date) => {
+  // Convertir les membres d'équipe au format attendu
+  const teamMembers: TeamMember[] = team.map(member => ({
+    id: member.id,
+    nom: member.nom,
+    prenom: member.prenom,
+    role: member.role
+  }));
+
+  const generateDateRange = (start: Date, end: Date) => {
     const dates = [];
     try {
-      if (!isValid(baseDate)) {
-        throw new Error('Date de base invalide');
+      if (!isValid(start) || !isValid(end)) {
+        throw new Error('Dates invalides');
       }
       
-      for (let i = 0; i < 7; i++) {
-        const newDate = addDays(baseDate, i);
-        if (isValid(newDate)) {
-          dates.push(newDate);
-        } else {
-          dates.push(new Date(2024, 0, 1 + i));
-        }
-      }
+      const interval = eachDayOfInterval({ start, end });
+      return interval.filter(date => isValid(date));
     } catch (error) {
       console.error('Erreur lors de la génération des dates:', error);
-      for (let i = 0; i < 7; i++) {
-        dates.push(new Date(2024, 0, 1 + i));
-      }
+      // Retourner une semaine par défaut
+      const fallbackStart = new Date(2024, 0, 1);
+      return Array.from({ length: 7 }, (_, i) => addDays(fallbackStart, i));
     }
-    return dates;
   };
 
-  const weekDates = generateWeekDates(startDate);
+  const dateRange = generateDateRange(startDate, endDate);
 
   const handleCellClick = (rowIndex: number, cellIndex: number) => {
     console.log('Cell clicked:', rowIndex, cellIndex);
@@ -110,19 +113,22 @@ const PlanningTableGenerator = () => {
     setDialogOpen(true);
   };
 
-  const handleSaveEvent = (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => {
+  const handleSaveEvent = (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string) => {
     if (!selectedCell) return;
     
-    console.log('Saving event:', eventName, memberId, type);
+    console.log('Saving event:', eventName, memberIds, type);
     const { rowIndex, cellIndex } = selectedCell;
     const newData = [...planningData];
-    const member = memberId ? teamMembers.find(m => m.id === memberId) : undefined;
+    const members = memberIds ? teamMembers.filter(m => memberIds.includes(m.id)) : undefined;
+    
+    const timeSlot = newData[rowIndex][cellIndex].timeSlot;
+    const isSpecialRow = SPECIAL_ROWS.includes(timeSlot);
     
     newData[rowIndex][cellIndex].event = {
       id: `${rowIndex}-${cellIndex}`,
-      name: eventName,
-      type: (type as any) || (SPECIAL_ROWS.includes(newData[rowIndex][cellIndex].timeSlot) ? 'astreinte' : 'activity'),
-      assignedMember: member,
+      name: isSpecialRow ? timeSlot : eventName,
+      type: (type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
+      assignedMembers: members,
       startDate,
       endDate
     };
@@ -139,14 +145,14 @@ const PlanningTableGenerator = () => {
   };
 
   useEffect(() => {
-    console.log('Initialisation du planning pour la date:', startDate);
+    console.log('Initialisation du planning pour la période:', startDate, 'à', endDate);
     
     try {
       const initialData: PlanningCell[][] = [];
       
       TIME_SLOTS.forEach(timeSlot => {
         const row: PlanningCell[] = [];
-        weekDates.forEach(date => {
+        dateRange.forEach(date => {
           try {
             const dateString = isValid(date) ? format(date, 'yyyy-MM-dd') : '2024-01-01';
             row.push({
@@ -166,7 +172,7 @@ const PlanningTableGenerator = () => {
 
       SPECIAL_ROWS.forEach(specialRow => {
         const row: PlanningCell[] = [];
-        weekDates.forEach(date => {
+        dateRange.forEach(date => {
           try {
             const dateString = isValid(date) ? format(date, 'yyyy-MM-dd') : '2024-01-01';
             row.push({
@@ -189,7 +195,7 @@ const PlanningTableGenerator = () => {
       console.error('Erreur lors de l\'initialisation du planning:', error);
       setPlanningData([]);
     }
-  }, [startDate]);
+  }, [startDate, endDate]);
 
   const exportToPDF = async () => {
     if (!planningRef.current) return;
@@ -243,20 +249,35 @@ const PlanningTableGenerator = () => {
 
   const isSpecialRow = (timeSlot: string) => SPECIAL_ROWS.includes(timeSlot);
 
-  const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const inputValue = e.target.value;
       if (!inputValue) return;
       
       const newDate = new Date(inputValue);
       if (isValid(newDate)) {
-        const mondayStart = startOfWeek(newDate, { weekStartsOn: 1 });
-        if (isValid(mondayStart)) {
-          setStartDate(mondayStart);
+        setStartDate(newDate);
+        // Si la date de fin est antérieure à la nouvelle date de début, l'ajuster
+        if (endDate < newDate) {
+          setEndDate(addDays(newDate, 6));
         }
       }
     } catch (error) {
-      console.error('Erreur lors du changement de date:', error);
+      console.error('Erreur lors du changement de date de début:', error);
+    }
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      const inputValue = e.target.value;
+      if (!inputValue) return;
+      
+      const newDate = new Date(inputValue);
+      if (isValid(newDate) && newDate >= startDate) {
+        setEndDate(newDate);
+      }
+    } catch (error) {
+      console.error('Erreur lors du changement de date de fin:', error);
     }
   };
 
@@ -266,6 +287,15 @@ const PlanningTableGenerator = () => {
     } catch (error) {
       console.error('Erreur formatage date input:', error);
       return '2024-01-01';
+    }
+  };
+
+  const getEndDateValue = () => {
+    try {
+      return isValid(endDate) ? format(endDate, 'yyyy-MM-dd') : '2024-01-07';
+    } catch (error) {
+      console.error('Erreur formatage date input:', error);
+      return '2024-01-07';
     }
   };
 
@@ -284,12 +314,22 @@ const PlanningTableGenerator = () => {
         <CardContent>
           <div className="flex items-center space-x-4 mb-6">
             <div>
-              <Label htmlFor="start-date">Date de début (Lundi)</Label>
+              <Label htmlFor="start-date">Date de début</Label>
               <Input
                 id="start-date" 
                 type="date"
                 value={getStartDateValue()}
-                onChange={handleDateChange}
+                onChange={handleStartDateChange}
+              />
+            </div>
+            <div>
+              <Label htmlFor="end-date">Date de fin</Label>
+              <Input
+                id="end-date" 
+                type="date"
+                value={getEndDateValue()}
+                onChange={handleEndDateChange}
+                min={getStartDateValue()}
               />
             </div>
             <Button onClick={exportToPDF} className="mt-6">
@@ -304,7 +344,7 @@ const PlanningTableGenerator = () => {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
-                    {weekDates.map((date, index) => (
+                    {dateRange.map((date, index) => (
                       <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
                         {(() => {
                           try {
@@ -344,9 +384,11 @@ const PlanningTableGenerator = () => {
                               <div className="font-medium text-sm text-gray-900">
                                 {cell.event.name}
                               </div>
-                              {cell.event.assignedMember && (
+                              {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
                                 <div className="text-xs text-gray-600">
-                                  {cell.event.assignedMember.prenom} {cell.event.assignedMember.nom}
+                                  {cell.event.assignedMembers.map(member => 
+                                    `${member.prenom} ${member.nom}`
+                                  ).join(', ')}
                                 </div>
                               )}
                               {cell.event.startDate && cell.event.endDate && 

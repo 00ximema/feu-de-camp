@@ -5,11 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { format, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 interface TeamMember {
-  id: number;
+  id: string;
   nom: string;
   prenom: string;
   role: string;
@@ -19,7 +20,7 @@ interface PlanningEvent {
   id: string;
   name: string;
   type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
-  assignedMember?: TeamMember;
+  assignedMembers?: TeamMember[];
   startDate?: string;
   endDate?: string;
 }
@@ -27,7 +28,7 @@ interface PlanningEvent {
 interface EventDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (eventName: string, memberId?: number, type?: string, startDate?: string, endDate?: string) => void;
+  onSave: (eventName: string, memberIds?: string[], type?: string, startDate?: string, endDate?: string) => void;
   timeSlot: string;
   date: string;
   teamMembers: TeamMember[];
@@ -44,38 +45,46 @@ const EventDialog: React.FC<EventDialogProps> = ({
   currentEvent
 }) => {
   const [eventName, setEventName] = useState('');
-  const [selectedMember, setSelectedMember] = useState<string>('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
   const [eventType, setEventType] = useState<string>('activity');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  const isSpecialTimeSlot = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
 
   useEffect(() => {
     if (isOpen) {
       if (currentEvent) {
         setEventName(currentEvent.name);
-        setSelectedMember(currentEvent.assignedMember?.id.toString() || '');
+        setSelectedMembers(currentEvent.assignedMembers?.map(m => m.id) || []);
         setEventType(currentEvent.type);
         setStartDate(currentEvent.startDate || date);
         setEndDate(currentEvent.endDate || date);
       } else {
-        setEventName('');
-        setSelectedMember('');
-        setEventType('activity');
+        setEventName(isSpecialTimeSlot ? timeSlot : '');
+        setSelectedMembers([]);
+        setEventType(isSpecialTimeSlot ? 'astreinte' : 'activity');
         setStartDate(date);
         setEndDate(date);
       }
     }
-  }, [isOpen, currentEvent, date]);
+  }, [isOpen, currentEvent, date, timeSlot, isSpecialTimeSlot]);
 
   const handleSave = () => {
-    if (!eventName.trim()) return;
+    if (!isSpecialTimeSlot && !eventName.trim()) return;
+    if (selectedMembers.length === 0) return;
     
-    const memberId = selectedMember ? parseInt(selectedMember) : undefined;
-    onSave(eventName, memberId, eventType, startDate, endDate);
+    onSave(eventName, selectedMembers, eventType, startDate, endDate);
     onClose();
   };
 
-  const isSpecialTimeSlot = ['Astreintes', 'Congés', 'Repos récupérateurs'].includes(timeSlot);
+  const handleMemberToggle = (memberId: string) => {
+    setSelectedMembers(prev => 
+      prev.includes(memberId) 
+        ? prev.filter(id => id !== memberId)
+        : [...prev, memberId]
+    );
+  };
 
   // Fonction pour formater une date de manière sécurisée
   const formatDateSafely = (dateString: string) => {
@@ -100,49 +109,57 @@ const EventDialog: React.FC<EventDialogProps> = ({
         </DialogHeader>
         
         <div className="space-y-4">
-          <div>
-            <Label htmlFor="event-name">Nom de l'événement</Label>
-            <Input
-              id="event-name"
-              value={eventName}
-              onChange={(e) => setEventName(e.target.value)}
-              placeholder={isSpecialTimeSlot ? timeSlot : "Nom de l'activité"}
-            />
-          </div>
+          {!isSpecialTimeSlot && (
+            <>
+              <div>
+                <Label htmlFor="event-name">Nom de l'événement</Label>
+                <Input
+                  id="event-name"
+                  value={eventName}
+                  onChange={(e) => setEventName(e.target.value)}
+                  placeholder="Nom de l'activité"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="event-type">Type</Label>
+                <Select value={eventType} onValueChange={setEventType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="activity">Activité</SelectItem>
+                    <SelectItem value="meal">Repas</SelectItem>
+                    <SelectItem value="meeting">Réunion</SelectItem>
+                    <SelectItem value="other">Autre</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </>
+          )}
 
           <div>
-            <Label htmlFor="event-type">Type</Label>
-            <Select value={eventType} onValueChange={setEventType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="activity">Activité</SelectItem>
-                <SelectItem value="meal">Repas</SelectItem>
-                <SelectItem value="meeting">Réunion</SelectItem>
-                <SelectItem value="leave">Congé</SelectItem>
-                <SelectItem value="recovery">Repos récupérateur</SelectItem>
-                <SelectItem value="astreinte">Astreinte</SelectItem>
-                <SelectItem value="other">Autre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="assigned-member">Responsable</Label>
-            <Select value={selectedMember} onValueChange={setSelectedMember}>
-              <SelectTrigger>
-                <SelectValue placeholder="Sélectionner un responsable" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">Aucun responsable</SelectItem>
-                {teamMembers.map((member) => (
-                  <SelectItem key={member.id} value={member.id.toString()}>
-                    {member.prenom} {member.nom} - {member.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label>Membres assignés</Label>
+            <div className="space-y-2 max-h-40 overflow-y-auto border rounded p-2">
+              {teamMembers.length > 0 ? (
+                teamMembers.map((member) => (
+                  <div key={member.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`member-${member.id}`}
+                      checked={selectedMembers.includes(member.id)}
+                      onCheckedChange={() => handleMemberToggle(member.id)}
+                    />
+                    <Label htmlFor={`member-${member.id}`} className="text-sm">
+                      {member.prenom} {member.nom} - {member.role}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-gray-500">
+                  Aucun membre d'équipe disponible. Ajoutez des membres depuis le module Gestion de l'équipe.
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -173,7 +190,10 @@ const EventDialog: React.FC<EventDialogProps> = ({
           </div>
 
           <div className="flex space-x-2">
-            <Button onClick={handleSave} disabled={!eventName.trim()}>
+            <Button 
+              onClick={handleSave} 
+              disabled={(!isSpecialTimeSlot && !eventName.trim()) || selectedMembers.length === 0}
+            >
               {currentEvent ? 'Modifier' : 'Ajouter'}
             </Button>
             <Button variant="outline" onClick={onClose}>
