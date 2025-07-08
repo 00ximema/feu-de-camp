@@ -602,7 +602,7 @@ const PlanningTableGenerator = () => {
 
   const isSpecialRow = (timeSlot: string) => SPECIAL_ROWS.includes(timeSlot);
 
-  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleStartDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const inputValue = e.target.value;
       if (!inputValue) return;
@@ -613,13 +613,23 @@ const PlanningTableGenerator = () => {
         if (endDate && endDate < newDate) {
           setEndDate(addDays(newDate, 6));
         }
+        
+        // Si un planning est déjà affiché, le régénérer automatiquement
+        if (showPlanning && endDate) {
+          const newEndDate = endDate < newDate ? addDays(newDate, 6) : endDate;
+          setTimeout(async () => {
+            const initialData = initializePlanningData();
+            setPlanningData(initialData);
+            await savePlanning(initialData);
+          }, 100);
+        }
       }
     } catch (error) {
       console.error('Erreur lors du changement de date de début:', error);
     }
   };
 
-  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEndDateChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     try {
       const inputValue = e.target.value;
       if (!inputValue) return;
@@ -627,6 +637,15 @@ const PlanningTableGenerator = () => {
       const newDate = new Date(inputValue);
       if (isValid(newDate) && startDate && newDate >= startDate) {
         setEndDate(newDate);
+        
+        // Si un planning est déjà affiché, le régénérer automatiquement
+        if (showPlanning) {
+          setTimeout(async () => {
+            const initialData = initializePlanningData();
+            setPlanningData(initialData);
+            await savePlanning(initialData);
+          }, 100);
+        }
       }
     } catch (error) {
       console.error('Erreur lors du changement de date de fin:', error);
