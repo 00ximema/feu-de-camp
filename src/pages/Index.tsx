@@ -233,21 +233,26 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="min-h-screen bg-gradient-background">
+      <header className="bg-card/80 backdrop-blur-md shadow-soft border-b border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <img 
-                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
-                alt="Logo Fondation Maison de la Gendarmerie" 
-                className="h-12 w-auto cursor-pointer transition-opacity hover:opacity-80"
-                onClick={() => window.open('https://fondationmg.fr/', '_blank')}
-                title="Visiter fondationmg.fr"
-              />
+            <div className="flex items-center space-x-4">
+              <div className="relative">
+                <img 
+                  src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                  alt="Logo Fondation Maison de la Gendarmerie" 
+                  className="h-14 w-auto cursor-pointer transition-all duration-300 hover:scale-105"
+                  onClick={() => window.open('https://fondationmg.fr/', '_blank')}
+                  title="Visiter fondationmg.fr"
+                />
+                <div className="absolute -inset-2 bg-gradient-primary rounded-full opacity-20 blur-xl"></div>
+              </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                <p className="text-sm text-gray-600">Plateforme de gestion des ACM</p>
+                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                  Gestion CVJ MG
+                </h1>
+                <p className="text-sm text-muted-foreground">Plateforme de gestion des ACM</p>
               </div>
             </div>
             <SessionManager />
@@ -257,45 +262,55 @@ const Index = () => {
 
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
-            Tableau de bord - {currentSession.name}
+        <div className="mb-12 text-center">
+          <h2 className="text-4xl font-bold text-foreground mb-3">
+            Tableau de bord
           </h2>
-          <p className="text-gray-600">Accédez à tous les modules de gestion de votre colonie</p>
+          <div className="text-lg text-primary font-medium">
+            {currentSession.name}
+          </div>
+          <p className="text-muted-foreground mt-2">Accédez à tous les modules de gestion de votre colonie</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {modules.map((module) => {
             const IconComponent = module.icon;
             return (
-              <Card key={module.id} className="hover:shadow-lg transition-all duration-300 border-0 shadow-md">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className={`p-3 rounded-lg ${module.color} text-white`}>
-                      <IconComponent className="h-6 w-6" />
+              <div key={module.id} className="group relative">
+                <div className="absolute -inset-1 bg-gradient-primary rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
+                <Card className="relative bg-gradient-card backdrop-blur-sm border-border/20 hover:shadow-large transition-all duration-500 group-hover:scale-[1.02]">
+                  <CardHeader className="pb-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="p-4 rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+                        <IconComponent className="h-6 w-6" />
+                      </div>
+                      <div className="text-3xl font-bold text-primary/30">0{module.id}</div>
                     </div>
-                    <div className="text-2xl font-bold text-gray-300">0{module.id}</div>
-                  </div>
-                  <CardTitle className="text-xl text-gray-900">{module.title}</CardTitle>
-                  <CardDescription className="text-gray-600">
-                    {module.description}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Link to={module.route}>
-                    <Button className={`w-full ${module.color} text-white transition-colors`}>
-                      Accéder au module
-                    </Button>
-                  </Link>
-                </CardContent>
-              </Card>
+                    <CardTitle className="text-xl text-foreground group-hover:text-primary transition-colors">
+                      {module.title}
+                    </CardTitle>
+                    <CardDescription className="text-muted-foreground leading-relaxed">
+                      {module.description}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Link to={module.route}>
+                      <Button className="w-full bg-gradient-primary hover:bg-gradient-secondary text-primary-foreground shadow-medium hover:shadow-large transition-all duration-300 font-medium">
+                        Accéder au module
+                      </Button>
+                    </Link>
+                  </CardContent>
+                </Card>
+              </div>
             );
           })}
         </div>
 
         {/* Quick stats */}
-        <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Aperçu rapide</h3>
+        <div className="mt-16 relative">
+          <div className="absolute -inset-1 bg-gradient-secondary rounded-2xl blur opacity-10"></div>
+          <div className="relative bg-gradient-card backdrop-blur-sm rounded-2xl shadow-large border border-border/20 p-8">
+            <h3 className="text-2xl font-semibold text-foreground mb-6">Aperçu rapide</h3>
           
           {/* Traitements actifs */}
           <div className="mb-6">
@@ -389,6 +404,7 @@ const Index = () => {
                 <div className="text-sm text-gray-500">Aucun repos récupérateur défini</div>
               )}
             </div>
+           </div>
           </div>
         </div>
       </main>
