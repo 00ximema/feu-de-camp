@@ -18,24 +18,20 @@ export const exportTeamToPDF = (team: TeamMember[]) => {
   try {
     const pdf = new jsPDF();
   
-  // Header avec logo
-  pdf.setFillColor(147, 51, 234);
-  pdf.rect(0, 0, 210, 25, 'F');
-  
-  pdf.setTextColor(255, 255, 255);
-  pdf.setFontSize(20);
-  pdf.text('MG', 15, 17);
-  
+  // Header sans bandeau coloré
+  pdf.setTextColor(0, 0, 0);
   pdf.setFontSize(16);
-  pdf.text('Liste de l\'Équipe', 50, 17);
+  pdf.setFont('helvetica', 'bold');
+  pdf.text('Liste de l\'Équipe', 15, 20);
   
   // Date et stats
   pdf.setTextColor(0, 0, 0);
   pdf.setFontSize(10);
-  pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
-  pdf.text(`Total: ${team.length} membre${team.length > 1 ? 's' : ''}`, 15, 42);
+  pdf.setFont('helvetica', 'normal');
+  pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 30);
+  pdf.text(`Total: ${team.length} membre${team.length > 1 ? 's' : ''}`, 15, 37);
   
-  let yPosition = 55;
+  let yPosition = 50;
   
   team.forEach((member, index) => {
     // Titre du membre

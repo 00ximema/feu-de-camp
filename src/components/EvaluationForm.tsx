@@ -86,18 +86,17 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
     try {
       const pdf = new jsPDF();
       
-      // Header avec logo
-      pdf.setFillColor(147, 51, 234);
-      pdf.rect(0, 0, 210, 25, 'F');
-      
-      pdf.setTextColor(255, 255, 255);
+      // Header sans bandeau coloré
+      pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(16);
-      pdf.text("Grille d'évaluation", 15, 17);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text("Grille d'évaluation", 15, 20);
       
       // Informations principales
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
-      let yPos = 35;
+      pdf.setFont('helvetica', 'normal');
+      let yPos = 30;
       
       pdf.text(`Nom et prénom de l'animateur : ${evaluationData.animatorName}`, 15, yPos);
       pdf.text(`Nom du directeur : ${evaluationData.directorName}`, 110, yPos);
@@ -184,11 +183,29 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
   };
 
   const saveEvaluation = () => {
-    // Ici on pourrait sauvegarder dans la base de données locale
-    toast({
-      title: "Évaluation sauvegardée",
-      description: "L'évaluation a été sauvegardée avec succès"
-    });
+    try {
+      // Sauvegarder dans le localStorage
+      const evaluations = JSON.parse(localStorage.getItem('evaluations') || '[]');
+      const newEvaluation = {
+        ...evaluationData,
+        id: crypto.randomUUID(),
+        createdAt: new Date().toISOString()
+      };
+      evaluations.push(newEvaluation);
+      localStorage.setItem('evaluations', JSON.stringify(evaluations));
+      
+      toast({
+        title: "Évaluation sauvegardée",
+        description: "L'évaluation a été sauvegardée avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      toast({
+        title: "Erreur de sauvegarde",
+        description: "Impossible de sauvegarder l'évaluation",
+        variant: "destructive"
+      });
+    }
   };
 
   if (!show) return null;
