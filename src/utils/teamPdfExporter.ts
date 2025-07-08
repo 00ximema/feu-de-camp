@@ -15,7 +15,8 @@ interface TeamMember {
 }
 
 export const exportTeamToPDF = (team: TeamMember[]) => {
-  const pdf = new jsPDF();
+  try {
+    const pdf = new jsPDF();
   
   // Header avec logo
   pdf.setFillColor(147, 51, 234);
@@ -90,5 +91,9 @@ export const exportTeamToPDF = (team: TeamMember[]) => {
     pdf.text('Fondation MG - Gestion de l\'Équipe', 15, 285);
   }
   
-  pdf.save(`Equipe_${new Date().toISOString().split('T')[0]}.pdf`);
+    pdf.save(`Equipe_${new Date().toISOString().split('T')[0]}.pdf`);
+  } catch (error) {
+    console.error('Erreur lors de l\'export PDF:', error);
+    throw error;
+  }
 };

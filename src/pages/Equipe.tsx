@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit, Upload, Eye } from "lucide-react";
+import { Users, UserPlus, ArrowLeft, Download, Trash2, Edit, Upload, Eye, ClipboardCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
@@ -16,6 +16,7 @@ import { exportTeamToPDF } from "@/utils/teamPdfExporter";
 import TeamMemberForm from "@/components/team/TeamMemberForm";
 import DocumentManager from "@/components/team/DocumentManager";
 import DocumentUploader from "@/components/team/DocumentUploader";
+import EvaluationForm from "@/components/EvaluationForm";
 
 interface TeamMember {
   id: string;
@@ -45,6 +46,7 @@ const Equipe = () => {
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
   const [showDocuments, setShowDocuments] = useState<string | null>(null);
   const [showUploadDialog, setShowUploadDialog] = useState<string | null>(null);
+  const [showEvaluation, setShowEvaluation] = useState<string | null>(null);
   const { toast } = useToast();
 
   const [newMember, setNewMember] = useState({
@@ -124,12 +126,21 @@ const Equipe = () => {
       return;
     }
 
-    exportTeamToPDF(team);
-    
-    toast({
-      title: "Export réussi",
-      description: "Le fichier PDF a été téléchargé avec succès"
-    });
+    try {
+      exportTeamToPDF(team);
+      
+      toast({
+        title: "Export réussi",
+        description: "Le fichier PDF a été téléchargé avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter le PDF",
+        variant: "destructive"
+      });
+    }
   };
 
   const selectedMember = showDocuments ? team.find(m => m.id === showDocuments) : null;
@@ -214,7 +225,8 @@ const Equipe = () => {
                       <TableHead>Contact</TableHead>
                       <TableHead>Diplômes</TableHead>
                       <TableHead>Documents</TableHead>
-                      <TableHead className="w-[100px]">Actions</TableHead>
+                      <TableHead>Évaluation</TableHead>
+                      <TableHead className="w-[120px]">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -259,6 +271,16 @@ const Equipe = () => {
                               <Upload className="h-3 w-3" />
                             </Button>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setShowEvaluation(member.id)}
+                          >
+                            <ClipboardCheck className="h-3 w-3 mr-1" />
+                            Évaluer
+                          </Button>
                         </TableCell>
                         <TableCell>
                           <div className="flex space-x-1">
@@ -411,6 +433,13 @@ const Equipe = () => {
           showUploadDialog={!!showUploadDialog}
           onClose={() => setShowUploadDialog(null)}
           onFileUpload={(file) => showUploadDialog && handleFileUpload(showUploadDialog, file)}
+        />
+
+        {/* Evaluation Form */}
+        <EvaluationForm
+          show={!!showEvaluation}
+          onClose={() => setShowEvaluation(null)}
+          memberName={showEvaluation ? team.find(m => m.id === showEvaluation)?.prenom + ' ' + team.find(m => m.id === showEvaluation)?.nom : undefined}
         />
       </main>
     </div>
