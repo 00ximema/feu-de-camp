@@ -141,7 +141,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       
       // En-têtes du tableau
       const startX = 15;
-      const colWidths = [80, 12, 12, 12, 40]; // Largeurs réduites
+      const colWidths = [90, 16, 16, 16, 50]; // Largeurs agrandies
       let currentX = startX;
       
       pdf.text('Critères évalués', currentX, yPos);
@@ -165,85 +165,91 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       evaluationData.criteria.forEach((criteria, index) => {
         // Pas de nouvelle page - tout sur une page
         
-        // Bordures du tableau (hauteur réduite)
-        const rowHeight = 8;
+        // Bordures du tableau (hauteur agrandie)
+        const rowHeight = 10;
         currentX = startX;
         
-        // Colonne critère (texte plus court)
+        // Colonne critère (texte mieux espacé)
         const splitText = pdf.splitTextToSize(criteria.text, colWidths[0] - 2);
         const textHeight = Math.min(splitText.length * 3, rowHeight);
-        pdf.rect(currentX, yPos - 6, colWidths[0], rowHeight);
-        pdf.text(splitText.slice(0, 2), currentX + 1, yPos - 3); // Max 2 lignes
+        pdf.rect(currentX, yPos - 7, colWidths[0], rowHeight);
+        pdf.text(splitText.slice(0, 2), currentX + 1, yPos - 4); // Max 2 lignes
         currentX += colWidths[0];
         
-        // Colonnes scores (plus compactes)
+        // Colonnes scores (mieux espacées)
         for (let i = 1; i <= 3; i++) {
-          pdf.rect(currentX, yPos - 6, colWidths[i], rowHeight);
+          pdf.rect(currentX, yPos - 7, colWidths[i], rowHeight);
           let mark = '';
           if (i === 1 && criteria.score === 'non') mark = 'X';
           if (i === 2 && criteria.score === 'moyen') mark = 'X';
           if (i === 3 && criteria.score === 'oui') mark = 'X';
           if (mark) {
-            pdf.text(mark, currentX + colWidths[i]/2 - 1, yPos - 1);
+            pdf.text(mark, currentX + colWidths[i]/2 - 1, yPos - 2);
           }
           currentX += colWidths[i];
         }
         
-        // Colonne observations (compacte)
-        pdf.rect(currentX, yPos - 6, colWidths[4], rowHeight);
+        // Colonne observations (agrandie)
+        pdf.rect(currentX, yPos - 7, colWidths[4], rowHeight);
         if (criteria.observations) {
           const obsText = pdf.splitTextToSize(criteria.observations, colWidths[4] - 2);
-          pdf.text(obsText.slice(0, 1), currentX + 1, yPos - 3); // Max 1 ligne
+          pdf.text(obsText.slice(0, 1), currentX + 1, yPos - 4); // Max 1 ligne
         }
         
         yPos += rowHeight;
       });
       
-      // Remarques (compactes)
+      // Remarques (toujours affichées)
+      yPos += 5;
+      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(10);
+      pdf.text('Remarques :', 15, yPos);
+      yPos += 5;
+      pdf.setFont('helvetica', 'normal');
+      
       if (evaluationData.remarks) {
-        yPos += 5;
-        pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(10);
-        pdf.text('Remarques :', 15, yPos);
-        yPos += 5;
-        pdf.setFont('helvetica', 'normal');
         const remarksText = pdf.splitTextToSize(evaluationData.remarks, 180);
         pdf.text(remarksText.slice(0, 2), 15, yPos); // Max 2 lignes
-        yPos += 10;
+      } else {
+        // Encart vide mais visible
+        pdf.text('', 15, yPos);
       }
+      // Ligne de démarcation pour l'encart remarques
+      pdf.line(15, yPos + 8, 195, yPos + 8);
+      yPos += 15;
       
-      // Signatures (remontées et compactes)
+      // Signatures (agrandies)
       yPos += 5;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
       pdf.text('Signatures :', 15, yPos);
-      yPos += 10;
+      yPos += 12;
       
-      // Signature directeur (plus petite)
+      // Signature directeur (agrandie)
       pdf.setFont('helvetica', 'normal');
       pdf.text('Directeur :', 15, yPos);
       if (evaluationData.directorSignature) {
         try {
-          pdf.addImage(evaluationData.directorSignature, 'PNG', 15, yPos + 2, 60, 15);
+          pdf.addImage(evaluationData.directorSignature, 'PNG', 15, yPos + 2, 70, 18);
         } catch {
           pdf.setFont('helvetica', 'italic');
-          pdf.text(evaluationData.directorSignature, 15, yPos + 8);
+          pdf.text(evaluationData.directorSignature, 15, yPos + 10);
         }
       } else {
-        pdf.line(15, yPos + 10, 75, yPos + 10);
+        pdf.line(15, yPos + 12, 85, yPos + 12);
       }
       
-      // Signature animateur (plus petite)
+      // Signature animateur (agrandie)
       pdf.text('Animateur :', 110, yPos);
       if (evaluationData.animatorSignature) {
         try {
-          pdf.addImage(evaluationData.animatorSignature, 'PNG', 110, yPos + 2, 60, 15);
+          pdf.addImage(evaluationData.animatorSignature, 'PNG', 110, yPos + 2, 70, 18);
         } catch {
           pdf.setFont('helvetica', 'italic');
-          pdf.text(evaluationData.animatorSignature, 110, yPos + 8);
+          pdf.text(evaluationData.animatorSignature, 110, yPos + 10);
         }
       } else {
-        pdf.line(110, yPos + 10, 170, yPos + 10);
+        pdf.line(110, yPos + 12, 180, yPos + 12);
       }
       
       pdf.save(`Evaluation_${evaluationData.animatorName}_${new Date().toISOString().split('T')[0]}.pdf`);
