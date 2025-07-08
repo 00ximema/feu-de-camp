@@ -9,6 +9,7 @@ import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import ClickableLogo from "@/components/ClickableLogo";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface Animateur {
   id: number;
@@ -181,9 +182,9 @@ const Index = () => {
   // Si aucune session n'est sélectionnée, afficher un message d'invite
   if (!currentSession) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/20">
         {/* Header */}
-        <header className="bg-white shadow-sm border-b">
+        <header className="bg-background/80 backdrop-blur-sm shadow-sm border-b border-border">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -193,13 +194,15 @@ const Index = () => {
                   className="h-16 w-auto"
                 />
                 <div>
-                  <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                  <p className="text-gray-600">Plateforme de gestion des ACM</p>
+                  <h1 className="text-3xl font-bold text-foreground">Gestion CVJ MG</h1>
+                  <p className="text-muted-foreground">Plateforme de gestion des ACM</p>
                 </div>
               </div>
               
-              {/* Session Manager */}
-              <SessionManager />
+              <div className="flex items-center space-x-2">
+                <ThemeToggle />
+                <SessionManager />
+              </div>
             </div>
           </div>
         </header>
@@ -210,10 +213,10 @@ const Index = () => {
             <div className="mx-auto h-24 w-24 text-gray-400 mb-6">
               <Calendar className="h-24 w-24" />
             </div>
-            <h2 className="text-2xl font-semibold text-gray-900 mb-4">
+            <h2 className="text-2xl font-semibold text-foreground mb-4">
               Créez votre première session pour commencer
             </h2>
-            <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
+            <p className="text-muted-foreground mb-8 max-w-2xl mx-auto">
               Pour utiliser l'application de gestion CVJ MG, vous devez d'abord créer une session de séjour. 
               Une session correspond à une période de colonie (été, vacances de Pâques, etc.).
             </p>
@@ -233,8 +236,8 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/20">
+      <header className="bg-background/80 backdrop-blur-sm shadow-sm border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
@@ -246,11 +249,14 @@ const Index = () => {
                 title="Visiter fondationmg.fr"
               />
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                <p className="text-sm text-gray-600">Plateforme de gestion des ACM</p>
+                <h1 className="text-2xl font-bold text-foreground">Gestion CVJ MG</h1>
+                <p className="text-sm text-muted-foreground">Plateforme de gestion des ACM</p>
               </div>
             </div>
-            <SessionManager />
+            <div className="flex items-center space-x-2">
+              <ThemeToggle />
+              <SessionManager />
+            </div>
           </div>
         </div>
       </header>
@@ -258,10 +264,10 @@ const Index = () => {
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-2">
+          <h2 className="text-2xl font-semibold text-foreground mb-2">
             Tableau de bord - {currentSession.name}
           </h2>
-          <p className="text-gray-600">Accédez à tous les modules de gestion de votre colonie</p>
+          <p className="text-muted-foreground">Accédez à tous les modules de gestion de votre colonie</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -276,8 +282,8 @@ const Index = () => {
                     </div>
                     <div className="text-2xl font-bold text-gray-300">0{module.id}</div>
                   </div>
-                  <CardTitle className="text-xl text-gray-900">{module.title}</CardTitle>
-                  <CardDescription className="text-gray-600">
+                   <CardTitle className="text-xl text-card-foreground">{module.title}</CardTitle>
+                   <CardDescription className="text-muted-foreground">
                     {module.description}
                   </CardDescription>
                 </CardHeader>
@@ -294,12 +300,12 @@ const Index = () => {
         </div>
 
         {/* Quick stats */}
-        <div className="mt-12 bg-white rounded-xl shadow-sm border p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Aperçu rapide</h3>
+        <div className="mt-12 bg-card rounded-xl shadow-sm border border-border p-6">
+          <h3 className="text-lg font-semibold text-card-foreground mb-4">Aperçu rapide</h3>
           
           {/* Traitements actifs */}
           <div className="mb-6">
-            <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+            <h4 className="font-medium text-card-foreground mb-3 flex items-center">
               <Pill className="h-4 w-4 mr-2 text-teal-600" />
               Traitements actifs
             </h4>
@@ -318,7 +324,7 @@ const Index = () => {
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-gray-500">Aucun traitement actif</div>
+              <div className="text-sm text-muted-foreground">Aucun traitement actif</div>
             )}
           </div>
 
@@ -326,7 +332,7 @@ const Index = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Astreintes */}
             <div>
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+              <h4 className="font-medium text-card-foreground mb-3 flex items-center">
                 <AlertCircle className="h-4 w-4 mr-2 text-red-600" />
                 Astreintes aujourd'hui
               </h4>
@@ -342,13 +348,13 @@ const Index = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">Aucune astreinte définie</div>
+                <div className="text-sm text-muted-foreground">Aucune astreinte définie</div>
               )}
             </div>
 
             {/* Congés */}
             <div>
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+              <h4 className="font-medium text-card-foreground mb-3 flex items-center">
                 <Calendar className="h-4 w-4 mr-2 text-blue-600" />
                 Congés aujourd'hui
               </h4>
@@ -364,13 +370,13 @@ const Index = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">Aucun congé défini</div>
+                <div className="text-sm text-muted-foreground">Aucun congé défini</div>
               )}
             </div>
 
             {/* Repos récupérateurs */}
             <div>
-              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+              <h4 className="font-medium text-card-foreground mb-3 flex items-center">
                 <Clock className="h-4 w-4 mr-2 text-green-600" />
                 Repos récupérateurs
               </h4>
@@ -386,7 +392,7 @@ const Index = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-gray-500">Aucun repos récupérateur défini</div>
+                <div className="text-sm text-muted-foreground">Aucun repos récupérateur défini</div>
               )}
             </div>
           </div>
