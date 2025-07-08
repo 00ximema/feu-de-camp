@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Calendar, Download, Plus, Trash2 } from "lucide-react";
-import { format, addDays, startOfWeek, isValid, eachDayOfInterval } from 'date-fns';
+import { format, addDays, startOfWeek, isValid, eachDayOfInterval, differenceInDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -14,6 +14,7 @@ import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
 import { toast } from '@/components/ui/use-toast';
+import logoFondationMG from '@/assets/logo-fondation-mg.png';
 
 interface TeamMember {
   id: string;
@@ -395,33 +396,63 @@ const PlanningTableGenerator = () => {
       const pageHeight = 210;
       const margin = 10;
       const availableWidth = pageWidth - (margin * 2);
-      const availableHeight = pageHeight - 35; // Espace pour en-tete
+      const availableHeight = pageHeight - 45; // Plus d'espace pour en-tête avec logo
       
-      // En-tete compact
-      pdf.setFillColor(147, 51, 234);
-      pdf.rect(0, 0, pageWidth, 20, 'F');
-      
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(16);
-      pdf.text('CVJ MG', 15, 14);
-      
-      pdf.setFontSize(12);
-      pdf.text('Planning Equipe', 60, 14);
-      
-      // Date
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(9);
-      try {
-        if (isValid(startDate) && isValid(endDate)) {
-          pdf.text(`Du ${format(startDate, 'dd/MM/yyyy')} au ${format(endDate, 'dd/MM/yyyy')}`, 15, 30);
-        } else {
-          pdf.text('Planning', 15, 30);
+      // Fonction pour créer l'en-tête avec logo
+      const createHeader = async (pdf: jsPDF, pageNumber?: number, totalPages?: number) => {
+        // Fond blanc
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, pageWidth, 35, 'F');
+        
+        // Charger et ajouter le logo
+        try {
+          const logoImg = new Image();
+          logoImg.crossOrigin = 'anonymous';
+          await new Promise((resolve, reject) => {
+            logoImg.onload = resolve;
+            logoImg.onerror = reject;
+            logoImg.src = logoFondationMG;
+          });
+          
+          // Ajouter le logo en haut à gauche
+          pdf.addImage(logoImg, 'PNG', 15, 5, 25, 25);
+        } catch (error) {
+          console.error('Erreur lors du chargement du logo:', error);
+          // Fallback si le logo ne se charge pas
+          pdf.setTextColor(147, 51, 234);
+          pdf.setFontSize(16);
+          pdf.text('Fondation MG', 15, 20);
         }
-      } catch (error) {
-        console.error('Erreur formatage date PDF:', error);
-        pdf.text('Planning', 15, 30);
-      }
-      
+        
+        // Titre du planning
+        pdf.setTextColor(0, 0, 0);
+        pdf.setFontSize(18);
+        pdf.text('Planning Équipe', 50, 15);
+        
+        // Date
+        pdf.setFontSize(12);
+        try {
+          if (isValid(startDate) && isValid(endDate)) {
+            pdf.text(`Du ${format(startDate, 'dd/MM/yyyy')} au ${format(endDate, 'dd/MM/yyyy')}`, 50, 25);
+          } else {
+            pdf.text('Planning', 50, 25);
+          }
+        } catch (error) {
+          console.error('Erreur formatage date PDF:', error);
+          pdf.text('Planning', 50, 25);
+        }
+        
+        // Numéro de page si spécifié
+        if (pageNumber && totalPages) {
+          pdf.setFontSize(10);
+          pdf.text(`Page ${pageNumber}/${totalPages}`, pageWidth - 50, 20);
+        }
+        
+        // Ligne de séparation
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(15, 35, pageWidth - 15, 35);
+      };
+
       // Calculer les dimensions de l'image optimisées
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
@@ -432,10 +463,18 @@ const PlanningTableGenerator = () => {
       
       // Centrer l'image sur la page
       const xPosition = margin + (availableWidth - scaledWidth) / 2;
-      const yPosition = 35;
+      const yPosition = 40; // Position après l'en-tête
       
-      // Ajouter l'image en une seule fois si possible
-      if (scaledHeight <= availableHeight) {
+      // Vérifier si le planning dure plus d'une semaine
+      const planningDuration = startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
+      const isLongPlanning = planningDuration > 7;
+      
+      // Créer l'en-tête pour la première page
+      await createHeader(pdf);
+      
+      // Ajouter l'image en une seule fois si possible, sinon diviser
+      if (scaledHeight <= availableHeight && !isLongPlanning) {
+        // Planning court qui tient sur une page
         pdf.addImage(
           imgData,
           'PNG',
@@ -445,25 +484,14 @@ const PlanningTableGenerator = () => {
           scaledHeight
         );
       } else {
-        // Si trop grand, diviser intelligemment
-        const pagesNeeded = Math.ceil(scaledHeight / availableHeight);
+        // Planning long ou qui ne tient pas sur une page - diviser intelligemment
+        const pagesNeeded = Math.max(2, Math.ceil(scaledHeight / availableHeight));
         const heightPerPage = availableHeight;
         
         for (let page = 0; page < pagesNeeded; page++) {
           if (page > 0) {
             pdf.addPage();
-            
-            // Repeter l'en-tete
-            pdf.setFillColor(147, 51, 234);
-            pdf.rect(0, 0, pageWidth, 20, 'F');
-            pdf.setTextColor(255, 255, 255);
-            pdf.setFontSize(16);
-            pdf.text('CVJ MG', 15, 14);
-            pdf.setFontSize(12);
-            pdf.text('Planning Equipe', 60, 14);
-            pdf.setTextColor(0, 0, 0);
-            pdf.setFontSize(9);
-            pdf.text(`Page ${page + 1}/${pagesNeeded}`, 220, 30);
+            await createHeader(pdf, page + 1, pagesNeeded);
           }
           
           const sourceY = (page * heightPerPage) / ratio;
@@ -475,7 +503,7 @@ const PlanningTableGenerator = () => {
           tempCanvas.width = imgWidth;
           tempCanvas.height = sourceHeight;
           
-          if (tempCtx) {
+          if (tempCtx && sourceHeight > 0) {
             tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight);
             const tempImgData = tempCanvas.toDataURL('image/png');
             
@@ -483,7 +511,7 @@ const PlanningTableGenerator = () => {
               tempImgData,
               'PNG',
               xPosition,
-              35,
+              yPosition,
               scaledWidth,
               sourceHeight * ratio
             );
@@ -497,7 +525,7 @@ const PlanningTableGenerator = () => {
         pdf.setPage(i);
         pdf.setFontSize(7);
         pdf.setTextColor(128, 128, 128);
-        pdf.text(`CVJ MG - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
+        pdf.text(`Fondation MG - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
         pdf.text(`Genere le ${format(new Date(), 'dd/MM/yyyy a HH:mm')}`, pageWidth - 80, pageHeight - 5);
       }
       
