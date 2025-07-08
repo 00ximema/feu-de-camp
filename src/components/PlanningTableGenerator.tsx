@@ -430,7 +430,7 @@ const PlanningTableGenerator = () => {
         const creneauHeader = document.createElement('th');
         creneauHeader.textContent = 'Créneaux';
         creneauHeader.style.width = '120px';
-        creneauHeader.style.padding = '8px 4px';
+        creneauHeader.style.padding = '12px 6px'; // Augmenter le padding
         creneauHeader.style.border = '1px solid #ccc';
         creneauHeader.style.backgroundColor = '#f5f5f5';
         creneauHeader.style.fontWeight = 'bold';
@@ -452,7 +452,7 @@ const PlanningTableGenerator = () => {
             dateHeader.textContent = 'Erreur date';
           }
           dateHeader.style.width = `${Math.floor(880 / currentGroup.length)}px`;
-          dateHeader.style.padding = '8px 4px';
+          dateHeader.style.padding = '12px 6px'; // Augmenter le padding
           dateHeader.style.border = '1px solid #ccc';
           dateHeader.style.backgroundColor = '#f5f5f5';
           dateHeader.style.fontWeight = 'bold';
@@ -476,7 +476,7 @@ const PlanningTableGenerator = () => {
           // Colonne du créneau
           const slotCell = document.createElement('td');
           slotCell.textContent = timeSlot;
-          slotCell.style.padding = '8px 4px';
+          slotCell.style.padding = '12px 6px'; // Augmenter le padding
           slotCell.style.border = '1px solid #ccc';
           slotCell.style.fontWeight = 'bold';
           slotCell.style.backgroundColor = '#f9f9f9';
@@ -485,9 +485,9 @@ const PlanningTableGenerator = () => {
           // Cellules pour chaque date du groupe
           currentGroup.forEach(date => {
             const cell = document.createElement('td');
-            cell.style.padding = '4px';
+            cell.style.padding = '8px 6px'; // Augmenter le padding
             cell.style.border = '1px solid #ccc';
-            cell.style.minHeight = '40px';
+            cell.style.minHeight = '60px'; // Augmenter la hauteur des cellules
             cell.style.fontSize = '8px';
             cell.style.verticalAlign = 'top';
             
@@ -643,19 +643,28 @@ const PlanningTableGenerator = () => {
       return;
     }
     
-    // Initialiser les données du planning
-    const initialData = initializePlanningData();
-    setPlanningData(initialData);
-    
-    // Sauvegarder le planning vide
-    await savePlanning(initialData);
-    
-    setShowPlanning(true);
-    
-    toast({
-      title: "Planning généré",
-      description: "Le planning a été créé et sauvegardé avec succès.",
-    });
+    try {
+      // Initialiser les données du planning
+      const initialData = initializePlanningData();
+      setPlanningData(initialData);
+      
+      // Sauvegarder automatiquement le planning généré
+      await savePlanning(initialData);
+      
+      setShowPlanning(true);
+      
+      toast({
+        title: "Planning généré et sauvegardé",
+        description: "Le planning a été créé et automatiquement enregistré avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la génération du planning:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de générer le planning",
+        variant: "destructive"
+      });
+    }
   };
 
   const getStartDateValue = () => {
