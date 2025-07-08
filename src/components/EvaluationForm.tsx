@@ -135,8 +135,8 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       pdf.text(`Centre/Session : ${evaluationData.centerSession}`, 110, yPos);
       yPos += 10;
       
-      // Tableau des critères (format compact)
-      pdf.setFontSize(8);
+      // Tableau des critères (même taille de police)
+      pdf.setFontSize(10);
       pdf.setFont('helvetica', 'bold');
       
       // En-têtes du tableau
@@ -158,9 +158,9 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       pdf.line(startX, yPos + 2, startX + colWidths.reduce((a, b) => a + b, 0), yPos + 2);
       yPos += 10;
       
-      // Contenu du tableau (format compact)
+      // Contenu du tableau (même taille de police)
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(7);
+      pdf.setFontSize(10);
       
       evaluationData.criteria.forEach((criteria, index) => {
         // Pas de nouvelle page - tout sur une page
@@ -203,7 +203,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       if (evaluationData.remarks) {
         yPos += 5;
         pdf.setFont('helvetica', 'bold');
-        pdf.setFontSize(8);
+        pdf.setFontSize(10);
         pdf.text('Remarques :', 15, yPos);
         yPos += 5;
         pdf.setFont('helvetica', 'normal');
@@ -215,7 +215,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       // Signatures (remontées et compactes)
       yPos += 5;
       pdf.setFont('helvetica', 'bold');
-      pdf.setFontSize(8);
+      pdf.setFontSize(10);
       pdf.text('Signatures :', 15, yPos);
       yPos += 10;
       
@@ -359,20 +359,6 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
             </div>
           </div>
           
-          {/* Signatures remontées */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SignatureCanvas
-              label="Signature du directeur"
-              value={evaluationData.directorSignature}
-              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, directorSignature: signature }))}
-            />
-            <SignatureCanvas
-              label="Signature de l'animateur"
-              value={evaluationData.animatorSignature}
-              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, animatorSignature: signature }))}
-            />
-          </div>
-          
           {/* Grille d'évaluation */}
           <Card>
             <CardHeader>
@@ -430,6 +416,20 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
               onChange={(e) => setEvaluationData(prev => ({ ...prev, remarks: e.target.value }))}
               rows={3}
               placeholder="Remarques générales..."
+            />
+          </div>
+          
+          {/* Signatures en bas */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SignatureCanvas
+              label="Signature du directeur"
+              value={evaluationData.directorSignature}
+              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, directorSignature: signature }))}
+            />
+            <SignatureCanvas
+              label="Signature de l'animateur"
+              value={evaluationData.animatorSignature}
+              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, animatorSignature: signature }))}
             />
           </div>
           
