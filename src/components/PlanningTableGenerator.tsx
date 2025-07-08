@@ -14,7 +14,7 @@ import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
 import { toast } from '@/components/ui/use-toast';
-import logoFondationMG from '@/assets/logo-fondation-mg.png';
+import logoFondationMG from '/lovable-uploads/573d21bd-66db-4264-8ddf-c5477bf8cb8f.png';
 
 interface TeamMember {
   id: string;
@@ -322,84 +322,23 @@ const PlanningTableGenerator = () => {
     try {
       console.log('Export PDF demarre...');
       
-      const originalElement = planningRef.current;
+      // Calculer le nombre total de jours
+      const totalDays = differenceInDays(endDate, startDate) + 1;
+      const dateRange = generateDateRange(startDate, endDate);
       
-      // Créer un élément temporaire optimisé pour l'export
-      const exportElement = document.createElement('div');
-      exportElement.innerHTML = originalElement.innerHTML;
-      exportElement.style.position = 'absolute';
-      exportElement.style.left = '-9999px';
-      exportElement.style.top = '0';
-      exportElement.style.backgroundColor = 'white';
-      exportElement.style.padding = '10px';
-      exportElement.style.width = '1200px'; // Réduire la largeur
-      exportElement.style.fontFamily = 'Arial, sans-serif';
-      exportElement.style.fontSize = '10px'; // Police plus petite
-      
-      // Optimiser le tableau pour l'export
-      const table = exportElement.querySelector('table');
-      if (table) {
-        (table as HTMLElement).style.fontSize = '9px';
-        (table as HTMLElement).style.width = '100%';
-        (table as HTMLElement).style.tableLayout = 'fixed';
-        (table as HTMLElement).style.borderCollapse = 'collapse';
+      // Diviser les dates par groupes de 7 jours maximum
+      const dateGroups: Date[][] = [];
+      for (let i = 0; i < dateRange.length; i += 7) {
+        dateGroups.push(dateRange.slice(i, i + 7));
       }
       
-      // Supprimer tous les boutons et éléments interactifs
-      const buttons = exportElement.querySelectorAll('button');
-      buttons.forEach(button => button.remove());
-      
-      const interactive = exportElement.querySelectorAll('.group-hover\\:opacity-100, .opacity-0');
-      interactive.forEach(el => el.remove());
-      
-      // Optimiser les cellules
-      const cells = exportElement.querySelectorAll('td, th');
-      cells.forEach(cell => {
-        const element = cell as HTMLElement;
-        element.style.padding = '3px';
-        element.style.fontSize = '8px';
-        element.style.lineHeight = '1.1';
-        element.style.overflow = 'hidden';
-        element.style.textOverflow = 'ellipsis';
-        element.style.wordWrap = 'break-word';
-        element.style.maxWidth = '120px';
-      });
-      
-      // Ajuster la largeur des colonnes de date
-      const dateHeaders = exportElement.querySelectorAll('th:not(:first-child)');
-      dateHeaders.forEach(header => {
-        (header as HTMLElement).style.width = '100px';
-        (header as HTMLElement).style.minWidth = '100px';
-      });
-      
-      document.body.appendChild(exportElement);
-
-      // Attendre que l'element soit rendu
-      await new Promise(resolve => setTimeout(resolve, 200));
-
-      const canvas = await html2canvas(exportElement, {
-        scale: 1.5, // Réduire le scale pour optimiser
-        useCORS: true,
-        backgroundColor: '#ffffff',
-        logging: false,
-        width: Math.min(1200, exportElement.scrollWidth),
-        height: exportElement.scrollHeight
-      });
-      
-      document.body.removeChild(exportElement);
-
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('l', 'mm', 'a4');
-      
-      // Dimensions A4 paysage
       const pageWidth = 297;
       const pageHeight = 210;
       const margin = 10;
-      const availableWidth = pageWidth - (margin * 2);
-      const availableHeight = pageHeight - 45; // Plus d'espace pour en-tête avec logo
       
       // Fonction pour créer l'en-tête avec logo
-      const createHeader = async (pdf: jsPDF, pageNumber?: number, totalPages?: number) => {
+      const createHeader = async (pdf: jsPDF, pageNumber: number, totalPages: number, dateGroup: Date[]) => {
         // Fond blanc
         pdf.setFillColor(255, 255, 255);
         pdf.rect(0, 0, pageWidth, 35, 'F');
@@ -408,9 +347,9 @@ const PlanningTableGenerator = () => {
         try {
           const logoImg = new Image();
           logoImg.crossOrigin = 'anonymous';
-          await new Promise((resolve, reject) => {
-            logoImg.onload = resolve;
-            logoImg.onerror = reject;
+          await new Promise<void>((resolve, reject) => {
+            logoImg.onload = () => resolve();
+            logoImg.onerror = () => reject();
             logoImg.src = logoFondationMG;
           });
           
@@ -419,9 +358,10 @@ const PlanningTableGenerator = () => {
         } catch (error) {
           console.error('Erreur lors du chargement du logo:', error);
           // Fallback si le logo ne se charge pas
-          pdf.setTextColor(147, 51, 234);
-          pdf.setFontSize(16);
-          pdf.text('Fondation MG', 15, 20);
+          pdf.setTextColor(0, 105, 181);
+          pdf.setFontSize(14);
+          pdf.text('Fondation', 15, 18);
+          pdf.text('Gendarmerie', 15, 25);
         }
         
         // Titre du planning
@@ -429,52 +369,198 @@ const PlanningTableGenerator = () => {
         pdf.setFontSize(18);
         pdf.text('Planning Équipe', 50, 15);
         
-        // Date
+        // Période de cette page
         pdf.setFontSize(12);
         try {
-          if (isValid(startDate) && isValid(endDate)) {
-            pdf.text(`Du ${format(startDate, 'dd/MM/yyyy')} au ${format(endDate, 'dd/MM/yyyy')}`, 50, 25);
-          } else {
-            pdf.text('Planning', 50, 25);
+          if (dateGroup.length > 0) {
+            const firstDate = dateGroup[0];
+            const lastDate = dateGroup[dateGroup.length - 1];
+            if (isValid(firstDate) && isValid(lastDate)) {
+              pdf.text(`Du ${format(firstDate, 'dd/MM/yyyy')} au ${format(lastDate, 'dd/MM/yyyy')}`, 50, 25);
+            }
           }
         } catch (error) {
           console.error('Erreur formatage date PDF:', error);
           pdf.text('Planning', 50, 25);
         }
         
-        // Numéro de page si spécifié
-        if (pageNumber && totalPages) {
-          pdf.setFontSize(10);
-          pdf.text(`Page ${pageNumber}/${totalPages}`, pageWidth - 50, 20);
-        }
+        // Numéro de page
+        pdf.setFontSize(10);
+        pdf.text(`Page ${pageNumber}/${totalPages}`, pageWidth - 50, 20);
         
         // Ligne de séparation
         pdf.setDrawColor(200, 200, 200);
         pdf.line(15, 35, pageWidth - 15, 35);
       };
 
-      // Calculer les dimensions de l'image optimisées
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
-      
-      const scaledWidth = imgWidth * ratio;
-      const scaledHeight = imgHeight * ratio;
-      
-      // Centrer l'image sur la page
-      const xPosition = margin + (availableWidth - scaledWidth) / 2;
-      const yPosition = 40; // Position après l'en-tête
-      
-      // Vérifier si le planning dure plus d'une semaine
-      const planningDuration = startDate && endDate ? differenceInDays(endDate, startDate) + 1 : 0;
-      const isLongPlanning = planningDuration > 7;
-      
-      // Créer l'en-tête pour la première page
-      await createHeader(pdf);
-      
-      // Ajouter l'image en une seule fois si possible, sinon diviser
-      if (scaledHeight <= availableHeight && !isLongPlanning) {
-        // Planning court qui tient sur une page
+      // Créer une page pour chaque groupe de dates (max 7 jours)
+      for (let groupIndex = 0; groupIndex < dateGroups.length; groupIndex++) {
+        const currentGroup = dateGroups[groupIndex];
+        
+        if (groupIndex > 0) {
+          pdf.addPage();
+        }
+        
+        // Créer l'en-tête pour cette page
+        await createHeader(pdf, groupIndex + 1, dateGroups.length, currentGroup);
+        
+        // Créer un tableau temporaire pour ce groupe de dates
+        const tempTableDiv = document.createElement('div');
+        tempTableDiv.style.position = 'absolute';
+        tempTableDiv.style.left = '-9999px';
+        tempTableDiv.style.top = '0';
+        tempTableDiv.style.backgroundColor = 'white';
+        tempTableDiv.style.padding = '10px';
+        tempTableDiv.style.width = '1000px';
+        tempTableDiv.style.fontFamily = 'Arial, sans-serif';
+        tempTableDiv.style.fontSize = '10px';
+        
+        // Créer le tableau HTML pour ce groupe
+        const table = document.createElement('table');
+        table.style.width = '100%';
+        table.style.borderCollapse = 'collapse';
+        table.style.fontSize = '9px';
+        table.style.tableLayout = 'fixed';
+        
+        // En-tête du tableau
+        const thead = document.createElement('thead');
+        const headerRow = document.createElement('tr');
+        
+        // Colonne des créneaux
+        const creneauHeader = document.createElement('th');
+        creneauHeader.textContent = 'Créneaux';
+        creneauHeader.style.width = '120px';
+        creneauHeader.style.padding = '8px 4px';
+        creneauHeader.style.border = '1px solid #ccc';
+        creneauHeader.style.backgroundColor = '#f5f5f5';
+        creneauHeader.style.fontWeight = 'bold';
+        headerRow.appendChild(creneauHeader);
+        
+        // Colonnes des dates
+        currentGroup.forEach(date => {
+          const dateHeader = document.createElement('th');
+          try {
+            if (isValid(date)) {
+              dateHeader.innerHTML = `
+                <div>${format(date, 'EEEE', { locale: fr })}</div>
+                <div style="font-size: 8px;">${format(date, 'dd/MM', { locale: fr })}</div>
+              `;
+            } else {
+              dateHeader.textContent = 'Date invalide';
+            }
+          } catch (error) {
+            dateHeader.textContent = 'Erreur date';
+          }
+          dateHeader.style.width = `${Math.floor(880 / currentGroup.length)}px`;
+          dateHeader.style.padding = '8px 4px';
+          dateHeader.style.border = '1px solid #ccc';
+          dateHeader.style.backgroundColor = '#f5f5f5';
+          dateHeader.style.fontWeight = 'bold';
+          dateHeader.style.textAlign = 'center';
+          headerRow.appendChild(dateHeader);
+        });
+        
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+        
+        // Corps du tableau
+        const tbody = document.createElement('tbody');
+        
+        // Créer les lignes pour chaque créneau
+        [...TIME_SLOTS, ...SPECIAL_ROWS].forEach(timeSlot => {
+          const row = document.createElement('tr');
+          if (SPECIAL_ROWS.includes(timeSlot)) {
+            row.style.backgroundColor = '#f3f4f6';
+          }
+          
+          // Colonne du créneau
+          const slotCell = document.createElement('td');
+          slotCell.textContent = timeSlot;
+          slotCell.style.padding = '8px 4px';
+          slotCell.style.border = '1px solid #ccc';
+          slotCell.style.fontWeight = 'bold';
+          slotCell.style.backgroundColor = '#f9f9f9';
+          row.appendChild(slotCell);
+          
+          // Cellules pour chaque date du groupe
+          currentGroup.forEach(date => {
+            const cell = document.createElement('td');
+            cell.style.padding = '4px';
+            cell.style.border = '1px solid #ccc';
+            cell.style.minHeight = '40px';
+            cell.style.fontSize = '8px';
+            cell.style.verticalAlign = 'top';
+            
+            // Chercher les événements pour cette date et ce créneau
+            const dateString = format(date, 'yyyy-MM-dd');
+            const rowIndex = [...TIME_SLOTS, ...SPECIAL_ROWS].indexOf(timeSlot);
+            const cellIndex = dateRange.findIndex(d => format(d, 'yyyy-MM-dd') === dateString);
+            
+            if (rowIndex >= 0 && cellIndex >= 0 && planningData[rowIndex] && planningData[rowIndex][cellIndex]) {
+              const event = planningData[rowIndex][cellIndex].event;
+              if (event) {
+                let content = `<div style="font-weight: bold; color: #1f2937; margin-bottom: 2px;">${event.name}</div>`;
+                
+                if (event.startTime && event.endTime) {
+                  content += `<div style="color: #2563eb; font-size: 7px; margin-bottom: 1px;">${event.startTime} - ${event.endTime}</div>`;
+                }
+                
+                if (event.assignedMembers && event.assignedMembers.length > 0) {
+                  content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;">${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
+                }
+                
+                if (event.selectedGroups && event.selectedGroups.length > 0) {
+                  content += `<div style="color: #059669; font-size: 7px;">Groupes sélectionnés</div>`;
+                }
+                
+                if (event.notes) {
+                  content += `<div style="color: #7c3aed; font-size: 7px; font-style: italic;">${event.notes}</div>`;
+                }
+                
+                cell.innerHTML = content;
+              }
+            }
+            
+            row.appendChild(cell);
+          });
+          
+          tbody.appendChild(row);
+        });
+        
+        table.appendChild(tbody);
+        tempTableDiv.appendChild(table);
+        document.body.appendChild(tempTableDiv);
+        
+        // Attendre le rendu
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        // Capturer le tableau
+        const canvas = await html2canvas(tempTableDiv, {
+          scale: 1.5,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+          logging: false,
+          width: 1000,
+          height: tempTableDiv.scrollHeight
+        });
+        
+        document.body.removeChild(tempTableDiv);
+        
+        // Ajouter l'image au PDF
+        const imgData = canvas.toDataURL('image/png');
+        const availableWidth = pageWidth - (margin * 2);
+        const availableHeight = pageHeight - 45;
+        
+        const imgWidth = canvas.width;
+        const imgHeight = canvas.height;
+        const ratio = Math.min(availableWidth / imgWidth, availableHeight / imgHeight);
+        
+        const scaledWidth = imgWidth * ratio;
+        const scaledHeight = imgHeight * ratio;
+        
+        const xPosition = margin + (availableWidth - scaledWidth) / 2;
+        const yPosition = 40;
+        
         pdf.addImage(
           imgData,
           'PNG',
@@ -483,40 +569,6 @@ const PlanningTableGenerator = () => {
           scaledWidth,
           scaledHeight
         );
-      } else {
-        // Planning long ou qui ne tient pas sur une page - diviser intelligemment
-        const pagesNeeded = Math.max(2, Math.ceil(scaledHeight / availableHeight));
-        const heightPerPage = availableHeight;
-        
-        for (let page = 0; page < pagesNeeded; page++) {
-          if (page > 0) {
-            pdf.addPage();
-            await createHeader(pdf, page + 1, pagesNeeded);
-          }
-          
-          const sourceY = (page * heightPerPage) / ratio;
-          const sourceHeight = Math.min(heightPerPage / ratio, imgHeight - sourceY);
-          
-          // Créer canvas temporaire pour cette portion
-          const tempCanvas = document.createElement('canvas');
-          const tempCtx = tempCanvas.getContext('2d');
-          tempCanvas.width = imgWidth;
-          tempCanvas.height = sourceHeight;
-          
-          if (tempCtx && sourceHeight > 0) {
-            tempCtx.drawImage(canvas, 0, sourceY, imgWidth, sourceHeight, 0, 0, imgWidth, sourceHeight);
-            const tempImgData = tempCanvas.toDataURL('image/png');
-            
-            pdf.addImage(
-              tempImgData,
-              'PNG',
-              xPosition,
-              yPosition,
-              scaledWidth,
-              sourceHeight * ratio
-            );
-          }
-        }
       }
       
       // Pied de page
@@ -525,7 +577,7 @@ const PlanningTableGenerator = () => {
         pdf.setPage(i);
         pdf.setFontSize(7);
         pdf.setTextColor(128, 128, 128);
-        pdf.text(`Fondation MG - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
+        pdf.text(`Fondation Gendarmerie - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
         pdf.text(`Genere le ${format(new Date(), 'dd/MM/yyyy a HH:mm')}`, pageWidth - 80, pageHeight - 5);
       }
       
@@ -534,7 +586,7 @@ const PlanningTableGenerator = () => {
       
       toast({
         title: "Export reussi",
-        description: "Le planning a ete exporte en PDF avec succes",
+        description: `Le planning a ete exporte en PDF avec succes (${totalPages} page${totalPages > 1 ? 's' : ''})`,
       });
       
       console.log('PDF exporte avec succes');
