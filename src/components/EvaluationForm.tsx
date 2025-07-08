@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardCheck, Download } from "lucide-react";
+import { ClipboardCheck, Download, PenTool } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 
@@ -28,6 +28,8 @@ interface EvaluationData {
   session: string;
   criteria: EvaluationCriteria[];
   remarks: string;
+  directorSignature: string;
+  animatorSignature: string;
 }
 
 interface EvaluationFormProps {
@@ -68,7 +70,9 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       score: "",
       observations: ""
     })),
-    remarks: ""
+    remarks: "",
+    directorSignature: "",
+    animatorSignature: ""
   });
 
   const handleCriteriaChange = (criteriaId: string, field: 'score' | 'observations', value: string) => {
@@ -86,11 +90,20 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
     try {
       const pdf = new jsPDF();
       
-      // Header sans bandeau coloré
+      // Header avec logo et titre centré
+      // Logo en haut à gauche (placeholder - le vrai logo sera ajouté via une image encodée)
+      pdf.setFontSize(8);
+      pdf.text('FONDATION MG', 15, 15);
+      
+      // Titre centré
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
-      pdf.text("Grille d'évaluation", 15, 20);
+      const titleText = "Grille d'évaluation";
+      const titleWidth = pdf.getTextWidth(titleText);
+      const pageWidth = 210;
+      const titleX = (pageWidth - titleWidth) / 2;
+      pdf.text(titleText, titleX, 20);
       
       // Informations principales
       pdf.setTextColor(0, 0, 0);
@@ -164,7 +177,36 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
         pdf.setFont('helvetica', 'normal');
         const remarksText = pdf.splitTextToSize(evaluationData.remarks, 180);
         pdf.text(remarksText, 15, yPos);
+        yPos += remarksText.length * 4 + 10;
       }
+      
+      // Signatures
+      yPos += 20;
+      if (yPos > 240) {
+        pdf.addPage();
+        yPos = 20;
+      }
+      
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Signatures :', 15, yPos);
+      yPos += 15;
+      
+      // Signature directeur
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Signature du directeur :', 15, yPos);
+      if (evaluationData.directorSignature) {
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(evaluationData.directorSignature, 15, yPos + 10);
+      }
+      pdf.line(15, yPos + 15, 90, yPos + 15); // Ligne pour signature
+      
+      // Signature animateur
+      pdf.text('Signature de l\'animateur :', 110, yPos);
+      if (evaluationData.animatorSignature) {
+        pdf.setFont('helvetica', 'italic');
+        pdf.text(evaluationData.animatorSignature, 110, yPos + 10);
+      }
+      pdf.line(110, yPos + 15, 185, yPos + 15); // Ligne pour signature
       
       pdf.save(`Evaluation_${evaluationData.animatorName}_${new Date().toISOString().split('T')[0]}.pdf`);
       
@@ -346,6 +388,34 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
               rows={4}
               placeholder="Remarques générales..."
             />
+          </div>
+          
+          {/* Signatures */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="director-signature">Signature électronique du directeur</Label>
+              <div className="flex items-center space-x-2">
+                <PenTool className="h-4 w-4 text-gray-400" />
+                <Input
+                  id="director-signature"
+                  value={evaluationData.directorSignature}
+                  onChange={(e) => setEvaluationData(prev => ({ ...prev, directorSignature: e.target.value }))}
+                  placeholder="Nom complet du directeur"
+                />
+              </div>
+            </div>
+            <div>
+              <Label htmlFor="animator-signature">Signature électronique de l'animateur</Label>
+              <div className="flex items-center space-x-2">
+                <PenTool className="h-4 w-4 text-gray-400" />
+                <Input
+                  id="animator-signature"
+                  value={evaluationData.animatorSignature}
+                  onChange={(e) => setEvaluationData(prev => ({ ...prev, animatorSignature: e.target.value }))}
+                  placeholder="Nom complet de l'animateur"
+                />
+              </div>
+            </div>
           </div>
           
           {/* Actions */}
