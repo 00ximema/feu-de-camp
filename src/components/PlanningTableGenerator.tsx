@@ -476,7 +476,7 @@ const PlanningTableGenerator = () => {
           // Colonne du créneau
           const slotCell = document.createElement('td');
           slotCell.textContent = timeSlot;
-          slotCell.style.padding = '12px 6px'; // Augmenter le padding
+          slotCell.style.padding = '6px 4px'; // Diminuer le padding pour les créneaux
           slotCell.style.border = '1px solid #ccc';
           slotCell.style.fontWeight = 'bold';
           slotCell.style.backgroundColor = '#f9f9f9';
@@ -487,7 +487,7 @@ const PlanningTableGenerator = () => {
             const cell = document.createElement('td');
             cell.style.padding = '8px 6px'; // Augmenter le padding
             cell.style.border = '1px solid #ccc';
-            cell.style.minHeight = '60px'; // Augmenter la hauteur des cellules
+            cell.style.minHeight = '80px'; // Augmenter encore la hauteur des cellules
             cell.style.fontSize = '8px';
             cell.style.verticalAlign = 'top';
             
