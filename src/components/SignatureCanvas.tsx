@@ -41,8 +41,10 @@ const SignatureCanvas = ({ onSignatureChange, value, label }: SignatureCanvasPro
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     const context = canvas.getContext('2d');
     if (!context) return;
@@ -59,8 +61,10 @@ const SignatureCanvas = ({ onSignatureChange, value, label }: SignatureCanvasPro
     if (!canvas) return;
 
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
     const context = canvas.getContext('2d');
     if (!context) return;

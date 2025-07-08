@@ -25,8 +25,7 @@ interface EvaluationData {
   hasTraining: boolean;
   isIntern: boolean;
   age: string;
-  center: string;
-  session: string;
+  centerSession: string;
   criteria: EvaluationCriteria[];
   remarks: string;
   directorSignature: string;
@@ -63,8 +62,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
     hasTraining: false,
     isIntern: false,
     age: "",
-    center: "",
-    session: "",
+    centerSession: "",
     criteria: evaluationCriteria.map(text => ({
       id: crypto.randomUUID(),
       text,
@@ -134,18 +132,16 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       yPos += 7;
       
       pdf.text(`Âge : ${evaluationData.age}`, 15, yPos);
-      pdf.text(`Centre : ${evaluationData.center}`, 110, yPos);
-      yPos += 7;
+      pdf.text(`Centre/Session : ${evaluationData.centerSession}`, 110, yPos);
+      yPos += 10;
       
-      pdf.text(`Session : ${evaluationData.session}`, 15, yPos);
-      
-      // Tableau des critères
-      pdf.setFontSize(9);
+      // Tableau des critères (format compact)
+      pdf.setFontSize(8);
       pdf.setFont('helvetica', 'bold');
       
       // En-têtes du tableau
       const startX = 15;
-      const colWidths = [100, 15, 15, 15, 45]; // Largeurs des colonnes
+      const colWidths = [80, 12, 12, 12, 40]; // Largeurs réduites
       let currentX = startX;
       
       pdf.text('Critères évalués', currentX, yPos);
@@ -162,48 +158,27 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       pdf.line(startX, yPos + 2, startX + colWidths.reduce((a, b) => a + b, 0), yPos + 2);
       yPos += 10;
       
-      // Contenu du tableau
+      // Contenu du tableau (format compact)
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       
       evaluationData.criteria.forEach((criteria, index) => {
-        if (yPos > 250) {
-          pdf.addPage();
-          yPos = 20;
-          
-          // Redessiner les en-têtes sur la nouvelle page
-          pdf.setFont('helvetica', 'bold');
-          pdf.setFontSize(9);
-          currentX = startX;
-          pdf.text('Critères évalués', currentX, yPos);
-          currentX += colWidths[0];
-          pdf.text('Non', currentX, yPos);
-          currentX += colWidths[1];
-          pdf.text('± ', currentX, yPos);
-          currentX += colWidths[2];
-          pdf.text('Oui', currentX, yPos);
-          currentX += colWidths[3];
-          pdf.text('Observations', currentX, yPos);
-          pdf.line(startX, yPos + 2, startX + colWidths.reduce((a, b) => a + b, 0), yPos + 2);
-          yPos += 10;
-          
-          pdf.setFont('helvetica', 'normal');
-          pdf.setFontSize(8);
-        }
+        // Pas de nouvelle page - tout sur une page
         
-        // Bordures du tableau
-        const rowHeight = 12;
+        // Bordures du tableau (hauteur réduite)
+        const rowHeight = 8;
         currentX = startX;
         
-        // Colonne critère
+        // Colonne critère (texte plus court)
         const splitText = pdf.splitTextToSize(criteria.text, colWidths[0] - 2);
-        pdf.rect(currentX, yPos - 8, colWidths[0], Math.max(rowHeight, splitText.length * 4 + 4));
-        pdf.text(splitText, currentX + 1, yPos - 4);
+        const textHeight = Math.min(splitText.length * 3, rowHeight);
+        pdf.rect(currentX, yPos - 6, colWidths[0], rowHeight);
+        pdf.text(splitText.slice(0, 2), currentX + 1, yPos - 3); // Max 2 lignes
         currentX += colWidths[0];
         
-        // Colonnes scores
+        // Colonnes scores (plus compactes)
         for (let i = 1; i <= 3; i++) {
-          pdf.rect(currentX, yPos - 8, colWidths[i], Math.max(rowHeight, splitText.length * 4 + 4));
+          pdf.rect(currentX, yPos - 6, colWidths[i], rowHeight);
           let mark = '';
           if (i === 1 && criteria.score === 'non') mark = 'X';
           if (i === 2 && criteria.score === 'moyen') mark = 'X';
@@ -214,72 +189,61 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
           currentX += colWidths[i];
         }
         
-        // Colonne observations
-        pdf.rect(currentX, yPos - 8, colWidths[4], Math.max(rowHeight, splitText.length * 4 + 4));
+        // Colonne observations (compacte)
+        pdf.rect(currentX, yPos - 6, colWidths[4], rowHeight);
         if (criteria.observations) {
           const obsText = pdf.splitTextToSize(criteria.observations, colWidths[4] - 2);
-          pdf.text(obsText, currentX + 1, yPos - 4);
+          pdf.text(obsText.slice(0, 1), currentX + 1, yPos - 3); // Max 1 ligne
         }
         
-        yPos += Math.max(rowHeight, splitText.length * 4 + 4);
+        yPos += rowHeight;
       });
       
-      // Remarques
+      // Remarques (compactes)
       if (evaluationData.remarks) {
-        yPos += 10;
-        if (yPos > 240) {
-          pdf.addPage();
-          yPos = 20;
-        }
+        yPos += 5;
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Remarques éventuelles :', 15, yPos);
-        yPos += 7;
+        pdf.setFontSize(8);
+        pdf.text('Remarques :', 15, yPos);
+        yPos += 5;
         pdf.setFont('helvetica', 'normal');
         const remarksText = pdf.splitTextToSize(evaluationData.remarks, 180);
-        pdf.text(remarksText, 15, yPos);
-        yPos += remarksText.length * 4 + 10;
+        pdf.text(remarksText.slice(0, 2), 15, yPos); // Max 2 lignes
+        yPos += 10;
       }
       
-      // Signatures avec images
-      yPos += 20;
-      if (yPos > 220) {
-        pdf.addPage();
-        yPos = 20;
-      }
-      
+      // Signatures (remontées et compactes)
+      yPos += 5;
       pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(8);
       pdf.text('Signatures :', 15, yPos);
-      yPos += 15;
+      yPos += 10;
       
-      // Signature directeur
+      // Signature directeur (plus petite)
       pdf.setFont('helvetica', 'normal');
-      pdf.text('Signature du directeur :', 15, yPos);
+      pdf.text('Directeur :', 15, yPos);
       if (evaluationData.directorSignature) {
         try {
-          pdf.addImage(evaluationData.directorSignature, 'PNG', 15, yPos + 5, 75, 25);
+          pdf.addImage(evaluationData.directorSignature, 'PNG', 15, yPos + 2, 60, 15);
         } catch {
-          // Si l'image ne peut pas être ajoutée, afficher le texte
           pdf.setFont('helvetica', 'italic');
-          pdf.text(evaluationData.directorSignature, 15, yPos + 15);
+          pdf.text(evaluationData.directorSignature, 15, yPos + 8);
         }
-      }
-      if (!evaluationData.directorSignature) {
-        pdf.line(15, yPos + 20, 90, yPos + 20); // Ligne pour signature
+      } else {
+        pdf.line(15, yPos + 10, 75, yPos + 10);
       }
       
-      // Signature animateur
-      pdf.text('Signature de l\'animateur :', 110, yPos);
+      // Signature animateur (plus petite)
+      pdf.text('Animateur :', 110, yPos);
       if (evaluationData.animatorSignature) {
         try {
-          pdf.addImage(evaluationData.animatorSignature, 'PNG', 110, yPos + 5, 75, 25);
+          pdf.addImage(evaluationData.animatorSignature, 'PNG', 110, yPos + 2, 60, 15);
         } catch {
-          // Si l'image ne peut pas être ajoutée, afficher le texte
           pdf.setFont('helvetica', 'italic');
-          pdf.text(evaluationData.animatorSignature, 110, yPos + 15);
+          pdf.text(evaluationData.animatorSignature, 110, yPos + 8);
         }
-      }
-      if (!evaluationData.animatorSignature) {
-        pdf.line(110, yPos + 20, 185, yPos + 20); // Ligne pour signature
+      } else {
+        pdf.line(110, yPos + 10, 170, yPos + 10);
       }
       
       pdf.save(`Evaluation_${evaluationData.animatorName}_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -386,21 +350,26 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
               />
             </div>
             <div>
-              <Label htmlFor="center">Centre</Label>
+              <Label htmlFor="center-session">Centre/Session</Label>
               <Input
-                id="center"
-                value={evaluationData.center}
-                onChange={(e) => setEvaluationData(prev => ({ ...prev, center: e.target.value }))}
+                id="center-session"
+                value={evaluationData.centerSession}
+                onChange={(e) => setEvaluationData(prev => ({ ...prev, centerSession: e.target.value }))}
               />
             </div>
           </div>
           
-          <div>
-            <Label htmlFor="session">Session</Label>
-            <Input
-              id="session"
-              value={evaluationData.session}
-              onChange={(e) => setEvaluationData(prev => ({ ...prev, session: e.target.value }))}
+          {/* Signatures remontées */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <SignatureCanvas
+              label="Signature du directeur"
+              value={evaluationData.directorSignature}
+              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, directorSignature: signature }))}
+            />
+            <SignatureCanvas
+              label="Signature de l'animateur"
+              value={evaluationData.animatorSignature}
+              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, animatorSignature: signature }))}
             />
           </div>
           
@@ -459,22 +428,8 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
               id="remarks"
               value={evaluationData.remarks}
               onChange={(e) => setEvaluationData(prev => ({ ...prev, remarks: e.target.value }))}
-              rows={4}
+              rows={3}
               placeholder="Remarques générales..."
-            />
-          </div>
-          
-          {/* Signatures */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <SignatureCanvas
-              label="Signature du directeur"
-              value={evaluationData.directorSignature}
-              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, directorSignature: signature }))}
-            />
-            <SignatureCanvas
-              label="Signature de l'animateur"
-              value={evaluationData.animatorSignature}
-              onSignatureChange={(signature) => setEvaluationData(prev => ({ ...prev, animatorSignature: signature }))}
             />
           </div>
           
