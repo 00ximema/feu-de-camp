@@ -360,12 +360,35 @@ class LocalDatabase {
   ): Promise<void> {
     if (!this.db) await this.init();
     
+    console.log(`saveMany: Début sauvegarde de ${dataArray.length} entrées dans ${table}`);
+    
     const transaction = this.db!.transaction([table], 'readwrite');
     const store = transaction.objectStore(table);
     
-    for (const data of dataArray) {
-      await store.put(data);
-    }
+    return new Promise((resolve, reject) => {
+      let completed = 0;
+      
+      transaction.oncomplete = () => {
+        console.log(`saveMany: ✅ Transaction complétée pour ${table}, ${completed} entrées sauvegardées`);
+        resolve();
+      };
+      
+      transaction.onerror = () => {
+        console.error(`saveMany: ❌ Erreur transaction pour ${table}:`, transaction.error);
+        reject(transaction.error);
+      };
+      
+      for (const data of dataArray) {
+        const request = store.put(data);
+        request.onsuccess = () => {
+          completed++;
+          console.log(`saveMany: Entrée ${completed}/${dataArray.length} sauvegardée dans ${table}`);
+        };
+        request.onerror = () => {
+          console.error(`saveMany: Erreur sauvegarde entrée dans ${table}:`, request.error);
+        };
+      }
+    });
   }
 
   async getAll<T extends keyof DatabaseSchema>(

@@ -106,6 +106,11 @@ const DataManager = () => {
           try {
             console.log(`Import de ${tableName}: ${(tableData as any[]).length} entrées`);
             await db.saveMany(tableName as any, tableData as any);
+            
+            // Vérifier que les données ont bien été sauvegardées
+            const savedData = await db.getAll(tableName as any);
+            console.log(`Vérification ${tableName}: ${savedData.length} entrées dans la DB après import`);
+            
             const count = (tableData as any[]).length;
             totalImported += count;
             importResults.push(`${tableName}: ${count} entrées`);
@@ -121,16 +126,28 @@ const DataManager = () => {
       console.log('Total importé:', totalImported);
       console.log('Détails:', importResults);
 
+      // Vérification finale : compter toutes les entrées dans la DB
+      console.log('=== VÉRIFICATION FINALE ===');
+      for (const tableName of expectedTables) {
+        try {
+          const finalCount = await db.getAll(tableName as any);
+          console.log(`${tableName}: ${finalCount.length} entrées dans la DB`);
+        } catch (error) {
+          console.error(`Erreur vérification ${tableName}:`, error);
+        }
+      }
+
       toast({
         title: "Import réussi",
         description: `${totalImported} entrées importées avec succès`,
       });
       
       // Recharger la page pour actualiser toutes les données après un court délai
-      console.log('Rechargement de la page dans 2 secondes...');
+      console.log('Rechargement de la page dans 3 secondes...');
       setTimeout(() => {
+        console.log('Rechargement de la page maintenant...');
         window.location.reload();
-      }, 2000);
+      }, 3000);
       
     } catch (error) {
       console.error('=== ERREUR IMPORT ===');
