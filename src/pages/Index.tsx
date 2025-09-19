@@ -287,7 +287,6 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-          <MainCourantePreview />
           {modules.map((module) => {
             const IconComponent = module.icon;
             return (
@@ -350,6 +349,11 @@ const Index = () => {
             ) : (
               <div className="text-sm text-gray-500">Aucun traitement actif</div>
             )}
+          </div>
+
+          {/* Main courante */}
+          <div className="mb-6">
+            <MainCourantePreview />
           </div>
 
           {/* Informations sur le personnel */}
