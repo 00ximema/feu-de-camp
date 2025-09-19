@@ -1,7 +1,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookOpen, Plus, ArrowLeft, Filter } from "lucide-react";
+import { BookOpen, Plus, ArrowLeft, Filter, Download } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import EventForm from "@/components/EventForm";
@@ -11,6 +11,7 @@ import { useSession } from "@/hooks/useSession";
 import { useTeamManagement } from "@/hooks/useTeamManagement";
 import { useJeunes } from "@/hooks/useJeunes";
 import { toast } from "@/components/ui/use-toast";
+import { exportMainCouranteToPDF } from "@/utils/mainCourantePdfExporter";
 
 export interface MainCouranteEvent {
   id: string;
@@ -108,6 +109,32 @@ const MainCourante = () => {
     }
   };
 
+  const handleExportPDF = () => {
+    if (events.length === 0) {
+      toast({
+        title: "Aucun événement",
+        description: "Il n'y a aucun événement à exporter.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      exportMainCouranteToPDF(events, team, jeunes, currentSession?.name);
+      toast({
+        title: "Export réussi",
+        description: "La main courante a été exportée en PDF.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de l\'export PDF:', error);
+      toast({
+        title: "Erreur d'export",
+        description: "Impossible d'exporter la main courante en PDF.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const filteredEvents = events.filter(event => {
     if (filterType === 'all') return true;
     if (filterType === 'team') return event.selectedMembers.length > 0;
@@ -140,10 +167,20 @@ const MainCourante = () => {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span>Gestion des événements</span>
-                <Button onClick={() => setShowEventForm(true)} className="animate-scale-in">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nouvel événement
-                </Button>
+                <div className="flex items-center space-x-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleExportPDF}
+                    disabled={events.length === 0}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Export PDF
+                  </Button>
+                  <Button onClick={() => setShowEventForm(true)} className="animate-scale-in">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nouvel événement
+                  </Button>
+                </div>
               </CardTitle>
               <CardDescription>
                 Enregistrez tous les événements importants avec les personnes concernées

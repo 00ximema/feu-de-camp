@@ -8,8 +8,8 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
-import ClickableLogo from "@/components/ClickableLogo";
 import DataManager from "@/components/DataManager";
+import MainCourantePreview from "@/components/MainCourantePreview";
 
 interface Animateur {
   id: number;
@@ -286,6 +286,7 @@ const Index = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <MainCourantePreview />
           {modules.map((module) => {
             const IconComponent = module.icon;
             return (
