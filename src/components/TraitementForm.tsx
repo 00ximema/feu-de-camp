@@ -71,15 +71,24 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   };
 
   const handleSubmit = async () => {
+    // Logs de debug complets
     console.log('=== DÉBUT ENREGISTREMENT TRAITEMENT ===');
     console.log('Session actuelle:', currentSession);
     console.log('Base de données initialisée:', isInitialized);
-    console.log('DB object:', db);
     console.log('Jeune sélectionné:', selectedJeune);
     console.log('Durée:', duree);
     console.log('Date début:', dateDebut);
     console.log('Ordonnance:', ordonnance);
-    console.log('Médicaments:', medicaments);
+    console.log('Médicaments avant filtrage:', medicaments);
+    
+    // Test simple de la DB
+    try {
+      console.log('Test simple DB - Listing traitements existants...');
+      const existingTreatments = await db.getAll('traitements', currentSession?.id);
+      console.log('Traitements existants:', existingTreatments);
+    } catch (testError) {
+      console.error('Erreur lors du test de lecture DB:', testError);
+    }
 
     if (!selectedJeune || !duree || !dateDebut) {
       console.error('Champs obligatoires manquants');
@@ -176,10 +185,23 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
         
         try {
           console.log(`Tentative d'enregistrement traitement ${i + 1}...`);
+          console.log('Table cible: traitements');
+          console.log('Données à enregistrer:', JSON.stringify(traitement, null, 2));
+          
+          // Test si la table existe
+          const testRead = await db.getAll('traitements');
+          console.log('Test lecture table traitements OK, nombre d\'entrées:', testRead.length);
+          
           await db.save('traitements', traitement);
           console.log(`✅ Traitement ${i + 1} enregistré avec succès`);
+          
+          // Vérifier que l'enregistrement a bien eu lieu
+          const verifyRead = await db.getAll('traitements');
+          console.log('Vérification: nombre d\'entrées après sauvegarde:', verifyRead.length);
+          
         } catch (saveError) {
           console.error(`❌ Erreur lors de l'enregistrement du traitement ${i + 1}:`, saveError);
+          console.error('Type d\'erreur:', typeof saveError);
           console.error('Stack trace:', saveError.stack);
           throw saveError;
         }
