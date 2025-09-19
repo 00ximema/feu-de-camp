@@ -28,7 +28,7 @@ const DataManager = () => {
       const exportData: any = {};
       
       // Liste des tables à exporter
-      const tables = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+      const tables = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'mainCouranteEvents'];
       
       for (const table of tables) {
         try {
@@ -82,44 +82,62 @@ const DataManager = () => {
 
     setIsImporting(true);
     try {
+      console.log('=== DÉBUT IMPORT DONNÉES ===');
       const text = await file.text();
+      console.log('Fichier lu, taille:', text.length);
+      
       const importData = JSON.parse(text);
+      console.log('Données parsées, tables trouvées:', Object.keys(importData));
       
       // Valider la structure des données
-      const expectedTables = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+      const expectedTables = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'mainCouranteEvents'];
       const missingTables = expectedTables.filter(table => !importData[table]);
       
       if (missingTables.length > 0) {
         console.warn('Tables manquantes dans l\'import:', missingTables);
       }
 
+      let totalImported = 0;
+      const importResults = [];
+
       // Importer les données table par table
       for (const [tableName, tableData] of Object.entries(importData)) {
         if (expectedTables.includes(tableName) && Array.isArray(tableData)) {
           try {
+            console.log(`Import de ${tableName}: ${(tableData as any[]).length} entrées`);
             await db.saveMany(tableName as any, tableData as any);
-            console.log(`${(tableData as any[]).length} entrées importées dans ${tableName}`);
+            const count = (tableData as any[]).length;
+            totalImported += count;
+            importResults.push(`${tableName}: ${count} entrées`);
+            console.log(`✅ ${count} entrées importées dans ${tableName}`);
           } catch (error) {
-            console.error(`Erreur lors de l'import de ${tableName}:`, error);
+            console.error(`❌ Erreur lors de l'import de ${tableName}:`, error);
+            importResults.push(`${tableName}: ERREUR - ${error.message}`);
           }
         }
       }
 
+      console.log('=== RÉSULTATS IMPORT ===');
+      console.log('Total importé:', totalImported);
+      console.log('Détails:', importResults);
+
       toast({
         title: "Import réussi",
-        description: "Vos données ont été importées avec succès"
+        description: `${totalImported} entrées importées avec succès`,
       });
       
-      // Recharger la page pour actualiser toutes les données
+      // Recharger la page pour actualiser toutes les données après un court délai
+      console.log('Rechargement de la page dans 2 secondes...');
       setTimeout(() => {
         window.location.reload();
-      }, 1000);
+      }, 2000);
       
     } catch (error) {
+      console.error('=== ERREUR IMPORT ===');
       console.error('Erreur lors de l\'import:', error);
       toast({
         title: "Erreur",
-        description: "Erreur lors de l'import des données. Vérifiez le format du fichier.",
+        description: `Erreur lors de l'import: ${error.message || 'Format de fichier invalide'}`,
         variant: "destructive"
       });
     } finally {
