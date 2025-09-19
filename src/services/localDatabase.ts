@@ -500,6 +500,43 @@ class LocalDatabase {
     
     console.log('Migration terminée');
   }
+
+  // Export de toutes les données
+  async exportAllData(): Promise<any> {
+    const exportData: any = {};
+    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+    
+    for (const table of tables) {
+      try {
+        const data = await this.getAll(table);
+        exportData[table] = data;
+      } catch (error) {
+        console.error(`Erreur lors de l'export de ${table}:`, error);
+        exportData[table] = [];
+      }
+    }
+    
+    return exportData;
+  }
+
+  // Import de toutes les données
+  async importAllData(data: any): Promise<void> {
+    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+    
+    for (const table of tables) {
+      if (data[table] && Array.isArray(data[table])) {
+        try {
+          // Vider la table avant l'import
+          await this.clear(table);
+          // Importer les nouvelles données
+          await this.saveMany(table, data[table]);
+          console.log(`${data[table].length} entrées importées dans ${table}`);
+        } catch (error) {
+          console.error(`Erreur lors de l'import de ${table}:`, error);
+        }
+      }
+    }
+  }
 }
 
 export const localDB = new LocalDatabase();

@@ -9,6 +9,7 @@ import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import ClickableLogo from "@/components/ClickableLogo";
+import DataManager from "@/components/DataManager";
 
 interface Animateur {
   id: number;
@@ -255,7 +256,11 @@ const Index = () => {
                 <p className="text-sm text-muted-foreground">Plateforme de gestion des ACM</p>
               </div>
             </div>
-            <SessionManager />
+            <div className="flex items-center gap-2">
+              <DataManager />
+              <ClickableLogo />
+              <SessionManager />
+            </div>
           </div>
         </div>
       </header>
