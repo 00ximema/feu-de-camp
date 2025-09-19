@@ -8,6 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import ClickableLogo from "@/components/ClickableLogo";
 import DataManager from "@/components/DataManager";
 import MainCourantePreview from "@/components/MainCourantePreview";
 
