@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill } from "lucide-react";
+import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill, BookOpen } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SessionManager from "@/components/SessionManager";
@@ -176,6 +176,14 @@ const Index = () => {
       icon: Building,
       route: "/infirmerie",
       color: "bg-teal-500 hover:bg-teal-600"
+    },
+    {
+      id: 7,
+      title: "Main courante",
+      description: "Enregistrement des événements et incidents avec les personnes concernées",
+      icon: BookOpen,
+      route: "/main-courante",
+      color: "bg-indigo-500 hover:bg-indigo-600"
     }
   ];
 

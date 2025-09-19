@@ -242,6 +242,20 @@ interface DatabaseSchema {
     createdAt: string;
     updatedAt: string;
   };
+
+  // Main courante events
+  mainCouranteEvents: {
+    id: string;
+    sessionId: string;
+    date: string;
+    time: string;
+    description: string;
+    selectedMembers: string[];
+    selectedJeunes: string[];
+    createdBy?: string;
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
 class LocalDatabase {
@@ -318,6 +332,11 @@ class LocalDatabase {
           const administratifStore = db.createObjectStore('administratif', { keyPath: 'id' });
           administratifStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table administratif créée');
+        }
+        if (!db.objectStoreNames.contains('mainCouranteEvents')) {
+          const mainCouranteStore = db.createObjectStore('mainCouranteEvents', { keyPath: 'id' });
+          mainCouranteStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table mainCouranteEvents créée');
         }
       };
     });
@@ -431,7 +450,7 @@ class LocalDatabase {
   async cleanOrphanedData(currentSessionId: string): Promise<void> {
     console.log('Nettoyage des données orphelines...');
     
-    const tables: (keyof DatabaseSchema)[] = ['plannings', 'animateurs', 'jeunes', 'groupes', 'events', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+    const tables: (keyof DatabaseSchema)[] = ['plannings', 'animateurs', 'jeunes', 'groupes', 'events', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'mainCouranteEvents'];
     
     for (const table of tables) {
       try {

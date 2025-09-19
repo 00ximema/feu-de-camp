@@ -11,6 +11,7 @@ import Equipe from "./pages/Equipe";
 import Infirmerie from "./pages/Infirmerie";
 import Jeunes from "./pages/Jeunes";
 import Planning from "./pages/Planning";
+import MainCourante from "./pages/MainCourante";
 import OfflineIndicator from "./components/OfflineIndicator";
 
 const queryClient = new QueryClient({
@@ -41,6 +42,7 @@ const App = () => {
           <Route path="/infirmerie" element={<Infirmerie />} />
           <Route path="/jeunes" element={<Jeunes />} />
           <Route path="/planning" element={<Planning />} />
+          <Route path="/main-courante" element={<MainCourante />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
