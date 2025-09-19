@@ -206,9 +206,23 @@ const PlanningTableGenerator = () => {
           new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime()
         )[0];
         
-        if (latestPlanning.data) {
+        if (latestPlanning.data && latestPlanning.data.length > 0) {
           setPlanningData(latestPlanning.data);
+          
+          // Récupérer les dates du planning sauvegardé
+          if (latestPlanning.startDate && latestPlanning.endDate) {
+            setStartDate(new Date(latestPlanning.startDate));
+            setEndDate(new Date(latestPlanning.endDate));
+          }
+          
+          // Afficher automatiquement le planning s'il existe des données
+          setShowPlanning(true);
+          
           console.log('Planning chargé depuis la base de données');
+          toast({
+            title: "Planning restauré",
+            description: "Votre planning précédent a été chargé automatiquement.",
+          });
         }
       }
     } catch (error) {
