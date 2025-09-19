@@ -30,10 +30,10 @@ const queryClient = new QueryClient({
 const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
-      <Toaster />
-      <Sonner />
-      <OfflineIndicator />
       <BrowserRouter>
+        <Toaster />
+        <Sonner />
+        <OfflineIndicator />
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/administratif" element={<Administratif />} />
