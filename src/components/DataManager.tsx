@@ -162,6 +162,78 @@ const DataManager = () => {
     }
   };
 
+  const testDatabase = async () => {
+    if (!isInitialized) {
+      toast({
+        title: "Erreur",
+        description: "Base de données non initialisée",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('=== TEST DIAGNOSTIC BASE DE DONNÉES ===');
+    
+    try {
+      // Test 1: Vérifier l'état de la DB
+      console.log('1. État de la DB:', { isInitialized, db });
+      
+      // Test 2: Lister toutes les tables
+      const tables = ['sessions', 'jeunes', 'animateurs', 'traitements'];
+      for (const table of tables) {
+        try {
+          const data = await db.getAll(table as any);
+          console.log(`2. Table ${table}: ${data.length} entrées`);
+          if (data.length > 0) {
+            console.log(`   Premier élément:`, data[0]);
+          }
+        } catch (error) {
+          console.error(`   Erreur lecture ${table}:`, error);
+        }
+      }
+      
+      // Test 3: Test de sauvegarde simple
+      console.log('3. Test de sauvegarde...');
+      const testData = {
+        id: Date.now(), // Utiliser un number pour l'ID
+        nom: 'Test',
+        prenom: 'Diagnostic',
+        age: 25,
+        telephone: '0123456789',
+        email: 'test@test.com',
+        role: 'Test',
+        formations: [],
+        documents: [],
+        notes: 'Test diagnostic',
+        sessionId: 'test-session'
+      };
+      
+      await db.save('animateurs', testData);
+      console.log('3. Sauvegarde test OK');
+      
+      // Test 4: Vérifier que la donnée est là
+      const allAnimateurs = await db.getAll('animateurs');
+      console.log('4. Vérification: animateurs après test:', allAnimateurs.length);
+      
+      // Test 5: Nettoyer
+      await db.delete('animateurs', testData.id);
+      console.log('5. Nettoyage test OK');
+      
+      toast({
+        title: "Test terminé",
+        description: "Voir la console pour les résultats du diagnostic"
+      });
+      
+    } catch (error) {
+      console.error('Erreur diagnostic:', error);
+      toast({
+        title: "Erreur diagnostic",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -231,6 +303,23 @@ const DataManager = () => {
                 Import en cours...
               </p>
             )}
+          </div>
+
+          {/* Diagnostic */}
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium">Diagnostic</h3>
+            <p className="text-xs text-muted-foreground">
+              Tester le fonctionnement de la base de données
+            </p>
+            <Button 
+              onClick={testDatabase} 
+              disabled={!isInitialized}
+              variant="secondary"
+              className="w-full"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              Tester la base de données
+            </Button>
           </div>
 
           <div className="text-xs text-muted-foreground border-t pt-4">
