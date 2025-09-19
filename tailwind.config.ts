@@ -27,7 +27,9 @@ export default {
 				primary: {
 					DEFAULT: 'hsl(var(--primary))',
 					foreground: 'hsl(var(--primary-foreground))',
-					glow: 'hsl(var(--primary-glow))'
+					glow: 'hsl(var(--primary-glow))',
+					light: 'hsl(210 100% 85%)',
+					dark: 'hsl(210 100% 55%)'
 				},
 				secondary: {
 					DEFAULT: 'hsl(var(--secondary))',
@@ -62,6 +64,18 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				blue: {
+					50: 'hsl(210 40% 98%)',
+					100: 'hsl(210 40% 95%)',
+					200: 'hsl(210 40% 88%)',
+					300: 'hsl(210 40% 78%)',
+					400: 'hsl(210 100% 85%)',
+					500: 'hsl(210 100% 70%)',
+					600: 'hsl(210 100% 55%)',
+					700: 'hsl(210 100% 45%)',
+					800: 'hsl(210 100% 35%)',
+					900: 'hsl(215 25% 27%)'
 				}
 			},
 			backgroundImage: {
