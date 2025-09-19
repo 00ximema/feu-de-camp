@@ -260,7 +260,7 @@ interface DatabaseSchema {
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 6; // Augmenter la version pour forcer la mise à jour
+  private version = 7; // Augmenter la version pour forcer la mise à jour
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
