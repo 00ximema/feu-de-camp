@@ -166,6 +166,36 @@ const PlanningTableGenerator = () => {
     }
   };
 
+  const handleSavePlanning = async () => {
+    await savePlanning(planningData);
+  };
+
+  const deletePlanning = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const plannings = await db.getAll('plannings', currentSession.id);
+      for (const planning of plannings) {
+        await db.delete('plannings', planning.id);
+      }
+      
+      setPlanningData([]);
+      setShowPlanning(false);
+      
+      toast({
+        title: "Planning supprimé",
+        description: "Le planning a été supprimé avec succès.",
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression du planning:', error);
+      toast({
+        title: "Erreur de suppression",
+        description: "Impossible de supprimer le planning.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const loadPlanning = async () => {
     if (!isInitialized || !currentSession) return;
 
@@ -411,9 +441,9 @@ const PlanningTableGenerator = () => {
         tempTableDiv.style.top = '0';
         tempTableDiv.style.backgroundColor = 'white';
         tempTableDiv.style.padding = '10px';
-        tempTableDiv.style.width = '1000px';
+        tempTableDiv.style.width = '1200px';
         tempTableDiv.style.fontFamily = 'Arial, sans-serif';
-        tempTableDiv.style.fontSize = '10px';
+        tempTableDiv.style.fontSize = '9px';
         
         // Créer le tableau HTML pour ce groupe
         const table = document.createElement('table');
@@ -485,11 +515,12 @@ const PlanningTableGenerator = () => {
           // Cellules pour chaque date du groupe
           currentGroup.forEach(date => {
             const cell = document.createElement('td');
-            cell.style.padding = '8px 6px'; // Augmenter le padding
+            cell.style.padding = '10px 8px';
             cell.style.border = '1px solid #ccc';
-            cell.style.minHeight = '80px'; // Augmenter encore la hauteur des cellules
-            cell.style.fontSize = '8px';
+            cell.style.minHeight = '100px';
+            cell.style.fontSize = '7px';
             cell.style.verticalAlign = 'top';
+            cell.style.lineHeight = '1.2';
             
             // Chercher les événements pour cette date et ce créneau
             const dateString = format(date, 'yyyy-MM-dd');
@@ -506,11 +537,15 @@ const PlanningTableGenerator = () => {
                 }
                 
                 if (event.assignedMembers && event.assignedMembers.length > 0) {
-                  content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;">${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
+                  content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;"><strong>Adultes:</strong> ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
                 }
                 
                 if (event.selectedGroups && event.selectedGroups.length > 0) {
-                  content += `<div style="color: #059669; font-size: 7px;">Groupes sélectionnés</div>`;
+                  content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Groupes:</strong> ${event.selectedGroups.join(', ')}</div>`;
+                }
+                
+                if (event.selectedJeunes && event.selectedJeunes.length > 0) {
+                  content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Jeunes:</strong> ${event.selectedJeunes.length} sélectionné${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
                 }
                 
                 if (event.notes) {
@@ -536,11 +571,11 @@ const PlanningTableGenerator = () => {
         
         // Capturer le tableau
         const canvas = await html2canvas(tempTableDiv, {
-          scale: 1.5,
+          scale: 2,
           useCORS: true,
           backgroundColor: '#ffffff',
           logging: false,
-          width: 1000,
+          width: 1200,
           height: tempTableDiv.scrollHeight
         });
         
@@ -748,11 +783,22 @@ const PlanningTableGenerator = () => {
                 <Calendar className="h-4 w-4 mr-2" />
                 Générer le planning
               </Button>
-              {showPlanning && startDate && endDate && (
-                <Button onClick={exportToPDF} variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Exporter en PDF
-                </Button>
+              {showPlanning && (
+                <>
+                  <Button onClick={handleSavePlanning} variant="secondary">
+                    Enregistrer
+                  </Button>
+                  <Button onClick={deletePlanning} variant="destructive">
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Supprimer
+                  </Button>
+                  {startDate && endDate && (
+                    <Button onClick={exportToPDF} variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Exporter en PDF
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -815,23 +861,23 @@ const PlanningTableGenerator = () => {
                                     {cell.event.startTime} - {cell.event.endTime}
                                   </div>
                                 )}
-                                {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
-                                  <div className="text-xs text-gray-600">
-                                    {cell.event.assignedMembers.map(member => 
-                                      `${member.prenom} ${member.nom}`
-                                    ).join(', ')}
-                                  </div>
-                                )}
-                                {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
-                                  <div className="text-xs text-green-600">
-                                    Groupes sélectionnés
-                                  </div>
-                                )}
-                                {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
-                                  <div className="text-xs text-green-600">
-                                    Jeunes individuels
-                                  </div>
-                                )}
+                                 {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
+                                   <div className="text-xs text-gray-600">
+                                     <strong>Adultes:</strong> {cell.event.assignedMembers.map(member => 
+                                       `${member.prenom} ${member.nom}`
+                                     ).join(', ')}
+                                   </div>
+                                 )}
+                                 {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
+                                   <div className="text-xs text-green-600">
+                                     <strong>Groupes:</strong> {cell.event.selectedGroups.join(', ')}
+                                   </div>
+                                 )}
+                                 {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
+                                   <div className="text-xs text-green-600">
+                                     <strong>Jeunes:</strong> {cell.event.selectedJeunes.length} sélectionné{cell.event.selectedJeunes.length > 1 ? 's' : ''}
+                                   </div>
+                                 )}
                                 {cell.event.notes && (
                                   <div className="text-xs text-purple-600 italic">
                                     {cell.event.notes}
