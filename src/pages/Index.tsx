@@ -72,6 +72,7 @@ const Index = () => {
   const [animateurs, setAnimateurs] = useState<Animateur[]>([]);
   const [plannings, setPlannings] = useState<Planning[]>([]);
   const [traitements, setTraitements] = useState<Traitement[]>([]);
+  const [latestEvent, setLatestEvent] = useState<any>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -95,7 +96,25 @@ const Index = () => {
     };
 
     loadData();
+    loadLatestMainCouranteEvent();
   }, [isInitialized, db, currentSession]);
+
+  const loadLatestMainCouranteEvent = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const events = await db.getAll('mainCouranteEvents', currentSession.id);
+      const sortedEvents = events.sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+      
+      if (sortedEvents.length > 0) {
+        setLatestEvent(sortedEvents[0]);
+      }
+    } catch (error) {
+      console.error('Erreur lors du chargement des événements main courante:', error);
+    }
+  };
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -351,13 +370,8 @@ const Index = () => {
             )}
           </div>
 
-          {/* Main courante */}
-          <div className="mb-6">
-            <MainCourantePreview />
-          </div>
-
           {/* Informations sur le personnel */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             {/* Astreintes */}
             <div>
               <h4 className="font-medium text-gray-900 mb-3 flex items-center">
@@ -423,7 +437,35 @@ const Index = () => {
                 <div className="text-sm text-gray-500">Aucun repos récupérateur défini</div>
               )}
             </div>
-           </div>
+
+            {/* Main courante */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+                <BookOpen className="h-4 w-4 mr-2 text-purple-600" />
+                Dernière main courante
+              </h4>
+              {latestEvent ? (
+                <div className="text-sm p-2 bg-purple-50 rounded border-l-2 border-purple-200">
+                  <div className="font-medium text-purple-900">
+                    {new Date(latestEvent.date + 'T' + latestEvent.time).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                  <div className="text-purple-700 line-clamp-2">{latestEvent.description}</div>
+                  {(latestEvent.selectedMembers.length > 0 || latestEvent.selectedJeunes.length > 0) && (
+                    <div className="text-purple-600 text-xs mt-1">
+                      {latestEvent.selectedMembers.length + latestEvent.selectedJeunes.length} personne(s) concernée(s)
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm text-gray-500">Aucun événement enregistré</div>
+              )}
+            </div>
+            </div>
           </div>
         </div>
       </main>
