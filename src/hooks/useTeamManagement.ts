@@ -57,8 +57,8 @@ export const useTeamManagement = () => {
           name: doc.nom,
           type: doc.type,
           uploadDate: doc.dateUpload,
-          data: doc.url
-        }))
+          data: doc.url // S'assurer que les données sont bien mappées
+        })).filter(doc => doc.data) // Filtrer les documents sans données
       })));
     } catch (error) {
       console.error('Erreur lors du chargement de l\'équipe:', error);
@@ -117,7 +117,13 @@ export const useTeamManagement = () => {
       email: updatedMember.email,
       role: updatedMember.role,
       formations: updatedMember.diplomes,
-      documents: updatedMember.documents || [],
+      documents: (updatedMember.documents || []).map(doc => ({
+        id: parseInt(doc.id),
+        nom: doc.name,
+        type: doc.type,
+        dateUpload: doc.uploadDate,
+        url: doc.data
+      })),
       notes: updatedMember.notes
     };
 
@@ -201,29 +207,40 @@ export const useTeamManagement = () => {
 
   const downloadDocument = (document: TeamDocument) => {
     try {
-      if (document.data) {
-        // Créer un élément anchor temporaire pour le téléchargement
-        const link = window.document.createElement('a');
-        link.href = document.data;
-        link.download = document.name;
-        link.style.display = 'none';
-        
-        // Ajouter à la page, cliquer, puis supprimer
-        window.document.body.appendChild(link);
-        link.click();
-        window.document.body.removeChild(link);
-        
-        toast({
-          title: "Téléchargement démarré",
-          description: `${document.name} est en cours de téléchargement`
-        });
-      } else {
+      if (!document.data) {
         toast({
           title: "Erreur",
           description: "Aucune donnée disponible pour ce document",
           variant: "destructive"
         });
+        return;
       }
+
+      // Vérifier si c'est une URL de données valide
+      if (!document.data.startsWith('data:')) {
+        toast({
+          title: "Erreur",
+          description: "Format de document invalide",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Créer un élément anchor temporaire pour le téléchargement
+      const link = window.document.createElement('a');
+      link.href = document.data;
+      link.download = document.name;
+      link.style.display = 'none';
+      
+      // Ajouter à la page, cliquer, puis supprimer
+      window.document.body.appendChild(link);
+      link.click();
+      window.document.body.removeChild(link);
+      
+      toast({
+        title: "Téléchargement démarré",
+        description: `${document.name} est en cours de téléchargement`
+      });
     } catch (error) {
       console.error('Erreur lors du téléchargement:', error);
       toast({
