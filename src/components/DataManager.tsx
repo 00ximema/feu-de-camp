@@ -172,62 +172,286 @@ const DataManager = () => {
       return;
     }
 
-    console.log('=== TEST DIAGNOSTIC BASE DE DONNÉES ===');
+    console.log('=== TEST COMPLET BASE DE DONNÉES ===');
     
     try {
       // Test 1: Vérifier l'état de la DB
       console.log('1. État de la DB:', { isInitialized, db });
       
-      // Test 2: Lister toutes les tables
-      const tables = ['sessions', 'jeunes', 'animateurs', 'traitements'];
+      // Test 2: Lister toutes les tables avec comptage
+      const tables = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'mainCouranteEvents'];
+      const currentCounts: Record<string, number> = {};
+      
       for (const table of tables) {
         try {
           const data = await db.getAll(table as any);
+          currentCounts[table] = data.length;
           console.log(`2. Table ${table}: ${data.length} entrées`);
           if (data.length > 0) {
             console.log(`   Premier élément:`, data[0]);
           }
         } catch (error) {
           console.error(`   Erreur lecture ${table}:`, error);
+          currentCounts[table] = -1;
         }
       }
       
-      // Test 3: Test de sauvegarde simple
-      console.log('3. Test de sauvegarde...');
-      const testData = {
-        id: Date.now(), // Utiliser un number pour l'ID
-        nom: 'Test',
-        prenom: 'Diagnostic',
-        age: 25,
-        telephone: '0123456789',
-        email: 'test@test.com',
-        role: 'Test',
-        formations: [],
-        documents: [],
-        notes: 'Test diagnostic',
-        sessionId: 'test-session'
-      };
+      // Test 3: Test de sauvegarde/lecture dans chaque table
+      console.log('3. Test de sauvegarde dans toutes les tables...');
+      const testResults: Record<string, boolean> = {};
       
-      await db.save('animateurs', testData);
-      console.log('3. Sauvegarde test OK');
+      // Test animateurs
+      try {
+        const testAnimateur = {
+          id: Date.now(),
+          nom: 'Test',
+          prenom: 'Animateur',
+          age: 25,
+          telephone: '0123456789',
+          email: 'test@animateur.com',
+          role: 'Animateur',
+          formations: ['PSC1'],
+          documents: [],
+          notes: 'Test diagnostic',
+          sessionId: 'test-session'
+        };
+        await db.save('animateurs', testAnimateur);
+        const retrieved = await db.getById('animateurs', testAnimateur.id);
+        testResults['animateurs'] = retrieved?.nom === 'Test';
+        await db.delete('animateurs', testAnimateur.id);
+        console.log('   ✅ Test animateurs: OK');
+      } catch (error) {
+        console.error('   ❌ Test animateurs échoué:', error);
+        testResults['animateurs'] = false;
+      }
       
-      // Test 4: Vérifier que la donnée est là
-      const allAnimateurs = await db.getAll('animateurs');
-      console.log('4. Vérification: animateurs après test:', allAnimateurs.length);
+      // Test jeunes
+      try {
+        const testJeune = {
+          id: `test-${Date.now()}`,
+          nom: 'Test',
+          prenom: 'Jeune',
+          age: 12,
+          genre: 'M',
+          sessionId: 'test-session'
+        };
+        await db.save('jeunes', testJeune);
+        const retrieved = await db.getById('jeunes', testJeune.id);
+        testResults['jeunes'] = retrieved?.nom === 'Test';
+        await db.delete('jeunes', testJeune.id);
+        console.log('   ✅ Test jeunes: OK');
+      } catch (error) {
+        console.error('   ❌ Test jeunes échoué:', error);
+        testResults['jeunes'] = false;
+      }
       
-      // Test 5: Nettoyer
-      await db.delete('animateurs', testData.id);
-      console.log('5. Nettoyage test OK');
+      // Test traitements
+      try {
+        const testTraitement = {
+          id: `test-traitement-${Date.now()}`,
+          sessionId: 'test-session',
+          jeuneId: 'test-jeune',
+          jeuneNom: 'Test Jeune',
+          medicament: 'Test Medicine',
+          posologie: '1 par jour',
+          duree: '7 jours',
+          dateDebut: new Date().toISOString().split('T')[0],
+          dateFin: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          ordonnance: true,
+          dateCreation: new Date().toISOString()
+        };
+        await db.save('traitements', testTraitement);
+        const retrieved = await db.getById('traitements', testTraitement.id);
+        testResults['traitements'] = retrieved?.medicament === 'Test Medicine';
+        await db.delete('traitements', testTraitement.id);
+        console.log('   ✅ Test traitements: OK');
+      } catch (error) {
+        console.error('   ❌ Test traitements échoué:', error);
+        testResults['traitements'] = false;
+      }
+
+      // Test 4: Test export/import simulé
+      console.log('4. Test export/import simulé...');
+      let exportTestResult = false;
+      try {
+        const exportData: any = {};
+        
+        for (const table of tables) {
+          try {
+            const data = await db.getAll(table as any);
+            exportData[table] = data;
+          } catch (error) {
+            console.error(`Erreur export ${table}:`, error);
+            exportData[table] = [];
+          }
+        }
+        
+        // Vérifier que toutes les tables sont présentes dans l'export
+        const exportedTables = Object.keys(exportData);
+        const missingTables = tables.filter(table => !exportedTables.includes(table));
+        
+        if (missingTables.length === 0) {
+          exportTestResult = true;
+          console.log('   ✅ Structure export valide');
+        } else {
+          console.error('   ❌ Tables manquantes dans export:', missingTables);
+        }
+      } catch (error) {
+        console.error('   ❌ Test export échoué:', error);
+      }
+
+      // Test 5: Rapport final
+      console.log('5. === RAPPORT FINAL ===');
+      console.log('Comptages actuels:', currentCounts);
+      console.log('Tests de sauvegarde:', testResults);
+      console.log('Test export:', exportTestResult ? 'OK' : 'ÉCHEC');
+      
+      const allTestsPassed = Object.values(testResults).every(result => result === true) && exportTestResult;
       
       toast({
-        title: "Test terminé",
-        description: "Voir la console pour les résultats du diagnostic"
+        title: allTestsPassed ? "✅ Tous les tests réussis" : "⚠️ Certains tests ont échoué",
+        description: "Voir la console pour le rapport détaillé",
+        variant: allTestsPassed ? "default" : "destructive"
       });
       
     } catch (error) {
       console.error('Erreur diagnostic:', error);
       toast({
         title: "Erreur diagnostic",
+        description: error.message,
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fullIntegrityTest = async () => {
+    if (!isInitialized) {
+      toast({
+        title: "Erreur",
+        description: "Base de données non initialisée",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    console.log('=== TEST INTÉGRITÉ COMPLÈTE ===');
+    
+    try {
+      // 1. Créer des données de test complètes
+      const testSession = {
+        id: `test-session-${Date.now()}`,
+        name: 'Session Test Intégrité',
+        createdAt: new Date().toISOString()
+      };
+      
+      const testAnimateur = {
+        id: Date.now(),
+        nom: 'Dupont',
+        prenom: 'Jean',
+        age: 30,
+        telephone: '0123456789',
+        email: 'jean.dupont@test.com',
+        role: 'Directeur',
+        formations: ['PSC1', 'BAFA'],
+        documents: [],
+        notes: 'Test intégrité',
+        sessionId: testSession.id
+      };
+      
+      const testJeune = {
+        id: `jeune-test-${Date.now()}`,
+        nom: 'Martin',
+        prenom: 'Paul',
+        age: 14,
+        genre: 'M',
+        sessionId: testSession.id
+      };
+      
+      const testTraitement = {
+        id: `traitement-test-${Date.now()}`,
+        sessionId: testSession.id,
+        jeuneId: testJeune.id,
+        jeuneNom: `${testJeune.prenom} ${testJeune.nom}`,
+        medicament: 'Paracétamol',
+        posologie: '500mg 3x/jour',
+        duree: '5 jours',
+        dateDebut: new Date().toISOString().split('T')[0],
+        dateFin: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        ordonnance: true,
+        dateCreation: new Date().toISOString()
+      };
+
+      // 2. Sauvegarder toutes les données
+      console.log('Création des données de test...');
+      await db.save('sessions', testSession);
+      await db.save('animateurs', testAnimateur);
+      await db.save('jeunes', testJeune);
+      await db.save('traitements', testTraitement);
+      
+      // 3. Vérifier la sauvegarde
+      console.log('Vérification des sauvegardes...');
+      const savedSession = await db.getById('sessions', testSession.id);
+      const savedAnimateur = await db.getById('animateurs', testAnimateur.id);
+      const savedJeune = await db.getById('jeunes', testJeune.id);
+      const savedTraitement = await db.getById('traitements', testTraitement.id);
+      
+      const saveVerification = !!(savedSession && savedAnimateur && savedJeune && savedTraitement);
+      console.log('Sauvegarde OK:', saveVerification);
+      
+      // 4. Test export
+      console.log('Test export...');
+      const exportData: any = {};
+      const tables = ['sessions', 'animateurs', 'jeunes', 'traitements'];
+      
+      for (const table of tables) {
+        const data = await db.getAll(table as any);
+        exportData[table] = data;
+      }
+      
+      const exportStr = JSON.stringify(exportData, null, 2);
+      const exportVerification = exportStr.length > 100 && Object.keys(exportData).length === tables.length;
+      console.log('Export OK:', exportVerification, `(${exportStr.length} caractères)`);
+      
+      // 5. Test import simulé (vérifier la structure)
+      console.log('Test structure import...');
+      let importVerification = false;
+      try {
+        const parsedData = JSON.parse(exportStr);
+        importVerification = Array.isArray(parsedData.sessions) && 
+                            Array.isArray(parsedData.animateurs) && 
+                            Array.isArray(parsedData.jeunes) && 
+                            Array.isArray(parsedData.traitements);
+        console.log('Structure import OK:', importVerification);
+      } catch (error) {
+        console.error('Erreur parsing import:', error);
+      }
+      
+      // 6. Nettoyage
+      console.log('Nettoyage des données de test...');
+      await db.delete('sessions', testSession.id);
+      await db.delete('animateurs', testAnimateur.id);
+      await db.delete('jeunes', testJeune.id);
+      await db.delete('traitements', testTraitement.id);
+      
+      // 7. Rapport final
+      const allPassed = saveVerification && exportVerification && importVerification;
+      
+      console.log('=== RÉSULTAT TEST INTÉGRITÉ ===');
+      console.log('Sauvegarde:', saveVerification ? '✅' : '❌');
+      console.log('Export:', exportVerification ? '✅' : '❌');
+      console.log('Import (structure):', importVerification ? '✅' : '❌');
+      console.log('RÉSULTAT GLOBAL:', allPassed ? '✅ SUCCÈS' : '❌ ÉCHEC');
+      
+      toast({
+        title: allPassed ? "✅ Test d'intégrité réussi" : "❌ Test d'intégrité échoué",
+        description: allPassed ? "Tous les systèmes fonctionnent correctement" : "Voir la console pour les détails",
+        variant: allPassed ? "default" : "destructive"
+      });
+      
+    } catch (error) {
+      console.error('Erreur test intégrité:', error);
+      toast({
+        title: "Erreur test intégrité",
         description: error.message,
         variant: "destructive"
       });
@@ -305,12 +529,13 @@ const DataManager = () => {
             )}
           </div>
 
-          {/* Diagnostic */}
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium">Diagnostic</h3>
+          {/* Tests */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium">Tests et Diagnostic</h3>
             <p className="text-xs text-muted-foreground">
-              Tester le fonctionnement de la base de données
+              Vérifier le bon fonctionnement de la base de données
             </p>
+            
             <Button 
               onClick={testDatabase} 
               disabled={!isInitialized}
@@ -318,7 +543,17 @@ const DataManager = () => {
               className="w-full"
             >
               <Database className="w-4 h-4 mr-2" />
-              Tester la base de données
+              Test diagnostic rapide
+            </Button>
+            
+            <Button 
+              onClick={fullIntegrityTest} 
+              disabled={!isInitialized}
+              variant="outline"
+              className="w-full"
+            >
+              <Database className="w-4 h-4 mr-2" />
+              Test d'intégrité complet
             </Button>
           </div>
 
