@@ -223,7 +223,7 @@ const Index = () => {
                 />
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
-                  <p className="text-gray-600">Plateforme de gestion des ACM</p>
+                  <p className="text-gray-600">Plateforme de gestion pour les directeurs</p>
                 </div>
               </div>
               
@@ -281,7 +281,7 @@ const Index = () => {
                 <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
                   Gestion CVJ MG
                 </h1>
-                <p className="text-sm text-muted-foreground">Plateforme de gestion des ACM</p>
+                <p className="text-sm text-muted-foreground">Plateforme de gestion pour les directeurs</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
