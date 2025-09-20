@@ -5,8 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Heart, Plus, Pill, Clock, Trash2, Stethoscope, Bandage, FileText } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-import TraitementForm from "@/components/TraitementForm";
-import SoinForm from "@/components/SoinForm";
+import MedicalActionSelector from "@/components/MedicalActionSelector";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
 import { useSession } from "@/hooks/useSession";
@@ -43,8 +42,7 @@ interface Soin {
 }
 
 const Infirmerie = () => {
-  const [showTraitementForm, setShowTraitementForm] = useState(false);
-  const [showSoinForm, setShowSoinForm] = useState(false);
+  const [showMedicalSelector, setShowMedicalSelector] = useState(false);
   const [editingSoin, setEditingSoin] = useState<Soin | null>(null);
   const [traitements, setTraitements] = useState<Traitement[]>([]);
   const [soins, setSoins] = useState<Soin[]>([]);
@@ -128,11 +126,11 @@ const Infirmerie = () => {
 
   const handleEditSoin = (soin: Soin) => {
     setEditingSoin(soin);
-    setShowSoinForm(true);
+    setShowMedicalSelector(true);
   };
 
-  const handleCloseSoinForm = () => {
-    setShowSoinForm(false);
+  const handleCloseMedicalSelector = () => {
+    setShowMedicalSelector(false);
     setEditingSoin(null);
   };
 
@@ -177,20 +175,14 @@ const Infirmerie = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex justify-center">
                 <Button 
-                  onClick={() => setShowTraitementForm(true)}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  onClick={() => setShowMedicalSelector(true)}
+                  className="bg-primary hover:bg-primary/90"
+                  size="lg"
                 >
-                  <Pill className="h-4 w-4 mr-2" />
-                  Ajouter un traitement
-                </Button>
-                <Button 
-                  onClick={() => setShowSoinForm(true)}
-                  className="bg-green-600 hover:bg-green-700"
-                >
-                  <Stethoscope className="h-4 w-4 mr-2" />
-                  Ajouter un soin/consultation
+                  <Plus className="h-5 w-5 mr-2" />
+                  Ajouter un traitement ou un soin
                 </Button>
               </div>
             </CardContent>
@@ -334,20 +326,12 @@ const Infirmerie = () => {
         </div>
       </main>
 
-      <TraitementForm 
-        isOpen={showTraitementForm}
-        onClose={() => setShowTraitementForm(false)}
+      <MedicalActionSelector
+        isOpen={showMedicalSelector}
+        onClose={handleCloseMedicalSelector}
         jeunes={jeunes}
         selectedJeuneId={null}
-        onTraitementAdded={handleDataUpdated}
-      />
-
-      <SoinForm 
-        isOpen={showSoinForm}
-        onClose={handleCloseSoinForm}
-        jeunes={jeunes}
-        selectedJeuneId={null}
-        onSoinAdded={handleDataUpdated}
+        onDataUpdated={handleDataUpdated}
         editingSoin={editingSoin}
       />
     </div>
