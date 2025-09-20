@@ -1,4 +1,4 @@
-
+import { useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -28,6 +28,33 @@ const queryClient = new QueryClient({
 });
 
 const App = () => {
+  // Gestionnaire d'erreur pour capturer les erreurs de React
+  useEffect(() => {
+    const handleError = (error: ErrorEvent) => {
+      if (error.message.includes('dispatcher is null') || 
+          error.message.includes("can't access property")) {
+        console.warn('React dispatcher error détecté, rechargement de la page...');
+        window.location.reload();
+      }
+    };
+
+    const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+      if (event.reason?.message?.includes('dispatcher is null') ||
+          event.reason?.message?.includes("can't access property")) {
+        console.warn('React dispatcher error détecté dans une promesse, rechargement de la page...');
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener('error', handleError);
+      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>

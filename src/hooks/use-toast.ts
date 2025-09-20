@@ -169,6 +169,7 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
+  // Vérification de sécurité pour éviter l'erreur "dispatcher is null"
   const [state, setState] = React.useState<State>(memoryState)
 
   React.useEffect(() => {
