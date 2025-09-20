@@ -8,7 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
-import ClickableLogo from "@/components/ClickableLogo";
+
 import DataManager from "@/components/DataManager";
 import MainCourantePreview from "@/components/MainCourantePreview";
 
@@ -219,7 +219,9 @@ const Index = () => {
                 <img 
                   src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
                   alt="Logo Fondation Maison de la Gendarmerie" 
-                  className="h-16 w-auto"
+                  className="h-16 w-auto cursor-pointer transition-all duration-300 hover:scale-105"
+                  onClick={() => window.open('https://fondationmg.fr/', '_blank')}
+                  title="Visiter fondationmg.fr"
                 />
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900">Gestion CVJ MG</h1>
@@ -286,7 +288,6 @@ const Index = () => {
             </div>
             <div className="flex items-center gap-2">
               <DataManager />
-              <ClickableLogo />
               <SessionManager />
             </div>
           </div>
