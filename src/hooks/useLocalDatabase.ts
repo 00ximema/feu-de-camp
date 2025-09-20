@@ -16,12 +16,8 @@ export const useLocalDatabase = () => {
           localStorage.setItem('db-migrated', 'true');
         }
         
-        // Nettoyage des données orphelines pour la session courante
-        const currentSessionStr = localStorage.getItem('current-session');
-        if (currentSessionStr) {
-          const currentSession = JSON.parse(currentSessionStr);
-          await localDB.cleanOrphanedData(currentSession.id);
-        }
+        // Note: Nettoyage des données orphelines désactivé pour éviter l'héritage automatique
+        // Si besoin, cela peut être fait manuellement via les outils de gestion des données
         setIsInitialized(true);
         console.log('Base de données locale initialisée');
       } catch (error) {

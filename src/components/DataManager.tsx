@@ -27,6 +27,11 @@ const DataManager = () => {
       return;
     }
 
+    console.log('=== DONNÉES SESSION AVANT EXPORT ===');
+    console.log('Sessions disponibles:', sessions.map(s => ({ id: s.id, name: s.name })));
+    console.log('Session courante:', currentSession ? { id: currentSession.id, name: currentSession.name } : 'Aucune');
+    console.log('Session sélectionnée pour export:', selectedSessionForExport);
+
     const sessionToExport = selectedSessionForExport || currentSession?.id;
     if (!sessionToExport) {
       toast({
@@ -49,6 +54,10 @@ const DataManager = () => {
 
     setIsExporting(true);
     try {
+      console.log('=== DÉBUT EXPORT SESSION ===');
+      console.log('Session à exporter:', sessionToExport);
+      console.log('Nom de la session:', session.name);
+      
       const exportData: any = {
         session: session,
         exportDate: new Date().toISOString(),
@@ -60,11 +69,20 @@ const DataManager = () => {
       
       for (const table of tables) {
         try {
+          console.log(`Export ${table} pour session ${sessionToExport}...`);
           const data = await db.getAll(table as any, sessionToExport);
+          console.log(`${table}: ${data.length} entrées trouvées`);
           exportData[table] = data;
         } catch (error) {
           console.error(`Erreur lors de l'export de ${table}:`, error);
           exportData[table] = [];
+        }
+      }
+
+      console.log('=== CONTENU EXPORT ===');
+      for (const [tableName, tableData] of Object.entries(exportData)) {
+        if (Array.isArray(tableData)) {
+          console.log(`${tableName}: ${tableData.length} entrées`);
         }
       }
 
