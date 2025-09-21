@@ -274,7 +274,7 @@ interface DatabaseSchema {
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 7; // Augmenter la version pour forcer la mise à jour
+  private version = 8; // Augmenter la version pour ajouter piecesComptables
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -351,6 +351,11 @@ class LocalDatabase {
           const mainCouranteStore = db.createObjectStore('mainCouranteEvents', { keyPath: 'id' });
           mainCouranteStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table mainCouranteEvents créée');
+        }
+        if (!db.objectStoreNames.contains('piecesComptables')) {
+          const piecesComptablesStore = db.createObjectStore('piecesComptables', { keyPath: 'id' });
+          piecesComptablesStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table piecesComptables créée');
         }
       };
     });
@@ -560,7 +565,7 @@ class LocalDatabase {
   // Export de toutes les données
   async exportAllData(): Promise<any> {
     const exportData: any = {};
-    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'piecesComptables', 'mainCouranteEvents'];
     
     for (const table of tables) {
       try {
@@ -577,7 +582,7 @@ class LocalDatabase {
 
   // Import de toutes les données
   async importAllData(data: any): Promise<void> {
-    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif'];
+    const tables: (keyof DatabaseSchema)[] = ['sessions', 'animateurs', 'jeunes', 'groupes', 'events', 'plannings', 'roomData', 'traitements', 'soins', 'signatures', 'administratif', 'piecesComptables', 'mainCouranteEvents'];
     
     for (const table of tables) {
       if (data[table] && Array.isArray(data[table])) {
