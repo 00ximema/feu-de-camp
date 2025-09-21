@@ -28,6 +28,7 @@ interface Jeune {
   nom: string;
   prenom: string;
   age: number;
+  [key: string]: any; // Pour accepter toutes les propriétés supplémentaires
 }
 
 interface EventFormProps {
