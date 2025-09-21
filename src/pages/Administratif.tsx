@@ -5,14 +5,16 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2, Edit, Shield } from "lucide-react";
+import { FileText, ArrowLeft, CheckSquare, Phone, AlertTriangle, Plus, Trash2, Edit, Shield, Upload, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { Youngster } from "@/types/youngster";
 import { useToast } from "@/hooks/use-toast";
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
+import { useAcmDocuments } from '@/hooks/useAcmDocuments';
+import AcmDocumentUploader from '@/components/acm/AcmDocumentUploader';
+import AcmDocumentManager from '@/components/acm/AcmDocumentManager';
 
 const Administratif = () => {
   const [youngsters, setYoungsters] = useState<Youngster[]>([]);
@@ -20,6 +22,7 @@ const Administratif = () => {
   const { toast } = useToast();
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
+  const { acmDocuments: acmDocumentFiles, addDocument, deleteDocument, downloadDocument } = useAcmDocuments();
   const [checklistData, setChecklistData] = useState<{ [key: string]: { [key: string]: boolean } }>({});
   const [exerciceEvacuationDone, setExerciceEvacuationDone] = useState(false);
   const [acmDocuments, setAcmDocuments] = useState({
@@ -59,6 +62,12 @@ const Administratif = () => {
     adresse: "",
     telephone: ""
   });
+
+  // États pour la gestion des documents ACM
+  const [showUploadDialog, setShowUploadDialog] = useState(false);
+  const [showDocumentsDialog, setShowDocumentsDialog] = useState(false);
+  const [selectedDocumentType, setSelectedDocumentType] = useState("");
+  const [selectedDocumentLabel, setSelectedDocumentLabel] = useState("");
 
   // Charger les données administratives et les jeunes depuis la base de données
   useEffect(() => {
@@ -449,107 +458,82 @@ const Administratif = () => {
           </CardContent>
         </Card>
 
-        {/* Check-List Documents ACM */}
+        {/* Documents obligatoires ACM */}
         <Card className="mb-6">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <FileText className="h-4 w-4 text-green-600" />
               <span>Documents obligatoires ACM</span>
             </CardTitle>
             <CardDescription className="text-sm">
-              Vérifiez que tous les documents obligatoires sont présents
+              Vérifiez la présence de tous les documents obligatoires et téléchargez-les
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.declarationACM}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('declarationACM', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Déclaration ACM</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.projetEducatif}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('projetEducatif', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Projet éducatif</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.projetPedagogique}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('projetPedagogique', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Projet pédagogique</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.registrePresence}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('registrePresence', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Registre de présence</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.planEvacuationConsignes}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('planEvacuationConsignes', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Plan des locaux et consignes d'évacuation</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.panneauInterdictionFumer}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('panneauInterdictionFumer', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Panneau d'interdiction de fumer dans les locaux</label>
-                </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.adressesUrgence}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('adressesUrgence', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Adresses et numéros de téléphone des services d'urgence</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.tableauTemperatures}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('tableauTemperatures', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Tableau des relevés de température sur les réfrigérateurs et congélateurs</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.menusSemaine}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('menusSemaine', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Menus de la semaine</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.protocoleSanitaire}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('protocoleSanitaire', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Protocole sanitaire</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.assurances}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('assurances', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Assurances</label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    checked={acmDocuments.conventionsPartenaires}
-                    onCheckedChange={(checked) => handleAcmCheckboxChange('conventionsPartenaires', checked as boolean)}
-                  />
-                  <label className="text-xs font-medium">Conventions partenaires</label>
-                </div>
-              </div>
+            <div className="grid grid-cols-1 gap-3">
+              {Object.entries({
+                declarationACM: "Déclaration ACM",
+                projetEducatif: "Projet éducatif",
+                projetPedagogique: "Projet pédagogique",
+                registrePresence: "Registre de présence",
+                planEvacuationConsignes: "Plan d'évacuation et consignes",
+                panneauInterdictionFumer: "Panneau interdiction de fumer",
+                adressesUrgence: "Adresses et téléphones d'urgence",
+                tableauTemperatures: "Tableau des températures",
+                menusSemaine: "Menus de la semaine",
+                protocoleSanitaire: "Protocole sanitaire",
+                assurances: "Assurances",
+                conventionsPartenaires: "Conventions avec partenaires"
+              }).map(([key, label]) => {
+                const documentCount = acmDocumentFiles.filter(doc => doc.documentType === key).length;
+                return (
+                  <div key={key} className="flex items-center justify-between p-3 border rounded">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox
+                        id={key}
+                        checked={acmDocuments[key as keyof typeof acmDocuments]}
+                        onCheckedChange={(checked) => handleAcmCheckboxChange(key, !!checked)}
+                      />
+                      <Label htmlFor={key} className="text-sm flex-grow cursor-pointer">
+                        {label}
+                      </Label>
+                      {documentCount > 0 && (
+                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+                          {documentCount} document{documentCount > 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setSelectedDocumentType(key);
+                          setSelectedDocumentLabel(label);
+                          setShowUploadDialog(true);
+                        }}
+                      >
+                        <Upload className="h-3 w-3 mr-1" />
+                        Ajouter
+                      </Button>
+                      {documentCount > 0 && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedDocumentType(key);
+                            setSelectedDocumentLabel(label);
+                            setShowDocumentsDialog(true);
+                          }}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Voir ({documentCount})
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -559,11 +543,11 @@ const Administratif = () => {
           <Card className="mb-6">
             <CardHeader className="pb-4">
               <CardTitle className="flex items-center space-x-2 text-lg">
-                <CheckSquare className="h-4 w-4" />
-                <span>Check-List Documents ({youngsters.length} jeunes)</span>
+                <CheckSquare className="h-4 w-4 text-blue-600" />
+                <span>Check-List documents des jeunes</span>
               </CardTitle>
               <CardDescription className="text-sm">
-                Suivi des documents administratifs pour chaque jeune
+                Cochez les documents reçus pour chaque jeune
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -571,99 +555,79 @@ const Administratif = () => {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[160px] py-2">Nom du jeune</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Fiche de renseignements</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Fiche sanitaire de liaison</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Copie CNI</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Copie des vaccins</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Autorisation de sortie de territoire</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Copie CNI parents</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Autorisation QL</TableHead>
-                      <TableHead className="text-center py-2 text-xs">Progression</TableHead>
+                      <TableHead className="w-[200px]">Jeune</TableHead>
+                      <TableHead className="text-center">Fiche renseignements</TableHead>
+                      <TableHead className="text-center">Fiche sanitaire</TableHead>
+                      <TableHead className="text-center">Copie CNI jeune</TableHead>
+                      <TableHead className="text-center">Copie vaccins</TableHead>
+                      <TableHead className="text-center">Autorisation sortie territoire</TableHead>
+                      <TableHead className="text-center">Copie CNI parents</TableHead>
+                      <TableHead className="text-center">Autorisation QL</TableHead>
+                      <TableHead className="text-center">Progression</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {youngsters.map((youngster) => (
-                      <TableRow key={youngster.id} className="hover:bg-gray-50">
-                        <TableCell className="font-medium py-2">
+                      <TableRow key={youngster.id}>
+                        <TableCell className="font-medium">
                           <div>
-                            <div className="font-semibold text-sm">{youngster.prenom} {youngster.nom}</div>
+                            <div className="text-sm font-medium">{youngster.prenom} {youngster.nom}</div>
                             <div className="text-xs text-gray-500">{youngster.age} ans</div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.ficheRenseignements || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'ficheRenseignements', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'ficheRenseignements', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.ficheSanitaire || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'ficheSanitaire', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'ficheSanitaire', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieCNI || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'copieCNI', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'copieCNI', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieVaccins || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'copieVaccins', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'copieVaccins', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.autorisationSortieTerritory || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'autorisationSortieTerritory', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'autorisationSortieTerritory', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.copieCNIParents || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'copieCNIParents', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'copieCNIParents', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
+                        <TableCell className="text-center">
                           <Checkbox
                             checked={checklistData[youngster.id]?.autorisationQL || false}
-                            onCheckedChange={(checked) => 
-                              handleCheckboxChange(youngster.id, 'autorisationQL', checked as boolean)
-                            }
+                            onCheckedChange={(checked) => handleCheckboxChange(youngster.id, 'autorisationQL', !!checked)}
                           />
                         </TableCell>
-                        <TableCell className="text-center py-2">
-                          <div className="flex items-center justify-center space-x-2">
-                            <div className="w-12 bg-gray-200 rounded-full h-1.5">
-                              <div 
-                                className={`h-1.5 rounded-full transition-all duration-300 ${
-                                  getCompletionPercentage(youngster.id) === 100 
-                                    ? 'bg-green-500' 
-                                    : getCompletionPercentage(youngster.id) > 50 
-                                    ? 'bg-yellow-500' 
-                                    : 'bg-red-500'
-                                }`}
-                                style={{ width: `${getCompletionPercentage(youngster.id)}%` }}
-                              />
-                            </div>
-                            <span className="text-xs font-medium text-gray-600">
+                        <TableCell className="text-center">
+                          <div className="flex items-center space-x-2">
+                            <div className="text-sm font-medium">
                               {getCompletionPercentage(youngster.id)}%
-                            </span>
+                            </div>
+                            <div className="w-16 bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${getCompletionPercentage(youngster.id)}%` }}
+                              ></div>
+                            </div>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -681,6 +645,31 @@ const Administratif = () => {
           </Card>
         )}
 
+        {/* Dialogs de gestion des documents ACM */}
+        <AcmDocumentUploader
+          showUploadDialog={showUploadDialog}
+          onClose={() => setShowUploadDialog(false)}
+          onFileUpload={async (file, documentType) => {
+            try {
+              await addDocument(file, documentType);
+              setShowUploadDialog(false);
+            } catch (error) {
+              console.error('Erreur lors de l\'upload:', error);
+            }
+          }}
+          documentType={selectedDocumentType}
+          documentLabel={selectedDocumentLabel}
+        />
+
+        <AcmDocumentManager
+          documents={acmDocumentFiles}
+          onDeleteDocument={deleteDocument}
+          onDownloadDocument={downloadDocument}
+          showDocuments={showDocumentsDialog}
+          onClose={() => setShowDocumentsDialog(false)}
+          documentType={selectedDocumentType}
+          documentLabel={selectedDocumentLabel}
+        />
       </main>
     </div>
   );
