@@ -41,7 +41,7 @@ interface PlanningEvent {
 interface PlanningCell {
   date: string;
   timeSlot: string;
-  event?: PlanningEvent;
+  events?: PlanningEvent[]; // Changé pour supporter plusieurs événements
 }
 
 const TIME_SLOTS = [
@@ -258,7 +258,7 @@ const PlanningTableGenerator = () => {
     const timeSlot = newData[rowIndex][cellIndex].timeSlot;
     const isSpecialRow = SPECIAL_ROWS.includes(timeSlot);
     
-    newData[rowIndex][cellIndex].event = {
+    const newEvent = {
       id: `${rowIndex}-${cellIndex}-${Date.now()}`,
       name: isSpecialRow ? timeSlot : eventData.eventName,
       type: (eventData.type as any) || (isSpecialRow ? 'astreinte' : 'activity'),
@@ -273,15 +273,33 @@ const PlanningTableGenerator = () => {
       description: eventData.notes
     };
     
+    // Initialiser le tableau d'événements si nécessaire
+    if (!newData[rowIndex][cellIndex].events) {
+      newData[rowIndex][cellIndex].events = [];
+    }
+    
+    // Ajouter le nouvel événement à la liste
+    newData[rowIndex][cellIndex].events!.push(newEvent);
+    
     setPlanningData(newData);
     await savePlanning(newData);
   };
 
-  const handleDeleteEvent = async (rowIndex: number, cellIndex: number, e: React.MouseEvent) => {
+  const handleDeleteEvent = async (rowIndex: number, cellIndex: number, eventId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    console.log('Deleting event at:', rowIndex, cellIndex);
+    console.log('Deleting event:', eventId, 'at:', rowIndex, cellIndex);
     const newData = [...planningData];
-    delete newData[rowIndex][cellIndex].event;
+    
+    if (newData[rowIndex][cellIndex].events) {
+      // Supprimer l'événement spécifique de la liste
+      newData[rowIndex][cellIndex].events = newData[rowIndex][cellIndex].events!.filter(event => event.id !== eventId);
+      
+      // Si aucun événement restant, supprimer la propriété events
+      if (newData[rowIndex][cellIndex].events!.length === 0) {
+        delete newData[rowIndex][cellIndex].events;
+      }
+    }
+    
     setPlanningData(newData);
     await savePlanning(newData);
     
@@ -542,29 +560,35 @@ const PlanningTableGenerator = () => {
             const cellIndex = dateRange.findIndex(d => format(d, 'yyyy-MM-dd') === dateString);
             
             if (rowIndex >= 0 && cellIndex >= 0 && planningData[rowIndex] && planningData[rowIndex][cellIndex]) {
-              const event = planningData[rowIndex][cellIndex].event;
-              if (event) {
-                let content = `<div style="font-weight: bold; color: #1f2937; margin-bottom: 2px;">${event.name}</div>`;
+              const events = planningData[rowIndex][cellIndex].events;
+              if (events && events.length > 0) {
+                let content = '';
                 
-                if (event.startTime && event.endTime) {
-                  content += `<div style="color: #2563eb; font-size: 7px; margin-bottom: 1px;">${event.startTime} - ${event.endTime}</div>`;
-                }
-                
-                if (event.assignedMembers && event.assignedMembers.length > 0) {
-                  content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;"><strong>Adultes:</strong> ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
-                }
-                
-                if (event.selectedGroups && event.selectedGroups.length > 0) {
-                  content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Groupes:</strong> ${event.selectedGroups.join(', ')}</div>`;
-                }
-                
-                if (event.selectedJeunes && event.selectedJeunes.length > 0) {
-                  content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Jeunes:</strong> ${event.selectedJeunes.length} sélectionné${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
-                }
-                
-                if (event.notes) {
-                  content += `<div style="color: #7c3aed; font-size: 7px; font-style: italic;">${event.notes}</div>`;
-                }
+                events.forEach((event, index) => {
+                  if (index > 0) content += '<div style="border-top: 1px solid #e5e7eb; margin: 2px 0; padding-top: 2px;"></div>';
+                  
+                  content += `<div style="font-weight: bold; color: #1f2937; margin-bottom: 2px;">${event.name}</div>`;
+                  
+                  if (event.startTime && event.endTime) {
+                    content += `<div style="color: #2563eb; font-size: 7px; margin-bottom: 1px;">${event.startTime} - ${event.endTime}</div>`;
+                  }
+                  
+                  if (event.assignedMembers && event.assignedMembers.length > 0) {
+                    content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;"><strong>Adultes:</strong> ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
+                  }
+                  
+                  if (event.selectedGroups && event.selectedGroups.length > 0) {
+                    content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Groupes:</strong> ${event.selectedGroups.join(', ')}</div>`;
+                  }
+                  
+                  if (event.selectedJeunes && event.selectedJeunes.length > 0) {
+                    content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Jeunes:</strong> ${event.selectedJeunes.length} sélectionné${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
+                  }
+                  
+                  if (event.notes) {
+                    content += `<div style="color: #7c3aed; font-size: 7px; font-style: italic;">${event.notes}</div>`;
+                  }
+                });
                 
                 cell.innerHTML = content;
               }
@@ -865,62 +889,67 @@ const PlanningTableGenerator = () => {
                             className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
                             onClick={() => handleCellClick(rowIndex, cellIndex)}
                           >
-                            {cell.event ? (
-                              <div className="space-y-1">
-                                <div className="font-medium text-sm text-gray-900">
-                                  {cell.event.name}
-                                </div>
-                                {cell.event.startTime && cell.event.endTime && (
-                                  <div className="text-xs text-blue-600">
-                                    {cell.event.startTime} - {cell.event.endTime}
-                                  </div>
-                                )}
-                                 {cell.event.assignedMembers && cell.event.assignedMembers.length > 0 && (
-                                   <div className="text-xs text-gray-600">
-                                     <strong>Adultes:</strong> {cell.event.assignedMembers.map(member => 
-                                       `${member.prenom} ${member.nom}`
-                                     ).join(', ')}
-                                   </div>
-                                 )}
-                                 {cell.event.selectedGroups && cell.event.selectedGroups.length > 0 && (
-                                   <div className="text-xs text-green-600">
-                                     <strong>Groupes:</strong> {cell.event.selectedGroups.join(', ')}
-                                   </div>
-                                 )}
-                                 {cell.event.selectedJeunes && cell.event.selectedJeunes.length > 0 && (
-                                   <div className="text-xs text-green-600">
-                                     <strong>Jeunes:</strong> {cell.event.selectedJeunes.length} sélectionné{cell.event.selectedJeunes.length > 1 ? 's' : ''}
-                                   </div>
-                                 )}
-                                {cell.event.notes && (
-                                  <div className="text-xs text-purple-600 italic">
-                                    {cell.event.notes}
-                                  </div>
-                                )}
-                                {cell.event.startDate && cell.event.endDate && 
-                                 cell.event.startDate !== cell.event.endDate && (
-                                  <div className="text-xs text-blue-600">
-                                    {isValid(new Date(cell.event.startDate)) && isValid(new Date(cell.event.endDate)) ? (
-                                      <>
-                                        {format(new Date(cell.event.startDate), 'dd/MM')} - {format(new Date(cell.event.endDate), 'dd/MM')}
-                                      </>
-                                    ) : (
-                                      'Dates invalides'
+                            {cell.events && cell.events.length > 0 ? (
+                              <div className="space-y-2">
+                                {cell.events.map((event, eventIndex) => (
+                                  <div key={event.id} className="relative group/event border-l-2 border-blue-500 pl-2 pb-1">
+                                    <div className="font-medium text-sm text-gray-900">
+                                      {event.name}
+                                    </div>
+                                    {event.startTime && event.endTime && (
+                                      <div className="text-xs text-blue-600">
+                                        {event.startTime} - {event.endTime}
+                                      </div>
                                     )}
+                                    {event.assignedMembers && event.assignedMembers.length > 0 && (
+                                      <div className="text-xs text-gray-600">
+                                        <strong>Adultes:</strong> {event.assignedMembers.map(member => 
+                                          `${member.prenom} ${member.nom}`
+                                        ).join(', ')}
+                                      </div>
+                                    )}
+                                    {event.selectedGroups && event.selectedGroups.length > 0 && (
+                                      <div className="text-xs text-green-600">
+                                        <strong>Groupes:</strong> {event.selectedGroups.join(', ')}
+                                      </div>
+                                    )}
+                                    {event.selectedJeunes && event.selectedJeunes.length > 0 && (
+                                      <div className="text-xs text-green-600">
+                                        <strong>Jeunes:</strong> {event.selectedJeunes.length} sélectionné{event.selectedJeunes.length > 1 ? 's' : ''}
+                                      </div>
+                                    )}
+                                    {event.notes && (
+                                      <div className="text-xs text-purple-600 italic">
+                                        {event.notes}
+                                      </div>
+                                    )}
+                                    {event.startDate && event.endDate && 
+                                     event.startDate !== event.endDate && (
+                                      <div className="text-xs text-blue-600">
+                                        {isValid(new Date(event.startDate)) && isValid(new Date(event.endDate)) ? (
+                                          <>
+                                            {format(new Date(event.startDate), 'dd/MM')} - {format(new Date(event.endDate), 'dd/MM')}
+                                          </>
+                                        ) : (
+                                          'Dates invalides'
+                                        )}
+                                      </div>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="opacity-0 group-hover/event:opacity-100 absolute -top-1 -right-1 h-5 w-5 p-0 bg-white border border-red-200 hover:bg-red-50"
+                                      onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, event.id, e)}
+                                    >
+                                      <Trash2 className="h-3 w-3 text-red-600" />
+                                    </Button>
                                   </div>
-                                )}
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="opacity-0 group-hover:opacity-100 absolute top-1 right-1 h-6 w-6 p-0"
-                                  onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, e)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
+                                ))}
                               </div>
                             ) : (
-                              <div className="h-12 flex items-center justify-center text-gray-400 group-hover:text-gray-600">
-                                <Plus className="h-4 w-4" />
+                              <div className="text-xs text-gray-400 text-center">
+                                <Plus className="h-4 w-4 mx-auto mb-1" />
+                                Ajouter événement
                               </div>
                             )}
                           </TableCell>
@@ -945,7 +974,7 @@ const PlanningTableGenerator = () => {
         timeSlot={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.timeSlot || '' : ''}
         date={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.date || '' : ''}
         teamMembers={teamMembers}
-        currentEvent={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.event : undefined}
+        currentEvent={selectedCell && planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.events?.[0] ? planningData[selectedCell.rowIndex][selectedCell.cellIndex].events![0] : undefined}
       />
     </div>
   );

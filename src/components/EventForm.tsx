@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -147,66 +148,102 @@ const EventForm: React.FC<EventFormProps> = ({
           <div className="space-y-4">
             <h3 className="font-medium">Personnes concernées (optionnel)</h3>
             
-            <ScrollArea className="max-h-60 border rounded-md p-4">
-              <div className="space-y-4">
-                {/* Équipe */}
-                {team.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-primary mb-2">Équipe</h4>
-                    <div className="space-y-2">
-                      {team.map((member) => (
-                        <div key={member.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`member-${member.id}`}
-                            checked={selectedMembers.includes(member.id)}
-                            onCheckedChange={() => handleMemberToggle(member.id)}
-                          />
-                          <Label 
-                            htmlFor={`member-${member.id}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            {member.prenom} {member.nom} ({member.role})
-                          </Label>
-                        </div>
+            <div className="space-y-4">
+              {/* Équipe */}
+              {team.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-primary mb-2">Équipe</h4>
+                  <Select onValueChange={(value) => {
+                    if (value && !selectedMembers.includes(value)) {
+                      setSelectedMembers(prev => [...prev, value]);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un membre d'équipe" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {team.filter(member => !selectedMembers.includes(member.id)).map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.prenom} {member.nom} ({member.role})
+                        </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {selectedMembers.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {selectedMembers.map(memberId => {
+                        const member = team.find(m => m.id === memberId);
+                        return member ? (
+                          <div key={memberId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm">{member.prenom} {member.nom} ({member.role})</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedMembers(prev => prev.filter(id => id !== memberId))}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ) : null;
+                      })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
 
-                {team.length > 0 && jeunes.length > 0 && <Separator />}
-
-                {/* Jeunes */}
-                {jeunes.length > 0 && (
-                  <div>
-                    <h4 className="font-medium text-sm text-primary mb-2">Jeunes</h4>
-                    <div className="space-y-2">
-                      {jeunes.map((jeune) => (
-                        <div key={jeune.id} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={`jeune-${jeune.id}`}
-                            checked={selectedJeunes.includes(jeune.id)}
-                            onCheckedChange={() => handleJeuneToggle(jeune.id)}
-                          />
-                          <Label 
-                            htmlFor={`jeune-${jeune.id}`}
-                            className="text-sm cursor-pointer"
-                          >
-                            {jeune.prenom} {jeune.nom} ({jeune.age} ans)
-                          </Label>
-                        </div>
+              {/* Jeunes */}
+              {jeunes.length > 0 && (
+                <div>
+                  <h4 className="font-medium text-sm text-primary mb-2">Jeunes</h4>
+                  <Select onValueChange={(value) => {
+                    if (value && !selectedJeunes.includes(value)) {
+                      setSelectedJeunes(prev => [...prev, value]);
+                    }
+                  }}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un jeune" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {jeunes.filter(jeune => !selectedJeunes.includes(jeune.id)).map((jeune) => (
+                        <SelectItem key={jeune.id} value={jeune.id}>
+                          {jeune.prenom} {jeune.nom} ({jeune.age} ans)
+                        </SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                  
+                  {selectedJeunes.length > 0 && (
+                    <div className="mt-2 space-y-1">
+                      {selectedJeunes.map(jeuneId => {
+                        const jeune = jeunes.find(j => j.id === jeuneId);
+                        return jeune ? (
+                          <div key={jeuneId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                            <span className="text-sm">{jeune.prenom} {jeune.nom} ({jeune.age} ans)</span>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setSelectedJeunes(prev => prev.filter(id => id !== jeuneId))}
+                            >
+                              ×
+                            </Button>
+                          </div>
+                        ) : null;
+                      })}
                     </div>
-                  </div>
-                )}
+                  )}
+                </div>
+              )}
 
-                {team.length === 0 && jeunes.length === 0 && (
-                  <p className="text-sm text-muted-foreground text-center py-4">
-                    Aucune équipe ou jeunes définis.
-                    Vous pouvez créer l'événement sans sélection.
-                  </p>
-                )}
-              </div>
-            </ScrollArea>
+              {team.length === 0 && jeunes.length === 0 && (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Aucune équipe ou jeunes définis.
+                  Vous pouvez créer l'événement sans sélection.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="flex justify-end space-x-2">

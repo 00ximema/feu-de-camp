@@ -93,24 +93,27 @@ const LeaveSignaturePlanning = () => {
         if (planning.data) {
           planning.data.forEach((row, rowIndex) => {
             row.forEach((cell, cellIndex) => {
-              if (cell.event && 
-                  (cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs') &&
-                  cell.event.assignedMembers) {
+              if (cell.events && 
+                  (cell.timeSlot === 'Congés' || cell.timeSlot === 'Repos récupérateurs')) {
                 
-                cell.event.assignedMembers.forEach(member => {
-                  if (!memberLeaveData[member.id]) {
-                    memberLeaveData[member.id] = {
-                      member,
-                      leaves: []
-                    };
+                cell.events.forEach(event => {
+                  if (event.assignedMembers) {
+                    event.assignedMembers.forEach(member => {
+                      if (!memberLeaveData[member.id]) {
+                        memberLeaveData[member.id] = {
+                          member,
+                          leaves: []
+                        };
+                      }
+                      
+                      memberLeaveData[member.id].leaves.push({
+                        type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
+                        startDate: event.startDate || cell.date,
+                        endDate: event.endDate || cell.date,
+                        notes: event.notes || event.description
+                      });
+                    });
                   }
-                  
-                  memberLeaveData[member.id].leaves.push({
-                    type: cell.timeSlot === 'Congés' ? 'leave' : 'recovery',
-                    startDate: cell.event!.startDate || cell.date,
-                    endDate: cell.event!.endDate || cell.date,
-                    notes: cell.event!.notes || cell.event!.description
-                  });
                 });
               }
             });

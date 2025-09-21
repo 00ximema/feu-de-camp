@@ -81,6 +81,20 @@ interface DatabaseSchema {
     date: string;
     timestamp: string;
   };
+
+  // Pièces comptables
+  piecesComptables: {
+    id: number;
+    sessionId?: string;
+    date: string;
+    libelle: string;
+    montant: number;
+    categorie: string;
+    type: 'recette' | 'depense';
+    pieceIntegree: boolean;
+    createdAt: string;
+    updatedAt: string;
+  };
   
   // Plannings - Updated to include more comprehensive planning data
   plannings: {
@@ -89,7 +103,7 @@ interface DatabaseSchema {
     data: Array<Array<{
       date: string;
       timeSlot: string;
-      event?: {
+      events?: Array<{
         id: string;
         name: string;
         type: 'activity' | 'meal' | 'meeting' | 'leave' | 'recovery' | 'astreinte' | 'other';
@@ -107,7 +121,7 @@ interface DatabaseSchema {
         selectedJeunes?: string[];
         description?: string;
         notes?: string;
-      };
+      }>;
     }>>;
     startDate?: string;
     endDate?: string;

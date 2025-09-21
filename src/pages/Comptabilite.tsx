@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,8 @@ import { Calculator, TrendingUp, TrendingDown, Euro, Plus, Trash2, Edit } from "
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import SimpleCalculator from "@/components/SimpleCalculator";
+import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import { useSession } from "@/hooks/useSession";
 
 
 interface PieceComptable {
@@ -27,6 +29,8 @@ const Comptabilite = () => {
   const [showPieceForm, setShowPieceForm] = useState(false);
   const [editingPiece, setEditingPiece] = useState<PieceComptable | null>(null);
   const { toast } = useToast();
+  const { isInitialized, db } = useLocalDatabase();
+  const { currentSession } = useSession();
 
   const [pieceForm, setPieceForm] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -54,7 +58,25 @@ const Comptabilite = () => {
     };
   };
 
-  const handleAddPiece = () => {
+  // Charger les pièces comptables depuis la base de données
+  const loadPiecesComptables = async () => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const pieces = await db.getAll('piecesComptables', currentSession.id) as PieceComptable[];
+      setPiecesComptables(pieces.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+    } catch (error) {
+      console.error('Erreur lors du chargement des pièces comptables:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (isInitialized && currentSession) {
+      loadPiecesComptables();
+    }
+  }, [isInitialized, currentSession]);
+
+  const handleAddPiece = async () => {
     if (!pieceForm.libelle || !pieceForm.montant) {
       toast({
         title: "Erreur",
@@ -64,40 +86,56 @@ const Comptabilite = () => {
       return;
     }
 
-    const newPiece: PieceComptable = {
+    if (!isInitialized || !currentSession) return;
+
+    const newPiece: PieceComptable & { sessionId: string; createdAt: string; updatedAt: string } = {
       id: editingPiece ? editingPiece.id : Date.now(),
       date: pieceForm.date,
       libelle: pieceForm.libelle,
       montant: parseFloat(pieceForm.montant),
       categorie: pieceForm.categorie || "Général",
       type: pieceForm.type,
-      pieceIntegree: pieceForm.pieceIntegree
+      pieceIntegree: pieceForm.pieceIntegree,
+      sessionId: currentSession.id,
+      createdAt: editingPiece ? (editingPiece as any).createdAt || new Date().toISOString() : new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
 
-    if (editingPiece) {
-      setPiecesComptables(prev => prev.map(p => p.id === editingPiece.id ? newPiece : p));
-      toast({
-        title: "Pièce comptable modifiée",
-        description: "La pièce comptable a été mise à jour avec succès"
+    try {
+      if (editingPiece) {
+        await db.save('piecesComptables', newPiece);
+        toast({
+          title: "Pièce comptable modifiée",
+          description: "La pièce comptable a été mise à jour avec succès"
+        });
+      } else {
+        await db.save('piecesComptables', newPiece);
+        toast({
+          title: "Pièce comptable ajoutée",
+          description: "La nouvelle pièce comptable a été enregistrée"
+        });
+      }
+
+      await loadPiecesComptables();
+
+      setPieceForm({
+        date: new Date().toISOString().split('T')[0],
+        libelle: "",
+        montant: "",
+        categorie: "",
+        type: "recette",
+        pieceIntegree: false
       });
-    } else {
-      setPiecesComptables(prev => [...prev, newPiece]);
+      setShowPieceForm(false);
+      setEditingPiece(null);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
       toast({
-        title: "Pièce comptable ajoutée",
-        description: "La nouvelle pièce comptable a été enregistrée"
+        title: "Erreur",
+        description: "Impossible d'enregistrer la pièce comptable",
+        variant: "destructive"
       });
     }
-
-    setPieceForm({
-      date: new Date().toISOString().split('T')[0],
-      libelle: "",
-      montant: "",
-      categorie: "",
-      type: "recette",
-      pieceIntegree: false
-    });
-    setShowPieceForm(false);
-    setEditingPiece(null);
   };
 
   const handleEditPiece = (piece: PieceComptable) => {
@@ -113,18 +151,51 @@ const Comptabilite = () => {
     setShowPieceForm(true);
   };
 
-  const handleDeletePiece = (id: number) => {
-    setPiecesComptables(prev => prev.filter(p => p.id !== id));
-    toast({
-      title: "Pièce comptable supprimée",
-      description: "La pièce comptable a été supprimée avec succès"
-    });
+  const handleDeletePiece = async (id: number) => {
+    if (!isInitialized) return;
+
+    try {
+      await db.delete('piecesComptables', id.toString());
+      await loadPiecesComptables();
+      toast({
+        title: "Pièce comptable supprimée",
+        description: "La pièce comptable a été supprimée avec succès"
+      });
+    } catch (error) {
+      console.error('Erreur lors de la suppression:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de supprimer la pièce comptable",
+        variant: "destructive"
+      });
+    }
   };
 
-  const togglePieceIntegree = (id: number) => {
-    setPiecesComptables(prev => prev.map(p => 
-      p.id === id ? { ...p, pieceIntegree: !p.pieceIntegree } : p
-    ));
+  const togglePieceIntegree = async (id: number) => {
+    if (!isInitialized || !currentSession) return;
+
+    try {
+      const piece = piecesComptables.find(p => p.id === id);
+      if (piece) {
+        const updatedPiece = {
+          ...piece,
+          pieceIntegree: !piece.pieceIntegree,
+          sessionId: currentSession.id,
+          createdAt: (piece as any).createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        
+        await db.save('piecesComptables', updatedPiece);
+        await loadPiecesComptables();
+      }
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour:', error);
+      toast({
+        title: "Erreur",
+        description: "Impossible de modifier le statut de la pièce",
+        variant: "destructive"
+      });
+    }
   };
 
 
