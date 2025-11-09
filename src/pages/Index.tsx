@@ -216,7 +216,7 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-6">
                 <img 
-                  src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                  src="/lovable-uploads/logo-fondation-mg.png" 
                   alt="Logo Fondation Maison de la Gendarmerie" 
                   className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => window.open('https://fondationmg.fr/', '_blank')}
@@ -281,7 +281,7 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-6">
               <img 
-                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                src="/lovable-uploads/logo-fondation-mg.png" 
                 alt="Logo Fondation Maison de la Gendarmerie" 
                 className="h-14 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => window.open('https://fondationmg.fr/', '_blank')}

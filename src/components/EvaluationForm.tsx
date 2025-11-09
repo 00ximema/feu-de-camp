@@ -91,7 +91,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       
       // Charger et ajouter le logo
       try {
-        const logoResponse = await fetch('/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png');
+        const logoResponse = await fetch('/lovable-uploads/logo-fondation-mg.png');
         const logoBlob = await logoResponse.blob();
         const logoBase64 = await new Promise<string>((resolve) => {
           const reader = new FileReader();
