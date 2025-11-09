@@ -8,8 +8,8 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Design moderne blanc ultra-clean */
-    --background: 0 0% 99%;
+    /* Design moderne avec fond doux */
+    --background: 220 15% 96%;
     --foreground: 240 8% 15%;
 
     --card: 0 0% 100%;
