@@ -848,7 +848,7 @@ const PlanningTableGenerator = () => {
               <p className="text-sm">Sélectionnez les dates de début et de fin, puis cliquez sur "Générer le planning"</p>
             </div>
            ) : (
-            <div ref={planningRef} className="bg-white p-4" id="planning-table">
+            <div ref={planningRef} className="bg-card p-4" id="planning-table">
               <div className="overflow-x-auto">
                 <Table className="border">
                   <TableHeader>
@@ -938,7 +938,7 @@ const PlanningTableGenerator = () => {
                                     <Button
                                       variant="ghost"
                                       size="sm"
-                                      className="opacity-0 group-hover/event:opacity-100 absolute -top-1 -right-1 h-5 w-5 p-0 bg-white border border-red-200 hover:bg-red-50"
+                                      className="opacity-0 group-hover/event:opacity-100 absolute -top-1 -right-1 h-5 w-5 p-0 bg-card border border-red-200 hover:bg-red-50"
                                       onClick={(e) => handleDeleteEvent(rowIndex, cellIndex, event.id, e)}
                                     >
                                       <Trash2 className="h-3 w-3 text-red-600" />

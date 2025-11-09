@@ -372,7 +372,7 @@ const Administratif = () => {
 
                 {/* Formulaire d'édition compact */}
                 {isEditing && editingContact && (
-                  <div className="p-3 border rounded-lg bg-white">
+                  <div className="p-3 border rounded-lg bg-card">
                     <h4 className="font-medium mb-2 text-sm">Modifier le contact</h4>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-3">
                       <div>

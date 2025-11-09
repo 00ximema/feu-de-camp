@@ -568,7 +568,7 @@ const LeaveSignaturePlanning = () => {
             </Button>
           </div>
 
-          <div className="border rounded-lg overflow-hidden bg-white">
+          <div className="border rounded-lg overflow-hidden bg-card">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -710,7 +710,7 @@ const LeaveSignaturePlanning = () => {
                       ref={canvasRef}
                       width={500}
                       height={200}
-                      className="border border-gray-300 cursor-crosshair bg-white"
+                      className="border border-gray-300 cursor-crosshair bg-card"
                       onMouseDown={startDrawing}
                       onMouseMove={draw}
                       onMouseUp={stopDrawing}
@@ -740,7 +740,7 @@ const LeaveSignaturePlanning = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="border border-gray-300 rounded-lg p-4 bg-white">
+                  <div className="border border-gray-300 rounded-lg p-4 bg-card">
                     <img 
                       src={viewingSignature} 
                       alt="Signature" 

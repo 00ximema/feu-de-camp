@@ -267,7 +267,7 @@ const QuartiersLibres = () => {
               {/* Sélection des jeunes */}
               <div className="mb-4">
                 <Label>Sélectionner les jeunes</Label>
-                <div className="max-h-48 overflow-y-auto border rounded p-3 bg-white mt-2">
+                <div className="max-h-48 overflow-y-auto border rounded p-3 bg-card mt-2">
                   {jeunes.map((jeune) => (
                     <div key={jeune.id} className="flex items-center space-x-2 py-1">
                       <Checkbox
