@@ -68,23 +68,23 @@ const Jeunes = () => {
 
   if (!isInitialized) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Chargement des données...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Chargement des données...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Users className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Gestion des jeunes</h1>
+              <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold text-foreground">Gestion des jeunes</h1>
               <Badge variant="secondary">{stats.total} total</Badge>
             </div>
             <div className="flex items-center gap-2">
@@ -157,9 +157,9 @@ const Jeunes = () => {
               <CardContent>
                 {jeunes.length === 0 ? (
                   <div className="text-center py-12">
-                    <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun jeune</h3>
-                    <p className="text-gray-500 mb-4">Commencez par ajouter des jeunes ou importer un fichier Excel</p>
+                    <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-foreground mb-2">Aucun jeune</h3>
+                    <p className="text-muted-foreground mb-4">Commencez par ajouter des jeunes ou importer un fichier Excel</p>
                     <div className="flex justify-center gap-2">
                       <Button onClick={() => setShowAddModal(true)}>
                         <UserPlus className="h-4 w-4 mr-2" />

@@ -202,13 +202,13 @@ const Comptabilite = () => {
   const bilan = calculerBilan();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Calculator className="h-6 w-6 text-red-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Gestion comptable</h1>
+              <Calculator className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold text-foreground">Gestion comptable</h1>
             </div>
             <Link to="/">
               <Button variant="outline">Retour accueil</Button>
@@ -223,47 +223,47 @@ const Comptabilite = () => {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center space-x-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <TrendingUp className="h-5 w-5 text-success" />
                 <span>Recettes</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-green-600">
+              <div className="text-2xl font-bold text-success">
                 {bilan.recettes.toFixed(2)} €
               </div>
-              <p className="text-sm text-gray-600">Total des recettes</p>
+              <p className="text-sm text-muted-foreground">Total des recettes</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center space-x-2">
-                <TrendingDown className="h-5 w-5 text-red-600" />
+                <TrendingDown className="h-5 w-5 text-destructive" />
                 <span>Dépenses</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-red-600">
+              <div className="text-2xl font-bold text-destructive">
                 {bilan.depenses.toFixed(2)} €
               </div>
-              <p className="text-sm text-gray-600">Total des dépenses</p>
+              <p className="text-sm text-muted-foreground">Total des dépenses</p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-lg flex items-center space-x-2">
-                <Euro className="h-5 w-5 text-blue-600" />
+                <Euro className="h-5 w-5 text-info" />
                 <span>Résultat</span>
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className={`text-2xl font-bold ${
-                bilan.resultat >= 0 ? 'text-green-600' : 'text-red-600'
+                bilan.resultat >= 0 ? 'text-success' : 'text-destructive'
               }`}>
                 {bilan.resultat.toFixed(2)} €
               </div>
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-muted-foreground">
                 {bilan.resultat >= 0 ? 'Excédent' : 'Déficit'}
               </p>
             </CardContent>

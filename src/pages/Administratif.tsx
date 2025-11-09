@@ -262,13 +262,13 @@ const Administratif = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-50 font-admin">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background font-admin">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <FileText className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-semibold text-gray-900">Gestion administrative</h1>
+              <FileText className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-semibold text-foreground">Gestion administrative</h1>
             </div>
             <Link to="/">
               <Button variant="outline">
@@ -282,16 +282,16 @@ const Administratif = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Encart exercice d'évacuation */}
-        <Card className="mb-6 border-orange-200 bg-orange-50">
+        <Card className="mb-6 border-warning/20 bg-warning/5">
           <CardHeader className="pb-4">
-            <CardTitle className="flex items-center space-x-2 text-lg text-orange-800">
+            <CardTitle className="flex items-center space-x-2 text-lg text-warning">
               <Shield className="h-5 w-5" />
               <span>Exercice d'alerte et d'évacuation obligatoire</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
-              <p className="text-sm text-orange-700">
+              <p className="text-sm text-muted-foreground">
                 Un exercice d'alerte et d'évacuation doit être obligatoirement effectué au début 
                 du séjour avec les enfants. Cet exercice doit être consigné sur les registres de sécurité.
               </p>
@@ -317,7 +317,7 @@ const Administratif = () => {
         <Card className="mb-6">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <Phone className="h-4 w-4 text-red-600" />
+              <Phone className="h-4 w-4 text-destructive" />
               <span>Numéros d'urgence du séjour</span>
             </CardTitle>
             <CardDescription className="text-sm">

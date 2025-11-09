@@ -69,17 +69,17 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				blue: {
-					50: 'hsl(210 20% 97%)',
-					100: 'hsl(210 15% 94%)',
-					200: 'hsl(210 20% 88%)',
-					300: 'hsl(210 25% 80%)',
-					400: 'hsl(210 85% 68%)',
-					500: 'hsl(210 85% 58%)',
-					600: 'hsl(210 85% 48%)',
-					700: 'hsl(210 85% 38%)',
-					800: 'hsl(210 85% 28%)',
-					900: 'hsl(215 25% 25%)'
+				success: {
+					DEFAULT: 'hsl(var(--success))',
+					foreground: 'hsl(var(--success-foreground))'
+				},
+				warning: {
+					DEFAULT: 'hsl(var(--warning))',
+					foreground: 'hsl(var(--warning-foreground))'
+				},
+				info: {
+					DEFAULT: 'hsl(var(--info))',
+					foreground: 'hsl(var(--info-foreground))'
 				}
 			},
 			backgroundImage: {

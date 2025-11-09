@@ -149,13 +149,13 @@ const Infirmerie = () => {
   const soinsRecents = getSoinsRecents();
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Heart className="h-6 w-6 text-red-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Infirmerie</h1>
+              <Heart className="h-6 w-6 text-destructive" />
+              <h1 className="text-2xl font-bold text-foreground">Infirmerie</h1>
             </div>
             <Link to="/">
               <Button variant="outline">Retour accueil</Button>
@@ -201,7 +201,7 @@ const Infirmerie = () => {
               {soinsRecents.length > 0 ? (
                 <div className="space-y-3">
                   {soinsRecents.map((soin) => (
-                    <div key={soin.id} className="p-4 border rounded-lg bg-green-50 hover:bg-green-100 transition-colors">
+                    <div key={soin.id} className="p-4 border border-border rounded-lg bg-card hover:shadow-soft transition-all">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center space-x-2 mb-1">
@@ -256,8 +256,8 @@ const Infirmerie = () => {
                 </div>
               ) : (
                 <div className="text-center py-8">
-                  <Bandage className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                  <p className="text-gray-500">Aucun soin ou consultation enregistré</p>
+                  <Bandage className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                  <p className="text-muted-foreground">Aucun soin ou consultation enregistré</p>
                 </div>
               )}
             </CardContent>
@@ -276,7 +276,7 @@ const Infirmerie = () => {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                   {traitementsActifs.map((traitement) => (
-                    <div key={traitement.id} className="p-4 border rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                    <div key={traitement.id} className="p-4 border border-border rounded-lg bg-card hover:shadow-soft transition-all">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="font-medium text-lg">{traitement.jeuneNom}</div>
@@ -317,9 +317,9 @@ const Infirmerie = () => {
           {traitementsActifs.length === 0 && soinsRecents.length === 0 && (
             <Card>
               <CardContent className="text-center py-12">
-                <Heart className="h-12 w-12 mx-auto mb-3 text-gray-400" />
-                <p className="text-gray-500 text-lg">Aucune donnée médicale enregistrée</p>
-                <p className="text-gray-400 text-sm">Commencez par ajouter un traitement ou un soin</p>
+                <Heart className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground text-lg">Aucune donnée médicale enregistrée</p>
+                <p className="text-muted-foreground/60 text-sm">Commencez par ajouter un traitement ou un soin</p>
               </CardContent>
             </Card>
           )}

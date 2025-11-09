@@ -146,13 +146,13 @@ const Equipe = () => {
   const selectedMember = showDocuments ? team.find(m => m.id === showDocuments) : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Users className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Gestion de l'équipe</h1>
+              <Users className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold text-foreground">Gestion de l'équipe</h1>
             </div>
             <Link to="/">
               <Button variant="outline">
@@ -210,9 +210,9 @@ const Equipe = () => {
           <CardContent>
             {team.length === 0 ? (
               <div className="text-center py-12">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">Aucun membre d'équipe</h3>
-                <p className="text-gray-500 mb-4">Commencez par ajouter des membres à votre équipe</p>
+                <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-foreground mb-2">Aucun membre d'équipe</h3>
+                <p className="text-muted-foreground mb-4">Commencez par ajouter des membres à votre équipe</p>
               </div>
             ) : (
               <div className="border rounded-lg">

@@ -12,13 +12,13 @@ const Planning = () => {
   console.log('Planning component rendering');
   
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-background">
+      <header className="bg-card shadow-soft border-b border-border">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
-              <Calendar className="h-6 w-6 text-purple-600" />
-              <h1 className="text-2xl font-bold text-gray-900">Planning</h1>
+              <Calendar className="h-6 w-6 text-primary" />
+              <h1 className="text-2xl font-bold text-foreground">Planning</h1>
             </div>
             <Link to="/">
               <Button variant="outline">
