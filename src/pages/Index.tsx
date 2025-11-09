@@ -287,28 +287,25 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-gradient-background">
-      <header className="bg-card/80 backdrop-blur-md shadow-soft border-b border-border/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <header className="bg-card border-b border-border">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <div className="relative">
-                <img 
-                  src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
-                  alt="Logo Fondation Maison de la Gendarmerie" 
-                  className="h-14 w-auto cursor-pointer transition-all duration-300 hover:scale-105"
-                  onClick={() => window.open('https://fondationmg.fr/', '_blank')}
-                  title="Visiter fondationmg.fr"
-                />
-                <div className="absolute -inset-2 bg-gradient-primary rounded-full opacity-20 blur-xl"></div>
-              </div>
+              <img 
+                src="/lovable-uploads/450370f1-5749-44c5-8da4-6670c288f50c.png" 
+                alt="Logo Fondation Maison de la Gendarmerie" 
+                className="h-12 w-auto cursor-pointer transition-transform duration-200 hover:scale-105"
+                onClick={() => window.open('https://fondationmg.fr/', '_blank')}
+                title="Visiter fondationmg.fr"
+              />
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold text-foreground">
                   Gestion CVJ MG
                 </h1>
                 <p className="text-sm text-muted-foreground">Plateforme de gestion pour les directeurs</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <DataManager />
               <SessionManager />
             </div>
@@ -317,206 +314,188 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-12 text-center">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="mb-12">
+          <div className="inline-block px-4 py-1.5 bg-primary/10 rounded-full mb-4">
+            <span className="text-sm font-medium text-primary">{currentSession.name}</span>
+          </div>
           <h2 className="text-4xl font-bold text-foreground mb-3">
             Tableau de bord
           </h2>
-          <div className="text-lg text-primary font-medium">
-            {currentSession.name}
-          </div>
-          <p className="text-muted-foreground mt-2">Accédez à tous les modules de gestion de votre colonie</p>
+          <p className="text-muted-foreground text-lg">Accédez à tous les modules de gestion de votre colonie</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {modules.map((module) => {
             const IconComponent = module.icon;
             return (
-              <div key={module.id} className="group relative">
-                <div className="absolute -inset-1 bg-gradient-primary rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200"></div>
-                <Card className="relative bg-gradient-card backdrop-blur-sm border-border/20 hover:shadow-large transition-all duration-500 group-hover:scale-[1.02]">
-                  <CardHeader className="pb-4">
+              <Link key={module.id} to={module.route}>
+                <Card className="group h-full bg-card border border-border hover:border-primary/50 hover:shadow-large transition-all duration-300 cursor-pointer">
+                  <CardHeader className="pb-3">
                     <div className="flex items-center justify-between mb-4">
-                      <div className="p-4 rounded-xl bg-gradient-primary text-primary-foreground shadow-glow">
+                      <div className="p-3 rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
                         <IconComponent className="h-6 w-6" />
                       </div>
-                      <div className="text-3xl font-bold text-primary/30">0{module.id}</div>
+                      <span className="text-sm font-bold text-muted-foreground/40 group-hover:text-primary/40 transition-colors">
+                        0{module.id}
+                      </span>
                     </div>
-                    <CardTitle className="text-xl text-foreground group-hover:text-primary transition-colors">
+                    <CardTitle className="text-lg text-foreground group-hover:text-primary transition-colors mb-2">
                       {module.title}
                     </CardTitle>
-                    <CardDescription className="text-muted-foreground leading-relaxed">
+                    <CardDescription className="text-muted-foreground text-sm leading-relaxed">
                       {module.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Link to={module.route}>
-                      <Button className="w-full bg-gradient-primary hover:bg-gradient-secondary text-primary-foreground shadow-medium hover:shadow-large transition-all duration-300 font-medium">
-                        Accéder au module
-                      </Button>
-                    </Link>
+                    <div className="flex items-center text-sm font-medium text-primary group-hover:translate-x-1 transition-transform">
+                      Accéder <span className="ml-2">→</span>
+                    </div>
                   </CardContent>
                 </Card>
-              </div>
+              </Link>
             );
           })}
         </div>
 
         {/* Quick stats */}
-        <div className="mt-16 relative">
-          <div className="absolute -inset-1 bg-gradient-secondary rounded-2xl blur opacity-10"></div>
-          <div className="relative bg-gradient-card backdrop-blur-sm rounded-2xl shadow-large border border-border/20 p-8">
-            <h3 className="text-2xl font-semibold text-foreground mb-8 flex items-center gap-2">
-              <div className="h-1 w-8 bg-gradient-primary rounded-full"></div>
+        <div className="mt-16">
+          <div className="bg-card rounded-2xl shadow-soft border border-border p-8">
+            <h3 className="text-2xl font-bold text-foreground mb-8">
               Aperçu rapide
             </h3>
           
           {/* Traitements actifs */}
           <div className="mb-8">
-            <h4 className="font-semibold text-foreground mb-4 flex items-center gap-2">
-              <div className="p-2 rounded-lg bg-accent">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="p-2 rounded-lg bg-primary/10">
                 <Pill className="h-5 w-5 text-primary" />
               </div>
-              Traitements actifs
-            </h4>
+              <h4 className="font-semibold text-foreground">Traitements actifs</h4>
+            </div>
             {traitementsActifs.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {traitementsActifs.map((traitement) => (
-                  <div key={traitement.id} className="group relative">
-                    <div className="absolute -inset-0.5 bg-gradient-primary rounded-lg opacity-10 group-hover:opacity-20 transition-opacity"></div>
-                    <div className="relative text-sm p-4 bg-card rounded-lg border border-border/50 shadow-soft hover:shadow-medium transition-all">
-                      <div className="font-semibold text-foreground mb-1">
-                        {traitement.jeuneNom}
-                      </div>
-                      <div className="text-primary font-medium mb-2">{traitement.medicament}</div>
-                      <div className="text-muted-foreground text-xs">
-                        {traitement.posologie} · Jusqu'au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}
-                      </div>
+                  <div key={traitement.id} className="group p-4 bg-muted/30 rounded-xl border border-border hover:border-primary/50 hover:shadow-medium transition-all">
+                    <div className="font-semibold text-foreground mb-1">
+                      {traitement.jeuneNom}
+                    </div>
+                    <div className="text-primary font-medium mb-2">{traitement.medicament}</div>
+                    <div className="text-muted-foreground text-xs">
+                      {traitement.posologie} · Jusqu'au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-lg border border-border/30">
+              <div className="text-sm text-muted-foreground p-4 bg-muted/30 rounded-xl border border-border">
                 Aucun traitement actif
               </div>
             )}
           </div>
 
           {/* Informations sur le personnel */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
             {/* Astreintes */}
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-primary rounded-lg opacity-5"></div>
-              <div className="relative bg-card/50 backdrop-blur-sm rounded-lg border border-border/30 p-4">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-destructive/10">
-                    <AlertCircle className="h-4 w-4 text-destructive" />
-                  </div>
-                  <span className="text-sm">Astreintes</span>
-                </h4>
-                {astreintes.length > 0 ? (
-                  <div className="space-y-2">
-                    {astreintes.map((member, index) => (
-                      <div key={index} className="text-sm p-3 bg-muted/50 rounded-md border border-border/30">
-                        <div className="font-medium text-foreground">
-                          {member.prenom} {member.nom}
-                        </div>
-                        <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">Aucune astreinte</div>
-                )}
+            <div className="bg-muted/30 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-destructive/10">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                </div>
+                <h4 className="font-semibold text-foreground text-sm">Astreintes</h4>
               </div>
+              {astreintes.length > 0 ? (
+                <div className="space-y-2">
+                  {astreintes.map((member, index) => (
+                    <div key={index} className="text-sm p-2.5 bg-card rounded-lg border border-border">
+                      <div className="font-medium text-foreground">
+                        {member.prenom} {member.nom}
+                      </div>
+                      <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Aucune astreinte</div>
+              )}
             </div>
 
             {/* Congés */}
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-primary rounded-lg opacity-5"></div>
-              <div className="relative bg-card/50 backdrop-blur-sm rounded-lg border border-border/30 p-4">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-primary/10">
-                    <Calendar className="h-4 w-4 text-primary" />
-                  </div>
-                  <span className="text-sm">Congés</span>
-                </h4>
-                {conges.length > 0 ? (
-                  <div className="space-y-2">
-                    {conges.map((member, index) => (
-                      <div key={index} className="text-sm p-3 bg-muted/50 rounded-md border border-border/30">
-                        <div className="font-medium text-foreground">
-                          {member.prenom} {member.nom}
-                        </div>
-                        <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">Aucun congé</div>
-                )}
+            <div className="bg-muted/30 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Calendar className="h-4 w-4 text-primary" />
+                </div>
+                <h4 className="font-semibold text-foreground text-sm">Congés</h4>
               </div>
+              {conges.length > 0 ? (
+                <div className="space-y-2">
+                  {conges.map((member, index) => (
+                    <div key={index} className="text-sm p-2.5 bg-card rounded-lg border border-border">
+                      <div className="font-medium text-foreground">
+                        {member.prenom} {member.nom}
+                      </div>
+                      <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Aucun congé</div>
+              )}
             </div>
 
             {/* Repos récupérateurs */}
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-primary rounded-lg opacity-5"></div>
-              <div className="relative bg-card/50 backdrop-blur-sm rounded-lg border border-border/30 p-4">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-accent/50">
-                    <Clock className="h-4 w-4 text-primary" />
-                  </div>
-                  <span className="text-sm">Repos</span>
-                </h4>
-                {reposRecuperateurs.length > 0 ? (
-                  <div className="space-y-2">
-                    {reposRecuperateurs.map((member, index) => (
-                      <div key={index} className="text-sm p-3 bg-muted/50 rounded-md border border-border/30">
-                        <div className="font-medium text-foreground">
-                          {member.prenom} {member.nom}
-                        </div>
-                        <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">Aucun repos</div>
-                )}
+            <div className="bg-muted/30 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <Clock className="h-4 w-4 text-primary" />
+                </div>
+                <h4 className="font-semibold text-foreground text-sm">Repos</h4>
               </div>
+              {reposRecuperateurs.length > 0 ? (
+                <div className="space-y-2">
+                  {reposRecuperateurs.map((member, index) => (
+                    <div key={index} className="text-sm p-2.5 bg-card rounded-lg border border-border">
+                      <div className="font-medium text-foreground">
+                        {member.prenom} {member.nom}
+                      </div>
+                      <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Aucun repos</div>
+              )}
             </div>
 
             {/* Main courante */}
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-primary rounded-lg opacity-5"></div>
-              <div className="relative bg-card/50 backdrop-blur-sm rounded-lg border border-border/30 p-4">
-                <h4 className="font-semibold text-foreground mb-3 flex items-center gap-2">
-                  <div className="p-1.5 rounded-md bg-accent/50">
-                    <BookOpen className="h-4 w-4 text-primary" />
-                  </div>
-                  <span className="text-sm">Dernier événement</span>
-                </h4>
-                {latestEvent ? (
-                  <div className="text-sm p-3 bg-muted/50 rounded-md border border-border/30">
-                    <div className="font-medium text-foreground mb-1">
-                      {new Date(latestEvent.date + 'T' + latestEvent.time).toLocaleDateString('fr-FR', {
-                        day: '2-digit',
-                        month: '2-digit',
-                        hour: '2-digit',
-                        minute: '2-digit'
-                      })}
-                    </div>
-                    <div className="text-muted-foreground text-xs line-clamp-2">{latestEvent.description}</div>
-                    {(latestEvent.selectedMembers.length > 0 || latestEvent.selectedJeunes.length > 0) && (
-                      <div className="text-primary text-xs mt-1 font-medium">
-                        {latestEvent.selectedMembers.length + latestEvent.selectedJeunes.length} personne(s)
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="text-xs text-muted-foreground">Aucun événement</div>
-                )}
+            <div className="bg-muted/30 rounded-xl border border-border p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="p-1.5 rounded-lg bg-primary/10">
+                  <BookOpen className="h-4 w-4 text-primary" />
+                </div>
+                <h4 className="font-semibold text-foreground text-sm">Dernier événement</h4>
               </div>
+              {latestEvent ? (
+                <div className="text-sm p-2.5 bg-card rounded-lg border border-border">
+                  <div className="font-medium text-foreground mb-1 text-xs">
+                    {new Date(latestEvent.date + 'T' + latestEvent.time).toLocaleDateString('fr-FR', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </div>
+                  <div className="text-muted-foreground text-xs line-clamp-2">{latestEvent.description}</div>
+                  {(latestEvent.selectedMembers.length > 0 || latestEvent.selectedJeunes.length > 0) && (
+                    <div className="text-primary text-xs mt-1 font-medium">
+                      {latestEvent.selectedMembers.length + latestEvent.selectedJeunes.length} personne(s)
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-muted-foreground">Aucun événement</div>
+              )}
             </div>
             </div>
           </div>
