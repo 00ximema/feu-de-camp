@@ -218,7 +218,7 @@ const Index = () => {
                 <img 
                   src="/lovable-uploads/logo-fondation-mg.png" 
                   alt="Logo Fondation Maison de la Gendarmerie" 
-                  className="h-32 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+                  className="h-64 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => window.open('https://fondationmg.fr/', '_blank')}
                   title="Visiter fondationmg.fr"
                 />
@@ -283,7 +283,7 @@ const Index = () => {
               <img 
                 src="/lovable-uploads/logo-fondation-mg.png" 
                 alt="Logo Fondation Maison de la Gendarmerie" 
-                className="h-28 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+                className="h-56 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => window.open('https://fondationmg.fr/', '_blank')}
                 title="Visiter fondationmg.fr"
               />
