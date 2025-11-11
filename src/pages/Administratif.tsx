@@ -339,7 +339,7 @@ const Administratif = () => {
                 {/* Liste compacte des contacts */}
                 <div className="grid gap-2">
                   {emergencyContacts.map((contact) => (
-                    <div key={contact.id} className="flex items-center justify-between p-2 border rounded bg-gray-50">
+                    <div key={contact.id} className="flex items-center justify-between p-2 border rounded bg-muted">
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 text-sm">
                           <span className="font-medium">{contact.label}</span>

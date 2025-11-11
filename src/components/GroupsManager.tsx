@@ -360,7 +360,7 @@ const GroupsManager = () => {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-3">
                       {getJeunesInGroup(showMembersDialog.id).map(jeune => (
-                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-green-50 rounded border">
+                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-card rounded border">
                           <span className="text-sm font-medium">{jeune.prenom} {jeune.nom}</span>
                           <Button
                             size="sm"
@@ -383,7 +383,7 @@ const GroupsManager = () => {
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-2 max-h-60 overflow-y-auto border rounded p-3">
                       {getJeunesNotInGroup(showMembersDialog.id).map(jeune => (
-                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                        <div key={jeune.id} className="flex items-center justify-between p-3 bg-card rounded border">
                           <span className="text-sm">{jeune.prenom} {jeune.nom}</span>
                           <Button
                             size="sm"

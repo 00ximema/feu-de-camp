@@ -175,7 +175,7 @@ const EventForm: React.FC<EventFormProps> = ({
                       {selectedMembers.map(memberId => {
                         const member = team.find(m => m.id === memberId);
                         return member ? (
-                          <div key={memberId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <div key={memberId} className="flex items-center justify-between bg-muted p-2 rounded">
                             <span className="text-sm">{member.prenom} {member.nom} ({member.role})</span>
                             <Button
                               type="button"
@@ -219,7 +219,7 @@ const EventForm: React.FC<EventFormProps> = ({
                       {selectedJeunes.map(jeuneId => {
                         const jeune = jeunes.find(j => j.id === jeuneId);
                         return jeune ? (
-                          <div key={jeuneId} className="flex items-center justify-between bg-gray-50 p-2 rounded">
+                          <div key={jeuneId} className="flex items-center justify-between bg-muted p-2 rounded">
                             <span className="text-sm">{jeune.prenom} {jeune.nom} ({jeune.age} ans)</span>
                             <Button
                               type="button"

@@ -309,7 +309,7 @@ const Comptabilite = () => {
               </CardHeader>
               <CardContent>
                 {showPieceForm && (
-                  <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+                  <div className="mb-6 p-4 border rounded-lg bg-muted">
                     <h3 className="font-medium mb-4">
                       {editingPiece ? 'Modifier la pièce comptable' : 'Nouvelle pièce comptable'}
                     </h3>

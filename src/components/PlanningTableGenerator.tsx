@@ -853,9 +853,9 @@ const PlanningTableGenerator = () => {
                 <Table className="border">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-32 font-bold bg-gray-100">Créneaux</TableHead>
+                      <TableHead className="w-32 font-bold bg-muted">Créneaux</TableHead>
                       {dateRange.map((date, index) => (
-                        <TableHead key={index} className="text-center font-bold bg-gray-100 min-w-32">
+                        <TableHead key={index} className="text-center font-bold bg-muted min-w-32">
                           {(() => {
                             try {
                               if (isValid(date)) {
@@ -879,14 +879,14 @@ const PlanningTableGenerator = () => {
                   </TableHeader>
                   <TableBody>
                     {planningData.map((row, rowIndex) => (
-                      <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-purple-50' : ''}>
-                        <TableCell className="font-medium bg-gray-50 border-r">
+                       <TableRow key={rowIndex} className={isSpecialRow(row[0]?.timeSlot) ? 'bg-muted/50' : ''}>
+                        <TableCell className="font-medium bg-muted border-r">
                           {row[0]?.timeSlot}
                         </TableCell>
                         {row.map((cell, cellIndex) => (
                           <TableCell 
                             key={cellIndex} 
-                            className="p-2 border min-h-16 cursor-pointer hover:bg-gray-50 transition-colors relative group"
+                            className="p-2 border min-h-16 cursor-pointer hover:bg-muted transition-colors relative group"
                             onClick={() => handleCellClick(rowIndex, cellIndex)}
                           >
                             {cell.events && cell.events.length > 0 ? (

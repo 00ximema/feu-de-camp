@@ -87,7 +87,7 @@ const MedicalActionSelector = ({
           
           <div className="grid grid-cols-1 gap-4 py-4">
             <Card 
-              className="cursor-pointer hover:bg-blue-50 transition-colors border-2 hover:border-blue-200"
+              className="cursor-pointer hover:bg-primary/5 transition-colors border-2 hover:border-blue-200"
               onClick={handleTraitementClick}
             >
               <CardHeader className="pb-3">
@@ -102,7 +102,7 @@ const MedicalActionSelector = ({
             </Card>
 
             <Card 
-              className="cursor-pointer hover:bg-green-50 transition-colors border-2 hover:border-green-200"
+              className="cursor-pointer hover:bg-success/10 transition-colors border-2 hover:border-green-200"
               onClick={handleSoinClick}
             >
               <CardHeader className="pb-3">

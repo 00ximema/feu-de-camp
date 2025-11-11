@@ -237,7 +237,7 @@ const Infirmerie = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleEditSoin(soin)}
-                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            className="text-blue-600 hover:text-blue-700 hover:bg-primary/10"
                           >
                             <FileText className="h-4 w-4" />
                           </Button>
@@ -245,7 +245,7 @@ const Infirmerie = () => {
                             variant="ghost"
                             size="sm"
                             onClick={() => handleDeleteSoin(soin)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            className="text-red-600 hover:text-red-700 hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -301,7 +301,7 @@ const Infirmerie = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => handleDeleteTraitement(traitement)}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                          className="text-red-600 hover:text-red-700 hover:bg-destructive/10"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>

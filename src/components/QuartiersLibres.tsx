@@ -261,7 +261,7 @@ const QuartiersLibres = () => {
         </CardHeader>
         <CardContent>
           {showAddForm && (
-            <div className="mb-6 p-4 border rounded-lg bg-gray-50">
+            <div className="mb-6 p-4 border rounded-lg bg-muted">
               <h3 className="font-medium mb-4">Créer un nouveau quartier libre</h3>
               
               {/* Sélection des jeunes */}

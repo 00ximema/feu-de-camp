@@ -285,7 +285,7 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
             
             <div className="space-y-3">
               {medicaments.map((medicament, index) => (
-                <div key={medicament.id} className="p-3 border rounded-lg bg-gray-50">
+                <div key={medicament.id} className="p-3 border rounded-lg bg-muted">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-sm font-medium">Médicament {index + 1}</span>
                     {medicaments.length > 1 && (

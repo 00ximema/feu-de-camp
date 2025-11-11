@@ -79,7 +79,7 @@ const SimpleCalculator = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="bg-gray-100 p-3 rounded mb-3 text-right text-xl font-mono">
+        <div className="bg-muted p-3 rounded mb-3 text-right text-xl font-mono">
           {display}
         </div>
         

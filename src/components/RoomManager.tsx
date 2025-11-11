@@ -466,15 +466,15 @@ const RoomManager = () => {
           ) : (
             <div className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-blue-600">{totalRooms}</div>
                   <div className="text-sm text-blue-600">Chambres total</div>
                 </div>
-                <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-green-600">{totalCapacity}</div>
                   <div className="text-sm text-green-600">Capacité totale</div>
                 </div>
-                <div className="text-center p-4 bg-purple-50 rounded-lg">
+                <div className="text-center p-4 bg-muted rounded-lg">
                   <div className="text-2xl font-bold text-purple-600">{jeunes.length}</div>
                   <div className="text-sm text-purple-600">Jeunes total</div>
                 </div>
@@ -613,7 +613,7 @@ const RoomManager = () => {
                     ) : (
                       <div className="space-y-2">
                         {room.occupants.map((occupant) => (
-                          <div key={occupant.id} className="flex items-center justify-between text-sm p-2 bg-gray-50 rounded">
+                          <div key={occupant.id} className="flex items-center justify-between text-sm p-2 bg-muted rounded">
                             <div className="flex items-center space-x-2">
                               <span>{occupant.prenom} {occupant.nom}</span>
                               <Badge variant="outline" className="text-xs">

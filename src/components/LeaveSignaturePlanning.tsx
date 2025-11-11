@@ -583,7 +583,7 @@ const LeaveSignaturePlanning = () => {
               <TableBody>
                 {entriesWithSignatureStatus.length > 0 ? (
                   entriesWithSignatureStatus.map((entry) => (
-                     <TableRow key={entry.id} className="hover:bg-gray-50">
+                     <TableRow key={entry.id} className="hover:bg-muted">
                        <TableCell className="font-medium">
                          {entry.staffName}
                        </TableCell>
