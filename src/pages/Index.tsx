@@ -212,21 +212,21 @@ const Index = () => {
       <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="bg-card shadow-sm border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3">
                 <img 
                   src="/lovable-uploads/logo-fondation-mg.png" 
                   alt="Logo Fondation Maison de la Gendarmerie" 
-                  className="h-64 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+                  className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => window.open('https://fondationmg.fr/', '_blank')}
                   title="Visiter fondationmg.fr"
                 />
                 <div>
-                  <h1 className="text-3xl font-bold text-foreground">
+                  <h1 className="text-xl font-bold text-foreground">
                     Gestion CVJ MG
                   </h1>
-                  <p className="text-muted-foreground mt-1">Plateforme de gestion pour les directeurs</p>
+                  <p className="text-xs text-muted-foreground">Plateforme de gestion pour les directeurs</p>
                 </div>
               </div>
               
@@ -277,21 +277,21 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       <header className="bg-card border-b border-border shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
               <img 
                 src="/lovable-uploads/logo-fondation-mg.png" 
                 alt="Logo Fondation Maison de la Gendarmerie" 
-                className="h-56 w-auto cursor-pointer hover:opacity-80 transition-opacity"
+                className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity"
                 onClick={() => window.open('https://fondationmg.fr/', '_blank')}
                 title="Visiter fondationmg.fr"
               />
               <div>
-                <h1 className="text-2xl font-bold text-foreground">
+                <h1 className="text-xl font-bold text-foreground">
                   Gestion CVJ MG
                 </h1>
-                <p className="text-sm text-muted-foreground mt-1">Plateforme de gestion pour les directeurs</p>
+                <p className="text-xs text-muted-foreground">Plateforme de gestion pour les directeurs</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -303,38 +303,38 @@ const Index = () => {
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <div className="mb-16">
-          <div className="inline-flex items-center px-4 py-2 bg-primary/5 rounded-full mb-6">
-            <span className="text-sm font-semibold text-primary">{currentSession.name}</span>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
+        <div className="mb-3">
+          <div className="inline-flex items-center px-2 py-1 bg-primary/5 rounded-full mb-2">
+            <span className="text-xs font-semibold text-primary">{currentSession.name}</span>
           </div>
-          <h2 className="text-5xl font-bold text-foreground mb-4 tracking-tight">
+          <h2 className="text-2xl font-bold text-foreground mb-1 tracking-tight">
             Tableau de bord
           </h2>
-          <p className="text-muted-foreground text-xl">Accédez à tous les modules de gestion</p>
+          <p className="text-muted-foreground text-sm">Accédez à tous les modules de gestion</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
           {modules.map((module) => {
             const IconComponent = module.icon;
             return (
               <Link key={module.id} to={module.route}>
                 <Card className="group h-full bg-card border border-border hover:border-primary hover:shadow-lg transition-all duration-200 cursor-pointer">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-start justify-between mb-6">
-                      <div className="p-4 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200">
-                        <IconComponent className="h-7 w-7" />
+                  <CardHeader className="pb-2 pt-3 px-3">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="p-2 rounded-xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all duration-200">
+                        <IconComponent className="h-4 w-4" />
                       </div>
                     </div>
-                    <CardTitle className="text-xl font-bold text-foreground mb-3">
+                    <CardTitle className="text-sm font-bold text-foreground mb-1">
                       {module.title}
                     </CardTitle>
-                    <CardDescription className="text-muted-foreground leading-relaxed">
+                    <CardDescription className="text-xs text-muted-foreground leading-relaxed">
                       {module.description}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center text-sm font-semibold text-primary group-hover:gap-2 transition-all">
+                  <CardContent className="px-3 pb-3">
+                    <div className="flex items-center text-xs font-semibold text-primary group-hover:gap-2 transition-all">
                       Accéder <span className="ml-1">→</span>
                     </div>
                   </CardContent>
@@ -345,83 +345,83 @@ const Index = () => {
         </div>
 
         {/* Quick stats */}
-        <div className="mt-20">
-          <div className="bg-card rounded-3xl border border-border p-10">
-            <h3 className="text-3xl font-bold text-foreground mb-10">
+        <div className="mt-4">
+          <div className="bg-card rounded-2xl border border-border p-4">
+            <h3 className="text-lg font-bold text-foreground mb-4">
               Aperçu rapide
             </h3>
           
           {/* Traitements actifs */}
-          <div className="mb-10">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="p-2.5 rounded-xl bg-primary/5">
-                <Pill className="h-6 w-6 text-primary" />
+          <div className="mb-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-primary/5">
+                <Pill className="h-4 w-4 text-primary" />
               </div>
-              <h4 className="text-lg font-bold text-foreground">Traitements actifs</h4>
+              <h4 className="text-sm font-bold text-foreground">Traitements actifs</h4>
             </div>
             {traitementsActifs.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                 {traitementsActifs.map((traitement) => (
-                  <div key={traitement.id} className="group p-5 bg-card rounded-2xl border border-border hover:border-primary hover:shadow-md transition-all">
-                    <div className="font-bold text-foreground mb-2">
+                  <div key={traitement.id} className="group p-2 bg-card rounded-xl border border-border hover:border-primary hover:shadow-md transition-all">
+                    <div className="font-bold text-foreground text-xs mb-1">
                       {traitement.jeuneNom}
                     </div>
-                    <div className="text-primary font-semibold mb-3">{traitement.medicament}</div>
-                    <div className="text-muted-foreground text-sm">
+                    <div className="text-primary font-semibold text-xs mb-1">{traitement.medicament}</div>
+                    <div className="text-muted-foreground text-xs">
                       {traitement.posologie} · Jusqu'au {new Date(traitement.dateFin).toLocaleDateString('fr-FR')}
                     </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-muted-foreground p-5 bg-card rounded-2xl border border-border">
+              <div className="text-muted-foreground text-xs p-2 bg-card rounded-xl border border-border">
                 Aucun traitement actif
               </div>
             )}
           </div>
 
           {/* Informations sur le personnel */}
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
             {/* Astreintes */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-xl bg-destructive/5">
-                  <AlertCircle className="h-5 w-5 text-destructive" />
+            <div className="bg-card rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1 rounded-lg bg-destructive/5">
+                  <AlertCircle className="h-3 w-3 text-destructive" />
                 </div>
-                <h4 className="font-bold text-foreground">Astreintes</h4>
+                <h4 className="font-bold text-foreground text-xs">Astreintes</h4>
               </div>
               {astreintes.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {astreintes.map((member, index) => (
-                    <div key={index} className="p-3 bg-background rounded-xl border border-border">
-                      <div className="font-semibold text-foreground">
+                    <div key={index} className="p-2 bg-background rounded-lg border border-border">
+                      <div className="font-semibold text-foreground text-xs">
                         {member.prenom} {member.nom}
                       </div>
-                      <div className="text-muted-foreground text-sm mt-1">{member.role}</div>
+                      <div className="text-muted-foreground text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">Aucune astreinte</div>
+                <div className="text-xs text-muted-foreground">Aucune astreinte</div>
               )}
             </div>
 
             {/* Congés */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="p-1.5 rounded-lg bg-primary/10">
-                  <Calendar className="h-4 w-4 text-primary" />
+            <div className="bg-card rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1 rounded-lg bg-primary/10">
+                  <Calendar className="h-3 w-3 text-primary" />
                 </div>
-                <h4 className="font-semibold text-foreground text-sm">Congés</h4>
+                <h4 className="font-semibold text-foreground text-xs">Congés</h4>
               </div>
               {conges.length > 0 ? (
                 <div className="space-y-2">
                   {conges.map((member, index) => (
-                    <div key={index} className="text-sm p-2.5 bg-card rounded-lg border border-border">
+                    <div key={index} className="text-xs p-2 bg-card rounded-lg border border-border">
                       <div className="font-medium text-foreground">
                         {member.prenom} {member.nom}
                       </div>
-                      <div className="text-muted-foreground text-xs mt-0.5">{member.role}</div>
+                      <div className="text-muted-foreground text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>
@@ -431,40 +431,40 @@ const Index = () => {
             </div>
 
             {/* Repos récupérateurs */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-xl bg-success/5">
-                  <UserCheck className="h-5 w-5 text-success" />
+            <div className="bg-card rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1 rounded-lg bg-success/5">
+                  <UserCheck className="h-3 w-3 text-success" />
                 </div>
-                <h4 className="font-bold text-foreground">Repos</h4>
+                <h4 className="font-bold text-foreground text-xs">Repos</h4>
               </div>
               {reposRecuperateurs.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {reposRecuperateurs.map((member, index) => (
-                    <div key={index} className="p-3 bg-background rounded-xl border border-border">
-                      <div className="font-semibold text-foreground">
+                    <div key={index} className="p-2 bg-background rounded-lg border border-border">
+                      <div className="font-semibold text-foreground text-xs">
                         {member.prenom} {member.nom}
                       </div>
-                      <div className="text-muted-foreground text-sm mt-1">{member.role}</div>
+                      <div className="text-muted-foreground text-xs">{member.role}</div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">Aucun repos</div>
+                <div className="text-xs text-muted-foreground">Aucun repos</div>
               )}
             </div>
 
             {/* Main courante */}
-            <div className="bg-card rounded-2xl border border-border p-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="p-2 rounded-xl bg-info/5">
-                  <BookOpen className="h-5 w-5 text-info" />
+            <div className="bg-card rounded-xl border border-border p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <div className="p-1 rounded-lg bg-info/5">
+                  <BookOpen className="h-3 w-3 text-info" />
                 </div>
-                <h4 className="font-bold text-foreground">Dernier événement</h4>
+                <h4 className="font-bold text-foreground text-xs">Dernier événement</h4>
               </div>
               {latestEvent ? (
-                <div className="p-3 bg-background rounded-xl border border-border">
-                  <div className="font-semibold text-foreground mb-2 text-sm">
+                <div className="p-2 bg-background rounded-lg border border-border">
+                  <div className="font-semibold text-foreground mb-1 text-xs">
                     {new Date(latestEvent.date + 'T' + latestEvent.time).toLocaleDateString('fr-FR', {
                       day: '2-digit',
                       month: '2-digit',
@@ -472,15 +472,15 @@ const Index = () => {
                       minute: '2-digit'
                     })}
                   </div>
-                  <div className="text-muted-foreground text-sm line-clamp-2">{latestEvent.description}</div>
+                  <div className="text-muted-foreground text-xs line-clamp-2">{latestEvent.description}</div>
                   {(latestEvent.selectedMembers.length > 0 || latestEvent.selectedJeunes.length > 0) && (
-                    <div className="text-primary text-sm mt-2 font-semibold">
+                    <div className="text-primary text-xs mt-1 font-semibold">
                       {latestEvent.selectedMembers.length + latestEvent.selectedJeunes.length} personne(s)
                     </div>
                   )}
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">Aucun événement</div>
+                <div className="text-xs text-muted-foreground">Aucun événement</div>
               )}
             </div>
             </div>
