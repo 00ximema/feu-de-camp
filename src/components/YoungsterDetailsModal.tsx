@@ -274,6 +274,16 @@ const YoungsterDetailsModal: React.FC<YoungsterDetailsModalProps> = ({
                   onChange={(e) => handleInputChange('notes', e.target.value)}
                 />
               </div>
+
+              <div>
+                <Label htmlFor="remarques">Remarques</Label>
+                <Textarea
+                  id="remarques"
+                  value={formData.remarques || ''}
+                  onChange={(e) => handleInputChange('remarques', e.target.value)}
+                  rows={4}
+                />
+              </div>
             </div>
           ) : (
             // Mode affichage
