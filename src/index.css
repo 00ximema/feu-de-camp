@@ -9,26 +9,26 @@ All colors MUST be HSL.
 @layer base {
   :root {
     /* Design moderne avec fond doux */
-    --background: 220 15% 96%;
+    --background: 220 15% 94%;
     --foreground: 240 8% 15%;
 
-    --card: 220 15% 98%;
+    --card: 220 15% 92%;
     --card-foreground: 240 8% 15%;
 
-    --popover: 220 15% 98%;
+    --popover: 220 15% 92%;
     --popover-foreground: 240 8% 15%;
 
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
     --primary-glow: 217 91% 70%;
 
-    --secondary: 240 5% 97%;
+    --secondary: 220 10% 90%;
     --secondary-foreground: 240 8% 15%;
 
-    --muted: 240 4% 96%;
+    --muted: 220 10% 88%;
     --muted-foreground: 240 4% 46%;
 
-    --accent: 240 4% 96%;
+    --accent: 220 10% 88%;
     --accent-foreground: 240 8% 15%;
 
     --destructive: 0 84% 60%;
@@ -43,8 +43,8 @@ All colors MUST be HSL.
     --info: 199 89% 48%;
     --info-foreground: 0 0% 100%;
 
-    --border: 240 6% 92%;
-    --input: 240 6% 92%;
+    --border: 220 10% 85%;
+    --input: 220 10% 85%;
     --ring: 217 91% 60%;
 
     --radius: 0.75rem;
