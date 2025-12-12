@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill, BookOpen } from "lucide-react";
+import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill, BookOpen, Flame } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SessionManager from "@/components/SessionManager";
@@ -8,7 +8,6 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
-import campfireLogo from "@/assets/campfire-logo.png";
 
 import DataManager from "@/components/DataManager";
 
@@ -216,11 +215,9 @@ const Index = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <img 
-                  src={campfireLogo}
-                  alt="Feu de camp" 
-                  className="h-12 w-auto"
-                />
+                <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                  <Flame className="h-6 w-6 text-white" />
+                </div>
                 <div>
                   <h1 className="text-xl font-bold text-foreground">
                     Feu de camp
@@ -279,11 +276,9 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <img 
-                src={campfireLogo}
-                alt="Feu de camp" 
-                className="h-12 w-auto"
-              />
+              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
+                <Flame className="h-6 w-6 text-white" />
+              </div>
               <div>
                 <h1 className="text-xl font-bold text-foreground">
                   Feu de camp
