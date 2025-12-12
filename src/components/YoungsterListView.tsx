@@ -2,13 +2,26 @@ import React from 'react';
 import { Youngster } from "@/types/youngster";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+
+export type SortField = 'nom' | 'prenom' | 'age' | 'genre' | 'ville';
+export type SortDirection = 'asc' | 'desc' | null;
 
 interface YoungsterListViewProps {
   youngsters: Youngster[];
   onClick?: (youngster: Youngster) => void;
+  sortField: SortField | null;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
 }
 
-const YoungsterListView: React.FC<YoungsterListViewProps> = ({ youngsters, onClick }) => {
+const YoungsterListView: React.FC<YoungsterListViewProps> = ({ 
+  youngsters, 
+  onClick,
+  sortField,
+  sortDirection,
+  onSort
+}) => {
   const getGenreColor = (genre?: string) => {
     if (!genre) return 'bg-muted text-muted-foreground';
     const g = genre.toLowerCase();
@@ -33,16 +46,38 @@ const YoungsterListView: React.FC<YoungsterListViewProps> = ({ youngsters, onCli
     return genre;
   };
 
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 opacity-50" />;
+    }
+    if (sortDirection === 'asc') {
+      return <ArrowUp className="h-4 w-4 ml-1" />;
+    }
+    return <ArrowDown className="h-4 w-4 ml-1" />;
+  };
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/50 select-none"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center">
+        {children}
+        <SortIcon field={field} />
+      </div>
+    </TableHead>
+  );
+
   return (
     <div className="rounded-md border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Nom</TableHead>
-            <TableHead>Prénom</TableHead>
-            <TableHead>Âge</TableHead>
-            <TableHead>Genre</TableHead>
-            <TableHead>Ville</TableHead>
+            <SortableHeader field="nom">Nom</SortableHeader>
+            <SortableHeader field="prenom">Prénom</SortableHeader>
+            <SortableHeader field="age">Âge</SortableHeader>
+            <SortableHeader field="genre">Genre</SortableHeader>
+            <SortableHeader field="ville">Ville</SortableHeader>
           </TableRow>
         </TableHeader>
         <TableBody>
