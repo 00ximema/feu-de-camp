@@ -32,9 +32,6 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
         <BrowserRouter>
-          <Toaster />
-          <Sonner />
-          <OfflineIndicator />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/administratif" element={<Administratif />} />
@@ -46,6 +43,9 @@ const App = () => {
             <Route path="/main-courante" element={<MainCourante />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <Toaster />
+          <Sonner />
+          <OfflineIndicator />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
