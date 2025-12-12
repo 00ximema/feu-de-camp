@@ -343,9 +343,13 @@ const Administratif = () => {
                       <div className="flex-1">
                         <div className="flex items-center space-x-2 text-sm">
                           <span className="font-medium">{contact.label}</span>
-                          <span className="text-gray-400">-</span>
-                          <span className="font-mono text-xs">{contact.number || "Non renseigné"}</span>
-                          <span className="text-xs text-gray-500">({contact.description})</span>
+                          <span className="text-muted-foreground">-</span>
+                          <span className={contact.number ? "font-medium" : "text-muted-foreground italic"}>
+                            {contact.number || "Non renseigné"}
+                          </span>
+                          {contact.description && (
+                            <span className="text-muted-foreground">({contact.description})</span>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center space-x-1">
