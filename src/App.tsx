@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -14,20 +15,19 @@ import Planning from "./pages/Planning";
 import MainCourante from "./pages/MainCourante";
 import OfflineIndicator from "./components/OfflineIndicator";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 5 * 60 * 1000, // 5 minutes
-      retry: (failureCount, error) => {
-        // Ne pas réessayer si hors ligne
-        if (!navigator.onLine) return false;
-        return failureCount < 3;
+const App = () => {
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        staleTime: 5 * 60 * 1000,
+        retry: (failureCount) => {
+          if (!navigator.onLine) return false;
+          return failureCount < 3;
+        },
       },
     },
-  },
-});
+  }));
 
-const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
