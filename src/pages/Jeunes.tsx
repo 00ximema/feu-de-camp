@@ -10,7 +10,7 @@ import { Link } from "react-router-dom";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useGroups } from "@/hooks/useGroups";
 import YoungsterCard from "@/components/YoungsterCard";
-import YoungsterListView from "@/components/YoungsterListView";
+import YoungsterListView, { SortField, SortDirection } from "@/components/YoungsterListView";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
 import GroupsManager from "@/components/GroupsManager";
 import RoomManager from "@/components/RoomManager";
@@ -30,6 +30,8 @@ const Jeunes = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
   const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isGarcon = (genre?: string) => {
@@ -44,12 +46,70 @@ const Jeunes = () => {
     return g === 'féminin' || g === 'f' || g === 'fille' || g === 'femme';
   };
 
-  const filteredJeunes = useMemo(() => {
-    if (genderFilter === 'all') return jeunes;
-    if (genderFilter === 'boys') return jeunes.filter(j => isGarcon(j.genre));
-    if (genderFilter === 'girls') return jeunes.filter(j => isFille(j.genre));
-    return jeunes;
-  }, [jeunes, genderFilter]);
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Cycle: asc -> desc -> null
+      if (sortDirection === 'asc') {
+        setSortDirection('desc');
+      } else if (sortDirection === 'desc') {
+        setSortField(null);
+        setSortDirection(null);
+      } else {
+        setSortDirection('asc');
+      }
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const filteredAndSortedJeunes = useMemo(() => {
+    let result = [...jeunes];
+    
+    // Filter by gender
+    if (genderFilter === 'boys') {
+      result = result.filter(j => isGarcon(j.genre));
+    } else if (genderFilter === 'girls') {
+      result = result.filter(j => isFille(j.genre));
+    }
+    
+    // Sort
+    if (sortField && sortDirection) {
+      result.sort((a, b) => {
+        let aValue: string | number = '';
+        let bValue: string | number = '';
+        
+        switch (sortField) {
+          case 'nom':
+            aValue = (a.nom || '').toLowerCase();
+            bValue = (b.nom || '').toLowerCase();
+            break;
+          case 'prenom':
+            aValue = (a.prenom || '').toLowerCase();
+            bValue = (b.prenom || '').toLowerCase();
+            break;
+          case 'age':
+            aValue = a.age || 0;
+            bValue = b.age || 0;
+            break;
+          case 'genre':
+            aValue = (a.genre || '').toLowerCase();
+            bValue = (b.genre || '').toLowerCase();
+            break;
+          case 'ville':
+            aValue = (a.ville || '').toLowerCase();
+            bValue = (b.ville || '').toLowerCase();
+            break;
+        }
+        
+        if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+        if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+    }
+    
+    return result;
+  }, [jeunes, genderFilter, sortField, sortDirection]);
 
   const genderStats = useMemo(() => {
     const boys = jeunes.filter(j => isGarcon(j.genre)).length;
@@ -159,7 +219,7 @@ const Jeunes = () => {
                   <div>
                     <CardTitle className="flex items-center space-x-2">
                       <Users className="h-5 w-5" />
-                      <span>Jeunes ({filteredJeunes.length}/{stats.total})</span>
+                      <span>Jeunes ({filteredAndSortedJeunes.length}/{stats.total})</span>
                     </CardTitle>
                     <CardDescription>Gérez les jeunes de la maison de la gendarmerie</CardDescription>
                   </div>
@@ -220,7 +280,7 @@ const Jeunes = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {filteredJeunes.length === 0 ? (
+                {filteredAndSortedJeunes.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
                     <h3 className="text-lg font-medium text-foreground mb-2">
@@ -246,7 +306,7 @@ const Jeunes = () => {
                   </div>
                 ) : viewMode === 'cards' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {filteredJeunes.map((jeune) => (
+                    {filteredAndSortedJeunes.map((jeune) => (
                       <YoungsterCard
                         key={jeune.id}
                         youngster={jeune}
@@ -256,8 +316,11 @@ const Jeunes = () => {
                   </div>
                 ) : (
                   <YoungsterListView 
-                    youngsters={filteredJeunes}
+                    youngsters={filteredAndSortedJeunes}
                     onClick={(youngster) => setSelectedYoungster(youngster)}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSort={handleSort}
                   />
                 )}
               </CardContent>
