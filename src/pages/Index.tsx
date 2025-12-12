@@ -8,6 +8,7 @@ import { useSession } from "@/hooks/useSession";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useEvents } from "@/hooks/useEvents";
 import { useLocalDatabase } from "@/hooks/useLocalDatabase";
+import campfireLogo from "@/assets/campfire-logo.png";
 
 import DataManager from "@/components/DataManager";
 
@@ -216,11 +217,9 @@ const Index = () => {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <img 
-                  src="/lovable-uploads/logo-fondation-mg.png" 
-                  alt="Logo Fondation Maison de la Gendarmerie" 
-                  className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => window.open('https://fondationmg.fr/', '_blank')}
-                  title="Visiter fondationmg.fr"
+                  src={campfireLogo}
+                  alt="Feu de camp" 
+                  className="h-12 w-auto"
                 />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">
@@ -281,11 +280,9 @@ const Index = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <img 
-                src="/lovable-uploads/logo-fondation-mg.png" 
-                alt="Logo Fondation Maison de la Gendarmerie" 
-                className="h-16 w-auto cursor-pointer hover:opacity-80 transition-opacity"
-                onClick={() => window.open('https://fondationmg.fr/', '_blank')}
-                title="Visiter fondationmg.fr"
+                src={campfireLogo}
+                alt="Feu de camp" 
+                className="h-12 w-auto"
               />
               <div>
                 <h1 className="text-xl font-bold text-foreground">
