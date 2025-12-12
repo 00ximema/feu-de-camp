@@ -43,8 +43,6 @@ const YoungsterListView: React.FC<YoungsterListViewProps> = ({ youngsters, onCli
             <TableHead>Âge</TableHead>
             <TableHead>Genre</TableHead>
             <TableHead>Ville</TableHead>
-            <TableHead>Allergies</TableHead>
-            <TableHead>Régime</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -63,28 +61,6 @@ const YoungsterListView: React.FC<YoungsterListViewProps> = ({ youngsters, onCli
                 </Badge>
               </TableCell>
               <TableCell>{youngster.ville || '-'}</TableCell>
-              <TableCell>
-                {youngster.allergies && youngster.allergies.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {youngster.allergies.map((allergie, index) => (
-                      <Badge key={index} variant="destructive" className="text-xs">
-                        {allergie}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : '-'}
-              </TableCell>
-              <TableCell>
-                {youngster.regime && youngster.regime.length > 0 ? (
-                  <div className="flex flex-wrap gap-1">
-                    {youngster.regime.map((regimeItem, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {regimeItem}
-                      </Badge>
-                    ))}
-                  </div>
-                ) : '-'}
-              </TableCell>
             </TableRow>
           ))}
         </TableBody>
