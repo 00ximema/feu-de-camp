@@ -1,14 +1,16 @@
 
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Users, UserPlus, ArrowLeft, Home, Users2, FileText, Upload } from "lucide-react";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { Users, UserPlus, ArrowLeft, Home, Users2, FileText, Upload, LayoutGrid, List } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useGroups } from "@/hooks/useGroups";
 import YoungsterCard from "@/components/YoungsterCard";
+import YoungsterListView from "@/components/YoungsterListView";
 import YoungsterDetailsModal from "@/components/YoungsterDetailsModal";
 import GroupsManager from "@/components/GroupsManager";
 import RoomManager from "@/components/RoomManager";
@@ -17,13 +19,43 @@ import { Youngster } from "@/types/youngster";
 import { parseExcel } from "@/utils/excelParser";
 import { toast } from "sonner";
 
+type ViewMode = 'cards' | 'list';
+type GenderFilter = 'all' | 'boys' | 'girls';
+
 const Jeunes = () => {
   const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, isInitialized } = useJeunes();
   const { groupes } = useGroups();
   const [selectedYoungster, setSelectedYoungster] = useState<Youngster | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [genderFilter, setGenderFilter] = useState<GenderFilter>('all');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isGarcon = (genre?: string) => {
+    if (!genre) return false;
+    const g = genre.toLowerCase();
+    return g === 'masculin' || g === 'm' || g === 'garçon' || g === 'h' || g === 'homme';
+  };
+
+  const isFille = (genre?: string) => {
+    if (!genre) return false;
+    const g = genre.toLowerCase();
+    return g === 'féminin' || g === 'f' || g === 'fille' || g === 'femme';
+  };
+
+  const filteredJeunes = useMemo(() => {
+    if (genderFilter === 'all') return jeunes;
+    if (genderFilter === 'boys') return jeunes.filter(j => isGarcon(j.genre));
+    if (genderFilter === 'girls') return jeunes.filter(j => isFille(j.genre));
+    return jeunes;
+  }, [jeunes, genderFilter]);
+
+  const genderStats = useMemo(() => {
+    const boys = jeunes.filter(j => isGarcon(j.genre)).length;
+    const girls = jeunes.filter(j => isFille(j.genre)).length;
+    return { boys, girls, undefined: jeunes.length - boys - girls };
+  }, [jeunes]);
 
   const stats = {
     total: jeunes.length,
@@ -127,11 +159,44 @@ const Jeunes = () => {
                   <div>
                     <CardTitle className="flex items-center space-x-2">
                       <Users className="h-5 w-5" />
-                      <span>Jeunes ({stats.total})</span>
+                      <span>Jeunes ({filteredJeunes.length}/{stats.total})</span>
                     </CardTitle>
                     <CardDescription>Gérez les jeunes de la maison de la gendarmerie</CardDescription>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 items-center">
+                    {/* Filtre garçons/filles */}
+                    <ToggleGroup 
+                      type="single" 
+                      value={genderFilter} 
+                      onValueChange={(value) => value && setGenderFilter(value as GenderFilter)}
+                      className="border rounded-md"
+                    >
+                      <ToggleGroupItem value="all" aria-label="Tous" className="text-xs px-2">
+                        Tous ({stats.total})
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="boys" aria-label="Garçons" className="text-xs px-2 data-[state=on]:bg-blue-100 data-[state=on]:text-blue-700">
+                        Garçons ({genderStats.boys})
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="girls" aria-label="Filles" className="text-xs px-2 data-[state=on]:bg-pink-100 data-[state=on]:text-pink-700">
+                        Filles ({genderStats.girls})
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+
+                    {/* Toggle vue */}
+                    <ToggleGroup 
+                      type="single" 
+                      value={viewMode} 
+                      onValueChange={(value) => value && setViewMode(value as ViewMode)}
+                      className="border rounded-md"
+                    >
+                      <ToggleGroupItem value="cards" aria-label="Vue cartes">
+                        <LayoutGrid className="h-4 w-4" />
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="list" aria-label="Vue liste">
+                        <List className="h-4 w-4" />
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -155,25 +220,33 @@ const Jeunes = () => {
                 </div>
               </CardHeader>
               <CardContent>
-                {jeunes.length === 0 ? (
+                {filteredJeunes.length === 0 ? (
                   <div className="text-center py-12">
                     <Users className="h-12 w-12 text-muted-foreground/40 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-foreground mb-2">Aucun jeune</h3>
-                    <p className="text-muted-foreground mb-4">Commencez par ajouter des jeunes ou importer un fichier Excel</p>
-                    <div className="flex justify-center gap-2">
-                      <Button onClick={() => setShowAddModal(true)}>
-                        <UserPlus className="h-4 w-4 mr-2" />
-                        Ajouter un jeune
-                      </Button>
-                      <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
-                        <Upload className="h-4 w-4 mr-2" />
-                        Importer Excel
-                      </Button>
-                    </div>
+                    <h3 className="text-lg font-medium text-foreground mb-2">
+                      {jeunes.length === 0 ? 'Aucun jeune' : 'Aucun résultat pour ce filtre'}
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      {jeunes.length === 0 
+                        ? 'Commencez par ajouter des jeunes ou importer un fichier Excel'
+                        : 'Essayez un autre filtre'}
+                    </p>
+                    {jeunes.length === 0 && (
+                      <div className="flex justify-center gap-2">
+                        <Button onClick={() => setShowAddModal(true)}>
+                          <UserPlus className="h-4 w-4 mr-2" />
+                          Ajouter un jeune
+                        </Button>
+                        <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Importer Excel
+                        </Button>
+                      </div>
+                    )}
                   </div>
-                ) : (
+                ) : viewMode === 'cards' ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {jeunes.map((jeune) => (
+                    {filteredJeunes.map((jeune) => (
                       <YoungsterCard
                         key={jeune.id}
                         youngster={jeune}
@@ -181,6 +254,11 @@ const Jeunes = () => {
                       />
                     ))}
                   </div>
+                ) : (
+                  <YoungsterListView 
+                    youngsters={filteredJeunes}
+                    onClick={(youngster) => setSelectedYoungster(youngster)}
+                  />
                 )}
               </CardContent>
             </Card>
