@@ -221,7 +221,7 @@ const Jeunes = () => {
                       <Users className="h-5 w-5" />
                       <span>Jeunes ({filteredAndSortedJeunes.length}/{stats.total})</span>
                     </CardTitle>
-                    <CardDescription>Gérez les jeunes de la maison de la gendarmerie</CardDescription>
+                    <CardDescription>Gérez les jeunes de votre séjour de vacances</CardDescription>
                   </div>
                   <div className="flex gap-2 items-center">
                     {/* Filtre garçons/filles */}
