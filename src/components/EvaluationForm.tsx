@@ -88,40 +88,22 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
   const exportToPDF = async () => {
     try {
       const pdf = new jsPDF();
+      const pageWidth = 210;
       
-      // Charger et ajouter le logo
-      try {
-        const logoResponse = await fetch('/lovable-uploads/logo-fondation-mg.png');
-        const logoBlob = await logoResponse.blob();
-        const logoBase64 = await new Promise<string>((resolve) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(reader.result as string);
-          reader.readAsDataURL(logoBlob);
-        });
-        
-        // Ajouter le logo (25x25 pixels)
-        pdf.addImage(logoBase64, 'PNG', 15, 5, 25, 25);
-      } catch (error) {
-        console.log('Logo non trouvé, utilisation du texte de fallback');
-        pdf.setFontSize(8);
-        pdf.text('FONDATION MG', 15, 15);
-      }
-      
-      // Titre centré
+      // Titre centré (sans logo)
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(16);
       pdf.setFont('helvetica', 'bold');
       const titleText = "Grille d'évaluation";
       const titleWidth = pdf.getTextWidth(titleText);
-      const pageWidth = 210;
       const titleX = (pageWidth - titleWidth) / 2;
-      pdf.text(titleText, titleX, 20);
+      pdf.text(titleText, titleX, 15);
 
       // Informations principales
       pdf.setTextColor(0, 0, 0);
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      let yPos = 35;
+      let yPos = 28;
       
       pdf.text(`Nom et prénom de l'animateur : ${evaluationData.animatorName}`, 15, yPos);
       pdf.text(`Nom du directeur : ${evaluationData.directorName}`, 110, yPos);
@@ -135,65 +117,65 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       pdf.text(`Centre/Session : ${evaluationData.centerSession}`, 110, yPos);
       yPos += 10;
       
-      // Tableau des critères (même taille de police)
-      pdf.setFontSize(10);
+      // Tableau des critères
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'bold');
       
-      // En-têtes du tableau
+      // En-têtes du tableau avec largeurs ajustées
       const startX = 15;
-      const colWidths = [90, 16, 16, 16, 50]; // Largeurs agrandies
+      const colWidths = [95, 15, 15, 15, 45];
       let currentX = startX;
       
-      pdf.text('Critères évalués', currentX, yPos);
-      currentX += colWidths[0];
-      pdf.text('Non', currentX, yPos);
-      currentX += colWidths[1];
-      pdf.text('± ', currentX, yPos);
-      currentX += colWidths[2];
-      pdf.text('Oui', currentX, yPos);
-      currentX += colWidths[3];
-      pdf.text('Observations', currentX, yPos);
+      // Dessiner les bordures des en-têtes
+      const headerHeight = 8;
+      pdf.rect(startX, yPos - 6, colWidths[0], headerHeight);
+      pdf.rect(startX + colWidths[0], yPos - 6, colWidths[1], headerHeight);
+      pdf.rect(startX + colWidths[0] + colWidths[1], yPos - 6, colWidths[2], headerHeight);
+      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2], yPos - 6, colWidths[3], headerHeight);
+      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], yPos - 6, colWidths[4], headerHeight);
       
-      // Ligne de séparation sous les en-têtes
-      pdf.line(startX, yPos + 2, startX + colWidths.reduce((a, b) => a + b, 0), yPos + 2);
-      yPos += 10;
+      // Textes des en-têtes centrés
+      pdf.text('Critères évalués', startX + 2, yPos);
+      pdf.text('Non', startX + colWidths[0] + (colWidths[1] - pdf.getTextWidth('Non')) / 2, yPos);
+      pdf.text('±', startX + colWidths[0] + colWidths[1] + (colWidths[2] - pdf.getTextWidth('±')) / 2, yPos);
+      pdf.text('Oui', startX + colWidths[0] + colWidths[1] + colWidths[2] + (colWidths[3] - pdf.getTextWidth('Oui')) / 2, yPos);
+      pdf.text('Observations', startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3] + 2, yPos);
       
-      // Contenu du tableau (même taille de police)
+      yPos += headerHeight;
+      
+      // Contenu du tableau
       pdf.setFont('helvetica', 'normal');
-      pdf.setFontSize(10);
+      pdf.setFontSize(8);
       
-      evaluationData.criteria.forEach((criteria, index) => {
-        // Pas de nouvelle page - tout sur une page
-        
-        // Bordures du tableau (hauteur agrandie)
-        const rowHeight = 10;
+      evaluationData.criteria.forEach((criteria) => {
+        const rowHeight = 9;
         currentX = startX;
         
-        // Colonne critère (texte mieux espacé)
-        const splitText = pdf.splitTextToSize(criteria.text, colWidths[0] - 2);
-        const textHeight = Math.min(splitText.length * 3, rowHeight);
-        pdf.rect(currentX, yPos - 7, colWidths[0], rowHeight);
-        pdf.text(splitText.slice(0, 2), currentX + 1, yPos - 4); // Max 2 lignes
+        // Colonne critère
+        const splitText = pdf.splitTextToSize(criteria.text, colWidths[0] - 4);
+        pdf.rect(currentX, yPos - 6, colWidths[0], rowHeight);
+        pdf.text(splitText.slice(0, 2), currentX + 2, yPos - 2);
         currentX += colWidths[0];
         
-        // Colonnes scores (mieux espacées)
+        // Colonnes scores avec X centrés
         for (let i = 1; i <= 3; i++) {
-          pdf.rect(currentX, yPos - 7, colWidths[i], rowHeight);
+          pdf.rect(currentX, yPos - 6, colWidths[i], rowHeight);
           let mark = '';
           if (i === 1 && criteria.score === 'non') mark = 'X';
           if (i === 2 && criteria.score === 'moyen') mark = 'X';
           if (i === 3 && criteria.score === 'oui') mark = 'X';
           if (mark) {
-            pdf.text(mark, currentX + colWidths[i]/2 - 1, yPos - 2);
+            const markWidth = pdf.getTextWidth(mark);
+            pdf.text(mark, currentX + (colWidths[i] - markWidth) / 2, yPos - 1);
           }
           currentX += colWidths[i];
         }
         
-        // Colonne observations (agrandie)
-        pdf.rect(currentX, yPos - 7, colWidths[4], rowHeight);
+        // Colonne observations
+        pdf.rect(currentX, yPos - 6, colWidths[4], rowHeight);
         if (criteria.observations) {
-          const obsText = pdf.splitTextToSize(criteria.observations, colWidths[4] - 2);
-          pdf.text(obsText.slice(0, 1), currentX + 1, yPos - 4); // Max 1 ligne
+          const obsText = pdf.splitTextToSize(criteria.observations, colWidths[4] - 4);
+          pdf.text(obsText.slice(0, 1), currentX + 2, yPos - 2);
         }
         
         yPos += rowHeight;
