@@ -224,7 +224,7 @@ const Index = () => {
                 />
                 <div>
                   <h1 className="text-xl font-bold text-foreground">
-                    Gestion CVJ MG
+                    Feu de camp
                   </h1>
                   <p className="text-xs text-muted-foreground">Plateforme de gestion pour les directeurs</p>
                 </div>
@@ -289,7 +289,7 @@ const Index = () => {
               />
               <div>
                 <h1 className="text-xl font-bold text-foreground">
-                  Gestion CVJ MG
+                  Feu de camp
                 </h1>
                 <p className="text-xs text-muted-foreground">Plateforme de gestion pour les directeurs</p>
               </div>
