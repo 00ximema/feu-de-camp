@@ -53,13 +53,16 @@ export const sendEventEmail = async (
     ...eventData.jeunes.map(name => `• ${name} (jeune)`)
   ].join('\n');
 
+  // Remplacer les slashes par des tirets pour éviter l'encodage HTML dans l'objet
+  const formattedDate = eventData.date.replace(/\//g, '-');
+  
   const templateParams = {
     to_email: recipientEmail,
     event_date: eventData.date,
     event_time: eventData.time,
     event_description: eventData.description,
     persons_involved: personsInvolved || 'Aucune personne spécifiée',
-    subject: `Main courante - Événement du ${eventData.date} à ${eventData.time}`
+    subject: `Main courante - Événement du ${formattedDate} à ${eventData.time}`
   };
 
   await emailjs.send(
