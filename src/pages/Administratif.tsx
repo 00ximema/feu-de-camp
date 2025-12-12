@@ -461,7 +461,7 @@ const Administratif = () => {
         <Card className="mb-6">
           <CardHeader className="pb-4">
             <CardTitle className="flex items-center space-x-2 text-lg">
-              <FileText className="h-4 w-4 text-green-600" />
+              <FileText className="h-4 w-4 text-primary" />
               <span>Documents obligatoires ACM</span>
             </CardTitle>
             <CardDescription className="text-sm">
@@ -469,7 +469,7 @@ const Administratif = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 gap-3">
+            <div className="grid gap-2">
               {Object.entries({
                 declarationACM: "Déclaration ACM",
                 projetEducatif: "Projet éducatif",
@@ -486,26 +486,27 @@ const Administratif = () => {
               }).map(([key, label]) => {
                 const documentCount = acmDocumentFiles.filter(doc => doc.documentType === key).length;
                 return (
-                  <div key={key} className="flex items-center justify-between p-3 border rounded">
-                    <div className="flex items-center space-x-3">
+                  <div key={key} className="flex items-center justify-between p-2 border rounded bg-muted">
+                    <div className="flex items-center space-x-2 text-sm">
                       <Checkbox
                         id={key}
                         checked={acmDocuments[key as keyof typeof acmDocuments]}
                         onCheckedChange={(checked) => handleAcmCheckboxChange(key, !!checked)}
                       />
-                      <Label htmlFor={key} className="text-sm flex-grow cursor-pointer">
+                      <Label htmlFor={key} className="font-medium cursor-pointer">
                         {label}
                       </Label>
                       {documentCount > 0 && (
-                        <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                          {documentCount} document{documentCount > 1 ? 's' : ''}
+                        <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                          {documentCount} doc{documentCount > 1 ? 's' : ''}
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center space-x-1">
                       <Button
                         size="sm"
                         variant="outline"
+                        className="h-7 text-xs"
                         onClick={() => {
                           setSelectedDocumentType(key);
                           setSelectedDocumentLabel(label);
@@ -519,6 +520,7 @@ const Administratif = () => {
                         <Button
                           size="sm"
                           variant="outline"
+                          className="h-7 text-xs"
                           onClick={() => {
                             setSelectedDocumentType(key);
                             setSelectedDocumentLabel(label);
@@ -526,7 +528,7 @@ const Administratif = () => {
                           }}
                         >
                           <Eye className="h-3 w-3 mr-1" />
-                          Voir ({documentCount})
+                          Voir
                         </Button>
                       )}
                     </div>
