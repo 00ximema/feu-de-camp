@@ -282,20 +282,14 @@ const Administratif = () => {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Encart exercice d'évacuation */}
-        <Card className="mb-6 border-warning/20 bg-warning/5">
-          <CardHeader className="pb-4">
-            <CardTitle className="flex items-center space-x-2 text-lg text-warning">
-              <Shield className="h-5 w-5" />
-              <span>Exercice d'alerte et d'évacuation obligatoire</span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Un exercice d'alerte et d'évacuation doit être obligatoirement effectué au début 
-                du séjour avec les enfants. Cet exercice doit être consigné sur les registres de sécurité.
-              </p>
+        <Card className="mb-4 border-warning/20 bg-warning/5">
+          <CardContent className="py-3 px-4">
+            <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
+                <Shield className="h-4 w-4 text-warning" />
+                <span className="text-sm font-medium text-warning">Exercice d'alerte et d'évacuation obligatoire</span>
+              </div>
+              <div className="flex items-center space-x-2">
                 <Checkbox
                   id="evacuation-exercise"
                   checked={exerciceEvacuationDone}
@@ -305,8 +299,8 @@ const Administratif = () => {
                     }
                   }}
                 />
-                <Label htmlFor="evacuation-exercise" className="text-sm font-medium">
-                  {exerciceEvacuationDone ? "✓ Exercice effectué et consigné" : "Valider que l'exercice a été effectué"}
+                <Label htmlFor="evacuation-exercise" className="text-xs">
+                  {exerciceEvacuationDone ? "✓ Effectué" : "Valider"}
                 </Label>
               </div>
             </div>
