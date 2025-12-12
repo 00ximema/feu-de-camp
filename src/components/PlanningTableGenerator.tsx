@@ -945,6 +945,16 @@ const PlanningTableGenerator = () => {
                                     </Button>
                                   </div>
                                 ))}
+                                {/* Bouton pour ajouter un nouvel événement */}
+                                <div 
+                                  className="text-xs text-primary text-center py-1 border border-dashed border-primary/30 rounded hover:bg-primary/5 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCellClick(rowIndex, cellIndex);
+                                  }}
+                                >
+                                  <Plus className="h-3 w-3 mx-auto" />
+                                </div>
                               </div>
                             ) : (
                               <div className="text-xs text-gray-400 text-center">
@@ -974,7 +984,7 @@ const PlanningTableGenerator = () => {
         timeSlot={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.timeSlot || '' : ''}
         date={selectedCell ? planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.date || '' : ''}
         teamMembers={teamMembers}
-        currentEvent={selectedCell && planningData[selectedCell.rowIndex]?.[selectedCell.cellIndex]?.events?.[0] ? planningData[selectedCell.rowIndex][selectedCell.cellIndex].events![0] : undefined}
+        currentEvent={undefined}
       />
     </div>
   );
