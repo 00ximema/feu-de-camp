@@ -14,7 +14,7 @@ import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
 import { toast } from '@/components/ui/use-toast';
-import logoFondationMG from '/lovable-uploads/573d21bd-66db-4264-8ddf-c5477bf8cb8f.png';
+import campfireLogo from '@/assets/campfire-icon.png';
 
 interface TeamMember {
   id: string;
@@ -399,60 +399,67 @@ const PlanningTableGenerator = () => {
       const pageHeight = 210;
       const margin = 10;
       
-      // Fonction pour créer l'en-tête avec logo
+      // Fonction pour créer l'en-tête avec logo feu de camp
       const createHeader = async (pdf: jsPDF, pageNumber: number, totalPages: number, dateGroup: Date[]) => {
-        // Fond blanc
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, pageWidth, 35, 'F');
+        // Fond avec dégradé orange subtil
+        pdf.setFillColor(255, 250, 245);
+        pdf.rect(0, 0, pageWidth, 40, 'F');
         
-        // Charger et ajouter le logo
+        // Charger et ajouter le logo feu de camp
         try {
           const logoImg = new Image();
           logoImg.crossOrigin = 'anonymous';
           await new Promise<void>((resolve, reject) => {
             logoImg.onload = () => resolve();
             logoImg.onerror = () => reject();
-            logoImg.src = logoFondationMG;
+            logoImg.src = campfireLogo;
           });
           
-          // Ajouter le logo en haut à gauche
-          pdf.addImage(logoImg, 'PNG', 15, 5, 25, 25);
+          // Ajouter le logo en haut à gauche (plus grand)
+          pdf.addImage(logoImg, 'PNG', 12, 3, 32, 32);
         } catch (error) {
           console.error('Erreur lors du chargement du logo:', error);
           // Fallback si le logo ne se charge pas
-          pdf.setTextColor(0, 105, 181);
-          pdf.setFontSize(14);
-          pdf.text('Fondation', 15, 18);
-          pdf.text('Gendarmerie', 15, 25);
+          pdf.setTextColor(230, 126, 34);
+          pdf.setFontSize(16);
+          pdf.text('Feu de Camp', 15, 22);
         }
         
-        // Titre du planning
-        pdf.setTextColor(0, 0, 0);
-        pdf.setFontSize(18);
-        pdf.text('Planning Équipe', 50, 15);
+        // Titre du planning avec style amélioré
+        pdf.setTextColor(51, 51, 51);
+        pdf.setFontSize(22);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Planning du Séjour', 52, 18);
         
         // Période de cette page
         pdf.setFontSize(12);
+        pdf.setFont('helvetica', 'normal');
+        pdf.setTextColor(100, 100, 100);
         try {
           if (dateGroup.length > 0) {
             const firstDate = dateGroup[0];
             const lastDate = dateGroup[dateGroup.length - 1];
             if (isValid(firstDate) && isValid(lastDate)) {
-              pdf.text(`Du ${format(firstDate, 'dd/MM/yyyy')} au ${format(lastDate, 'dd/MM/yyyy')}`, 50, 25);
+              pdf.text(`Du ${format(firstDate, 'dd MMMM yyyy', { locale: fr })} au ${format(lastDate, 'dd MMMM yyyy', { locale: fr })}`, 52, 28);
             }
           }
         } catch (error) {
           console.error('Erreur formatage date PDF:', error);
-          pdf.text('Planning', 50, 25);
+          pdf.text('Planning', 52, 28);
         }
         
-        // Numéro de page
+        // Numéro de page avec style
+        pdf.setFillColor(230, 126, 34);
+        pdf.roundedRect(pageWidth - 45, 10, 35, 18, 3, 3, 'F');
+        pdf.setTextColor(255, 255, 255);
         pdf.setFontSize(10);
-        pdf.text(`Page ${pageNumber}/${totalPages}`, pageWidth - 50, 20);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${pageNumber}/${totalPages}`, pageWidth - 27.5, 21, { align: 'center' });
         
-        // Ligne de séparation
-        pdf.setDrawColor(200, 200, 200);
-        pdf.line(15, 35, pageWidth - 15, 35);
+        // Ligne de séparation orange
+        pdf.setDrawColor(230, 126, 34);
+        pdf.setLineWidth(0.8);
+        pdf.line(12, 38, pageWidth - 12, 38);
       };
 
       // Créer une page pour chaque groupe de dates (max 7 jours)
@@ -488,24 +495,26 @@ const PlanningTableGenerator = () => {
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
         
-        // Colonne des créneaux
+        // Colonne des créneaux avec style orange
         const creneauHeader = document.createElement('th');
         creneauHeader.textContent = 'Créneaux';
-        creneauHeader.style.width = '120px';
-        creneauHeader.style.padding = '12px 6px'; // Augmenter le padding
-        creneauHeader.style.border = '1px solid #ccc';
-        creneauHeader.style.backgroundColor = '#f5f5f5';
+        creneauHeader.style.width = '100px';
+        creneauHeader.style.padding = '10px 6px';
+        creneauHeader.style.border = '2px solid #e67e22';
+        creneauHeader.style.backgroundColor = '#e67e22';
+        creneauHeader.style.color = '#ffffff';
         creneauHeader.style.fontWeight = 'bold';
+        creneauHeader.style.fontSize = '10px';
         headerRow.appendChild(creneauHeader);
         
-        // Colonnes des dates
+        // Colonnes des dates avec style amélioré
         currentGroup.forEach(date => {
           const dateHeader = document.createElement('th');
           try {
             if (isValid(date)) {
               dateHeader.innerHTML = `
-                <div>${format(date, 'EEEE', { locale: fr })}</div>
-                <div style="font-size: 8px;">${format(date, 'dd/MM', { locale: fr })}</div>
+                <div style="font-weight: bold; font-size: 10px; text-transform: capitalize;">${format(date, 'EEEE', { locale: fr })}</div>
+                <div style="font-size: 9px; color: #666;">${format(date, 'dd MMM', { locale: fr })}</div>
               `;
             } else {
               dateHeader.textContent = 'Date invalide';
@@ -513,10 +522,10 @@ const PlanningTableGenerator = () => {
           } catch (error) {
             dateHeader.textContent = 'Erreur date';
           }
-          dateHeader.style.width = `${Math.floor(880 / currentGroup.length)}px`;
-          dateHeader.style.padding = '12px 6px'; // Augmenter le padding
-          dateHeader.style.border = '1px solid #ccc';
-          dateHeader.style.backgroundColor = '#f5f5f5';
+          dateHeader.style.width = `${Math.floor(900 / currentGroup.length)}px`;
+          dateHeader.style.padding = '10px 6px';
+          dateHeader.style.border = '2px solid #e67e22';
+          dateHeader.style.backgroundColor = '#fef3e2';
           dateHeader.style.fontWeight = 'bold';
           dateHeader.style.textAlign = 'center';
           headerRow.appendChild(dateHeader);
@@ -528,31 +537,34 @@ const PlanningTableGenerator = () => {
         // Corps du tableau
         const tbody = document.createElement('tbody');
         
-        // Créer les lignes pour chaque créneau
+        // Créer les lignes pour chaque créneau avec style amélioré
         [...TIME_SLOTS, ...SPECIAL_ROWS].forEach(timeSlot => {
           const row = document.createElement('tr');
           if (SPECIAL_ROWS.includes(timeSlot)) {
-            row.style.backgroundColor = '#f3f4f6';
+            row.style.backgroundColor = '#fff5eb';
           }
           
-          // Colonne du créneau
+          // Colonne du créneau avec style
           const slotCell = document.createElement('td');
           slotCell.textContent = timeSlot;
-          slotCell.style.padding = '6px 4px'; // Diminuer le padding pour les créneaux
-          slotCell.style.border = '1px solid #ccc';
+          slotCell.style.padding = '8px 6px';
+          slotCell.style.border = '1px solid #e67e22';
           slotCell.style.fontWeight = 'bold';
-          slotCell.style.backgroundColor = '#f9f9f9';
+          slotCell.style.backgroundColor = '#fef9f3';
+          slotCell.style.fontSize = '9px';
+          slotCell.style.color = '#c45c00';
           row.appendChild(slotCell);
           
-          // Cellules pour chaque date du groupe
+          // Cellules pour chaque date du groupe avec style amélioré
           currentGroup.forEach(date => {
             const cell = document.createElement('td');
-            cell.style.padding = '10px 8px';
-            cell.style.border = '1px solid #ccc';
-            cell.style.minHeight = '100px';
-            cell.style.fontSize = '7px';
+            cell.style.padding = '8px 6px';
+            cell.style.border = '1px solid #f0c9a0';
+            cell.style.minHeight = '80px';
+            cell.style.fontSize = '8px';
             cell.style.verticalAlign = 'top';
-            cell.style.lineHeight = '1.2';
+            cell.style.lineHeight = '1.3';
+            cell.style.backgroundColor = '#ffffff';
             
             // Chercher les événements pour cette date et ce créneau
             const dateString = format(date, 'yyyy-MM-dd');
@@ -565,28 +577,28 @@ const PlanningTableGenerator = () => {
                 let content = '';
                 
                 events.forEach((event, index) => {
-                  if (index > 0) content += '<div style="border-top: 1px solid #e5e7eb; margin: 2px 0; padding-top: 2px;"></div>';
+                  if (index > 0) content += '<div style="border-top: 1px solid #f0c9a0; margin: 4px 0; padding-top: 4px;"></div>';
                   
-                  content += `<div style="font-weight: bold; color: #1f2937; margin-bottom: 2px;">${event.name}</div>`;
+                  content += `<div style="font-weight: bold; color: #c45c00; margin-bottom: 3px; font-size: 9px;">${event.name}</div>`;
                   
                   if (event.startTime && event.endTime) {
-                    content += `<div style="color: #2563eb; font-size: 7px; margin-bottom: 1px;">${event.startTime} - ${event.endTime}</div>`;
+                    content += `<div style="color: #e67e22; font-size: 8px; margin-bottom: 2px;">🕐 ${event.startTime} - ${event.endTime}</div>`;
                   }
                   
                   if (event.assignedMembers && event.assignedMembers.length > 0) {
-                    content += `<div style="color: #4b5563; font-size: 7px; margin-bottom: 1px;"><strong>Adultes:</strong> ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
+                    content += `<div style="color: #555; font-size: 8px; margin-bottom: 2px;">👥 ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
                   }
                   
                   if (event.selectedGroups && event.selectedGroups.length > 0) {
-                    content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Groupes:</strong> ${event.selectedGroups.join(', ')}</div>`;
+                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">📋 ${event.selectedGroups.join(', ')}</div>`;
                   }
                   
                   if (event.selectedJeunes && event.selectedJeunes.length > 0) {
-                    content += `<div style="color: #059669; font-size: 7px; margin-bottom: 1px;"><strong>Jeunes:</strong> ${event.selectedJeunes.length} sélectionné${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
+                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">👦 ${event.selectedJeunes.length} jeune${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
                   }
                   
                   if (event.notes) {
-                    content += `<div style="color: #7c3aed; font-size: 7px; font-style: italic;">${event.notes}</div>`;
+                    content += `<div style="color: #8e44ad; font-size: 7px; font-style: italic; margin-top: 2px;">📝 ${event.notes}</div>`;
                   }
                 });
                 
@@ -632,7 +644,7 @@ const PlanningTableGenerator = () => {
         const scaledHeight = imgHeight * ratio;
         
         const xPosition = margin + (availableWidth - scaledWidth) / 2;
-        const yPosition = 40;
+        const yPosition = 44;
         
         pdf.addImage(
           imgData,
@@ -644,14 +656,15 @@ const PlanningTableGenerator = () => {
         );
       }
       
-      // Pied de page
+      // Pied de page avec style feu de camp
       const totalPages = pdf.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         pdf.setPage(i);
-        pdf.setFontSize(7);
+        pdf.setFontSize(8);
+        pdf.setTextColor(230, 126, 34);
+        pdf.text(`🏕️ Feu de Camp - Planning du Séjour`, margin, pageHeight - 5);
         pdf.setTextColor(128, 128, 128);
-        pdf.text(`Fondation Gendarmerie - Planning | Page ${i}/${totalPages}`, margin, pageHeight - 5);
-        pdf.text(`Genere le ${format(new Date(), 'dd/MM/yyyy a HH:mm')}`, pageWidth - 80, pageHeight - 5);
+        pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, pageWidth - 70, pageHeight - 5);
       }
       
       const fileName = `Planning_${format(startDate, 'dd-MM-yyyy')}.pdf`;
