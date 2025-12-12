@@ -416,44 +416,6 @@ const Administratif = () => {
                 )}
               </div>
             </div>
-
-            {/* Détails hôpital compact */}
-            <div>
-              <h3 className="text-base font-semibold mb-3">Hôpital le plus proche</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="hopital-nom" className="text-xs">Nom de l'établissement</Label>
-                  <Input
-                    id="hopital-nom"
-                    className="h-8 text-sm"
-                    value={hospitalDetails.nom}
-                    onChange={(e) => handleHospitalDetailsChange('nom', e.target.value)}
-                    placeholder="Centre Hospitalier..."
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="hopital-tel" className="text-xs">Téléphone</Label>
-                  <Input
-                    id="hopital-tel"
-                    className="h-8 text-sm"
-                    value={hospitalDetails.telephone}
-                    onChange={(e) => handleHospitalDetailsChange('telephone', e.target.value)}
-                    placeholder="01 23 45 67 89"
-                  />
-                </div>
-                <div className="md:col-span-2">
-                  <Label htmlFor="hopital-adresse" className="text-xs">Adresse complète</Label>
-                  <Textarea
-                    id="hopital-adresse"
-                    className="text-sm"
-                    value={hospitalDetails.adresse}
-                    onChange={(e) => handleHospitalDetailsChange('adresse', e.target.value)}
-                    placeholder="Adresse complète de l'hôpital avec code postal et ville"
-                    rows={2}
-                  />
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
 
