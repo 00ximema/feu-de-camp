@@ -1,6 +1,6 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill, BookOpen } from "lucide-react";
+import { Users, UserCheck, FileText, Calendar, Calculator, Building, Clock, AlertCircle, Pill, BookOpen, ClipboardList } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useState, useEffect } from "react";
 import SessionManager from "@/components/SessionManager";
@@ -204,6 +204,14 @@ const Index = () => {
       icon: BookOpen,
       route: "/main-courante",
       color: "bg-indigo-500 hover:bg-indigo-600"
+    },
+    {
+      id: 8,
+      title: "Rapport de fonctionnement",
+      description: "Synthèse de fin de séjour et conclusions pour l'organisateur",
+      icon: ClipboardList,
+      route: "/rapport-fonctionnement",
+      color: "bg-amber-500 hover:bg-amber-600"
     }
   ];
 

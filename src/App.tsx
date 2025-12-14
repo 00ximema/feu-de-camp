@@ -13,6 +13,7 @@ import Infirmerie from "./pages/Infirmerie";
 import Jeunes from "./pages/Jeunes";
 import Planning from "./pages/Planning";
 import MainCourante from "./pages/MainCourante";
+import RapportFonctionnement from "./pages/RapportFonctionnement";
 import OfflineIndicator from "./components/OfflineIndicator";
 
 const App = () => {
@@ -41,6 +42,7 @@ const App = () => {
             <Route path="/jeunes" element={<Jeunes />} />
             <Route path="/planning" element={<Planning />} />
             <Route path="/main-courante" element={<MainCourante />} />
+            <Route path="/rapport-fonctionnement" element={<RapportFonctionnement />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
           <OfflineIndicator />
