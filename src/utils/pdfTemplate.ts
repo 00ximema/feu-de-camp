@@ -63,9 +63,11 @@ export const createPdfHeader = (
     pdf.text(dateText, pageWidth - 15, 18, { align: 'right' });
   }
 
-  // Icône feu de camp (emoji)
-  pdf.setFontSize(24);
-  pdf.text('🏕️', pageWidth - 20, 30);
+  // Icône Feu de Camp (texte simple au lieu d'emoji)
+  pdf.setFontSize(10);
+  pdf.setFont('helvetica', 'bold');
+  pdf.setTextColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
+  pdf.text('Feu de Camp', pageWidth - 40, 26);
 
   // Ligne de séparation
   pdf.setDrawColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
@@ -97,7 +99,7 @@ export const addPdfFooter = (pdf: jsPDF): void => {
     
     // Nom de l'application à gauche
     pdf.setTextColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
-    pdf.text('🏕️ Feu de Camp', 15, pageHeight - 8);
+    pdf.text('Feu de Camp', 15, pageHeight - 8);
 
     // Numéro de page à droite
     pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
