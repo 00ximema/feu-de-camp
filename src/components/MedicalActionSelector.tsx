@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -43,6 +43,13 @@ const MedicalActionSelector = ({
   const [showTraitementForm, setShowTraitementForm] = useState(false);
   const [showSoinForm, setShowSoinForm] = useState(false);
 
+  // Si on est en mode édition d'un soin, aller directement au formulaire de soin
+  useEffect(() => {
+    if (editingSoin && isOpen) {
+      setShowSoinForm(true);
+    }
+  }, [editingSoin, isOpen]);
+
   const handleClose = () => {
     setShowTraitementForm(false);
     setShowSoinForm(false);
@@ -68,11 +75,6 @@ const MedicalActionSelector = ({
     onDataUpdated();
     onClose();
   };
-
-  // Si on est en mode édition d'un soin, aller directement au formulaire de soin
-  if (editingSoin && !showSoinForm) {
-    setShowSoinForm(true);
-  }
 
   return (
     <>
