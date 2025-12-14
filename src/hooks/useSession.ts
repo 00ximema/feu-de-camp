@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useLocalDatabase } from './useLocalDatabase';
 
 export interface Session {
