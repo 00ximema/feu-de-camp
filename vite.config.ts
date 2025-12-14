@@ -40,5 +40,7 @@ export default defineConfig(({ mode }) => ({
       }
     }
   },
-  base: './', // Important pour que les liens fonctionnent en local
+  // Pour GitHub Pages: remplacer par '/nom-du-repo/' si déployé sur github.io/nom-du-repo
+  // Pour un domaine personnalisé ou la racine: utiliser '/'
+  base: '/feu-de-camp/',
 }));
