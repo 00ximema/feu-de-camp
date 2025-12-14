@@ -1,5 +1,5 @@
-
 import jsPDF from 'jspdf';
+import { createPdfHeader, addPdfFooter, addPdfSection, checkNewPage, PDF_COLORS } from './pdfTemplate';
 
 interface TeamMember {
   id: string;
@@ -17,76 +17,68 @@ interface TeamMember {
 export const exportTeamToPDF = (team: TeamMember[]) => {
   try {
     const pdf = new jsPDF();
-  
-  // Header sans bandeau coloré
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(16);
-  pdf.setFont('helvetica', 'bold');
-  pdf.text('Liste de l\'Équipe', 15, 20);
-  
-  // Date et stats
-  pdf.setTextColor(0, 0, 0);
-  pdf.setFontSize(10);
-  pdf.setFont('helvetica', 'normal');
-  pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 30);
-  pdf.text(`Total: ${team.length} membre${team.length > 1 ? 's' : ''}`, 15, 37);
-  
-  let yPosition = 50;
-  
-  team.forEach((member, index) => {
-    // Titre du membre
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(`${index + 1}. ${member.prenom} ${member.nom}`, 15, yPosition);
-    yPosition += 7;
+    const pageHeight = pdf.internal.pageSize.height;
     
-    // Informations principales
-    pdf.setFontSize(10);
-    pdf.setFont('helvetica', 'normal');
-    pdf.text(`Rôle: ${member.role}`, 20, yPosition);
-    yPosition += 5;
-    pdf.text(`Âge: ${member.age} ans`, 20, yPosition);
-    yPosition += 5;
+    // En-tête uniforme
+    let yPosition = createPdfHeader(pdf, {
+      title: 'Liste de l\'Équipe',
+      subtitle: `${team.length} membre${team.length > 1 ? 's' : ''} enregistré${team.length > 1 ? 's' : ''}`
+    });
     
-    if (member.telephone) {
-      pdf.text(`Téléphone: ${member.telephone}`, 20, yPosition);
+    team.forEach((member, index) => {
+      // Vérifier si on a besoin d'une nouvelle page
+      yPosition = checkNewPage(pdf, yPosition, 50);
+      
+      // Titre du membre
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(PDF_COLORS.primaryDark.r, PDF_COLORS.primaryDark.g, PDF_COLORS.primaryDark.b);
+      pdf.text(`${index + 1}. ${member.prenom} ${member.nom}`, 15, yPosition);
+      yPosition += 7;
+      
+      // Informations principales
+      pdf.setFontSize(10);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
+      pdf.text(`Rôle: ${member.role}`, 20, yPosition);
       yPosition += 5;
-    }
-    
-    if (member.email) {
-      pdf.text(`Email: ${member.email}`, 20, yPosition);
+      pdf.text(`Âge: ${member.age} ans`, 20, yPosition);
       yPosition += 5;
-    }
+      
+      if (member.telephone) {
+        pdf.text(`Téléphone: ${member.telephone}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      if (member.email) {
+        pdf.text(`Email: ${member.email}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      if (member.diplomes.length > 0) {
+        pdf.text(`Diplômes: ${member.diplomes.join(', ')}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      if (member.notes) {
+        pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
+        pdf.text(`Notes: ${member.notes}`, 20, yPosition);
+        yPosition += 5;
+      }
+      
+      yPosition += 8;
+      
+      // Ligne de séparation entre membres
+      if (index < team.length - 1) {
+        pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
+        pdf.setLineWidth(0.2);
+        pdf.line(20, yPosition - 4, 190, yPosition - 4);
+      }
+    });
     
-    if (member.diplomes.length > 0) {
-      pdf.text(`Diplômes: ${member.diplomes.join(', ')}`, 20, yPosition);
-      yPosition += 5;
-    }
+    // Pied de page uniforme
+    addPdfFooter(pdf);
     
-    if (member.notes) {
-      pdf.text(`Notes: ${member.notes}`, 20, yPosition);
-      yPosition += 5;
-    }
-    
-    yPosition += 8;
-    
-    // Nouvelle page si nécessaire
-    if (yPosition > 250) {
-      pdf.addPage();
-      yPosition = 20;
-    }
-  });
-  
-  // Footer
-  const pageCount = pdf.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    pdf.setPage(i);
-    pdf.setFontSize(8);
-    pdf.setTextColor(128, 128, 128);
-    pdf.text(`Page ${i}/${pageCount}`, 180, 285);
-    pdf.text('Fondation MG - Gestion de l\'Équipe', 15, 285);
-  }
-  
     pdf.save(`Equipe_${new Date().toISOString().split('T')[0]}.pdf`);
   } catch (error) {
     console.error('Erreur lors de l\'export PDF:', error);

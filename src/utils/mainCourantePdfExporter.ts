@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { createPdfHeader, addPdfFooter, checkNewPage as checkPage, addWrappedText as wrapText, PDF_COLORS } from './pdfTemplate';
 
 interface MainCouranteEvent {
   id: string;
@@ -34,9 +35,14 @@ export const exportMainCouranteToPDF = (
 ) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
-  const pageHeight = doc.internal.pageSize.height;
   const margin = 20;
-  let currentY = 30;
+
+  // En-tête uniforme
+  let currentY = createPdfHeader(doc, {
+    title: 'Main Courante',
+    subtitle: `${events.length} événement${events.length > 1 ? 's' : ''} enregistré${events.length > 1 ? 's' : ''}`,
+    sessionName
+  });
 
   // Helper function to add text with word wrapping
   const addWrappedText = (text: string, x: number, y: number, maxWidth: number, fontSize: number = 10) => {
@@ -48,10 +54,7 @@ export const exportMainCouranteToPDF = (
 
   // Helper function to check if we need a new page
   const checkNewPage = (nextHeight: number) => {
-    if (currentY + nextHeight > pageHeight - margin) {
-      doc.addPage();
-      currentY = margin;
-    }
+    currentY = checkPage(doc, currentY, nextHeight, margin);
   };
 
   // Helper function to get person names
@@ -64,29 +67,6 @@ export const exportMainCouranteToPDF = (
     const jeune = jeunes.find(j => j.id === id);
     return jeune ? `${jeune.prenom} ${jeune.nom} (${jeune.age} ans)` : 'Jeune inconnu';
   };
-
-  // Header
-  doc.setFontSize(20);
-  doc.setFont('helvetica', 'bold');
-  doc.text('MAIN COURANTE', pageWidth / 2, currentY, { align: 'center' });
-  currentY += 15;
-
-  if (sessionName) {
-    doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Session: ${sessionName}`, pageWidth / 2, currentY, { align: 'center' });
-    currentY += 10;
-  }
-
-  doc.setFontSize(12);
-  doc.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, pageWidth / 2, currentY, { align: 'center' });
-  currentY += 20;
-
-  // Summary
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(`Résumé: ${events.length} événement${events.length > 1 ? 's' : ''} enregistré${events.length > 1 ? 's' : ''}`, margin, currentY);
-  currentY += 20;
 
   // Events
   const sortedEvents = events.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -156,14 +136,8 @@ export const exportMainCouranteToPDF = (
     }
   });
 
-  // Footer on last page
-  const totalPages = doc.getNumberOfPages();
-  for (let i = 1; i <= totalPages; i++) {
-    doc.setPage(i);
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Page ${i} sur ${totalPages}`, pageWidth - margin, pageHeight - 10, { align: 'right' });
-  }
+  // Pied de page uniforme
+  addPdfFooter(doc);
 
   // Save the PDF
   const fileName = `main-courante-${sessionName ? sessionName.replace(/[^a-zA-Z0-9]/g, '-') + '-' : ''}${format(new Date(), 'yyyy-MM-dd')}.pdf`;

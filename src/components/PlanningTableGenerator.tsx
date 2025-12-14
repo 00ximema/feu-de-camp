@@ -14,6 +14,7 @@ import { useTeamManagement } from '@/hooks/useTeamManagement';
 import { useLocalDatabase } from '@/hooks/useLocalDatabase';
 import { useSession } from '@/hooks/useSession';
 import { toast } from '@/components/ui/use-toast';
+import { addPdfFooter, PDF_COLORS } from '@/utils/pdfTemplate';
 import campfireLogo from '@/assets/campfire-icon.png';
 
 interface TeamMember {
@@ -399,11 +400,15 @@ const PlanningTableGenerator = () => {
       const pageHeight = 210;
       const margin = 10;
       
-      // Fonction pour créer l'en-tête avec logo feu de camp
+      // Fonction pour créer l'en-tête uniforme
       const createHeader = async (pdf: jsPDF, pageNumber: number, totalPages: number, dateGroup: Date[]) => {
-        // Fond avec dégradé orange subtil
-        pdf.setFillColor(255, 250, 245);
+        // Fond avec dégradé subtil
+        pdf.setFillColor(PDF_COLORS.background.r, PDF_COLORS.background.g, PDF_COLORS.background.b);
         pdf.rect(0, 0, pageWidth, 40, 'F');
+        
+        // Ligne décorative orange en haut
+        pdf.setFillColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
+        pdf.rect(0, 0, pageWidth, 4, 'F');
         
         // Charger et ajouter le logo feu de camp
         try {
@@ -415,50 +420,49 @@ const PlanningTableGenerator = () => {
             logoImg.src = campfireLogo;
           });
           
-          // Ajouter le logo en haut à gauche (plus grand)
-          pdf.addImage(logoImg, 'PNG', 12, 3, 32, 32);
+          // Ajouter le logo en haut à gauche
+          pdf.addImage(logoImg, 'PNG', 12, 6, 28, 28);
         } catch (error) {
           console.error('Erreur lors du chargement du logo:', error);
-          // Fallback si le logo ne se charge pas
-          pdf.setTextColor(230, 126, 34);
           pdf.setFontSize(16);
-          pdf.text('Feu de Camp', 15, 22);
+          pdf.setTextColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
+          pdf.text('🏕️', 15, 22);
         }
         
-        // Titre du planning avec style amélioré
-        pdf.setTextColor(51, 51, 51);
-        pdf.setFontSize(22);
+        // Titre du planning
+        pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
+        pdf.setFontSize(20);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('Planning du Séjour', 52, 18);
+        pdf.text('Planning du Séjour', 48, 18);
         
         // Période de cette page
-        pdf.setFontSize(12);
+        pdf.setFontSize(11);
         pdf.setFont('helvetica', 'normal');
-        pdf.setTextColor(100, 100, 100);
+        pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
         try {
           if (dateGroup.length > 0) {
             const firstDate = dateGroup[0];
             const lastDate = dateGroup[dateGroup.length - 1];
             if (isValid(firstDate) && isValid(lastDate)) {
-              pdf.text(`Du ${format(firstDate, 'dd MMMM yyyy', { locale: fr })} au ${format(lastDate, 'dd MMMM yyyy', { locale: fr })}`, 52, 28);
+              pdf.text(`Du ${format(firstDate, 'dd MMMM yyyy', { locale: fr })} au ${format(lastDate, 'dd MMMM yyyy', { locale: fr })}`, 48, 28);
             }
           }
         } catch (error) {
           console.error('Erreur formatage date PDF:', error);
-          pdf.text('Planning', 52, 28);
+          pdf.text('Planning', 48, 28);
         }
         
         // Numéro de page avec style
-        pdf.setFillColor(230, 126, 34);
+        pdf.setFillColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
         pdf.roundedRect(pageWidth - 45, 10, 35, 18, 3, 3, 'F');
-        pdf.setTextColor(255, 255, 255);
+        pdf.setTextColor(PDF_COLORS.white.r, PDF_COLORS.white.g, PDF_COLORS.white.b);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
         pdf.text(`${pageNumber}/${totalPages}`, pageWidth - 27.5, 21, { align: 'center' });
         
-        // Ligne de séparation orange
-        pdf.setDrawColor(230, 126, 34);
-        pdf.setLineWidth(0.8);
+        // Ligne de séparation
+        pdf.setDrawColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
+        pdf.setLineWidth(0.5);
         pdf.line(12, 38, pageWidth - 12, 38);
       };
 
@@ -656,23 +660,15 @@ const PlanningTableGenerator = () => {
         );
       }
       
-      // Pied de page avec style feu de camp
-      const totalPages = pdf.getNumberOfPages();
-      for (let i = 1; i <= totalPages; i++) {
-        pdf.setPage(i);
-        pdf.setFontSize(8);
-        pdf.setTextColor(230, 126, 34);
-        pdf.text(`🏕️ Feu de Camp - Planning du Séjour`, margin, pageHeight - 5);
-        pdf.setTextColor(128, 128, 128);
-        pdf.text(`Généré le ${format(new Date(), 'dd/MM/yyyy à HH:mm', { locale: fr })}`, pageWidth - 70, pageHeight - 5);
-      }
+      // Pied de page uniforme
+      addPdfFooter(pdf);
       
       const fileName = `Planning_${format(startDate, 'dd-MM-yyyy')}.pdf`;
       pdf.save(fileName);
       
       toast({
         title: "Export reussi",
-        description: `Le planning a ete exporte en PDF avec succes (${totalPages} page${totalPages > 1 ? 's' : ''})`,
+        description: `Le planning a ete exporte en PDF avec succes (${pdf.getNumberOfPages()} page${pdf.getNumberOfPages() > 1 ? 's' : ''})`,
       });
       
       console.log('PDF exporte avec succes');

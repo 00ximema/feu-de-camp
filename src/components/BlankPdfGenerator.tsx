@@ -1,9 +1,9 @@
-
 import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 import jsPDF from 'jspdf';
 import { useToast } from "@/hooks/use-toast";
+import { createPdfHeader, addPdfFooter, addPdfSection, PDF_COLORS } from "@/utils/pdfTemplate";
 
 const BlankPdfGenerator: React.FC = () => {
   const { toast } = useToast();
@@ -12,30 +12,20 @@ const BlankPdfGenerator: React.FC = () => {
     try {
       const pdf = new jsPDF();
       
-      // Header avec logo
-      pdf.setFillColor(147, 51, 234);
-      pdf.rect(0, 0, 210, 25, 'F');
-      
-      // Logo Fondation MG en blanc
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(20);
-      pdf.text('Fondation MG', 15, 17);
-      
-      pdf.setFontSize(14);
-      pdf.text('Maison de la Gendarmerie', 130, 17);
-      
-      // Reset text color
-      pdf.setTextColor(0, 0, 0);
-      
-      // Title
-      pdf.setFontSize(18);
-      pdf.text('FICHE JEUNE', 15, 40);
-      
+      // En-tête uniforme
+      let yPosition = createPdfHeader(pdf, {
+        title: 'Fiche Jeune',
+        subtitle: 'Modèle vierge à remplir',
+        showDate: false
+      });
+
       // Personal information section
-      pdf.setFontSize(14);
-      pdf.text('INFORMATIONS PERSONNELLES', 15, 55);
+      yPosition = addPdfSection(pdf, 'INFORMATIONS PERSONNELLES', yPosition);
       
-      pdf.setFontSize(12);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
+      
       const personalFields = [
         'Nom: _________________________________',
         'Prénom: _________________________________',
@@ -46,12 +36,15 @@ const BlankPdfGenerator: React.FC = () => {
         '_________________________________'
       ];
       
-      personalFields.forEach((field, index) => {
-        pdf.text(field, 15, 70 + (index * 8));
+      personalFields.forEach((field) => {
+        pdf.text(field, 20, yPosition);
+        yPosition += 10;
       });
       
+      yPosition += 5;
+      
       // Medical information section
-      pdf.text('INFORMATIONS MÉDICALES', 15, 135);
+      yPosition = addPdfSection(pdf, 'INFORMATIONS MÉDICALES', yPosition);
       
       const medicalFields = [
         'Allergies connues:',
@@ -67,12 +60,19 @@ const BlankPdfGenerator: React.FC = () => {
         '_________________________________'
       ];
       
-      medicalFields.forEach((field, index) => {
-        pdf.text(field, 15, 150 + (index * 8));
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      medicalFields.forEach((field) => {
+        if (field) {
+          pdf.text(field, 20, yPosition);
+        }
+        yPosition += 8;
       });
       
+      yPosition += 5;
+      
       // Contact section
-      pdf.text('CONTACT D\'URGENCE', 15, 240);
+      yPosition = addPdfSection(pdf, 'CONTACT D\'URGENCE', yPosition);
       
       const contactFields = [
         'Nom: _________________________________',
@@ -80,9 +80,15 @@ const BlankPdfGenerator: React.FC = () => {
         'Téléphone: _________________________________'
       ];
       
-      contactFields.forEach((field, index) => {
-        pdf.text(field, 15, 255 + (index * 8));
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      contactFields.forEach((field) => {
+        pdf.text(field, 20, yPosition);
+        yPosition += 10;
       });
+      
+      // Pied de page uniforme
+      addPdfFooter(pdf);
       
       pdf.save('Fiche_Jeune_Vierge.pdf');
       
