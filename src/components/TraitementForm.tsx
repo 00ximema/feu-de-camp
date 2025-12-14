@@ -47,10 +47,17 @@ const TraitementForm: React.FC<TraitementFormProps> = ({
   const { isInitialized, db } = useLocalDatabase();
   const { currentSession } = useSession();
 
-  // Pré-sélectionner le jeune si un ID est fourni
+  // Pré-remplir le formulaire à l'ouverture
   useEffect(() => {
-    if (selectedJeuneId && isOpen) {
-      setSelectedJeune(selectedJeuneId);
+    if (isOpen) {
+      // Pré-sélectionner le jeune si un ID est fourni
+      if (selectedJeuneId) {
+        setSelectedJeune(selectedJeuneId);
+      }
+      // Pré-remplir la date du jour si non définie
+      if (!dateDebut) {
+        setDateDebut(new Date().toISOString().split('T')[0]);
+      }
     }
   }, [selectedJeuneId, isOpen]);
 
