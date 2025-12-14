@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useGroups, GroupeJeunes } from "@/hooks/useGroups";
 import { useJeunes } from "@/hooks/useJeunes";
 import jsPDF from 'jspdf';
+import { createPdfHeader, addPdfFooter, checkNewPage, PDF_COLORS } from "@/utils/pdfTemplate";
 
 const GroupsManager = () => {
   const [showAddForm, setShowAddForm] = useState(false);
@@ -97,32 +98,25 @@ const GroupsManager = () => {
   const exportGroupsToPDF = () => {
     const pdf = new jsPDF();
     
-    // Header avec logo
-    pdf.setFillColor(147, 51, 234);
-    pdf.rect(0, 0, 210, 25, 'F');
-    
-    pdf.setTextColor(255, 255, 255);
-    pdf.setFontSize(20);
-    pdf.text('MG', 15, 17);
-    
-    pdf.setFontSize(16);
-    pdf.text('Liste des Groupes de Jeunes', 50, 17);
-    
-    // Date
-    pdf.setTextColor(0, 0, 0);
-    pdf.setFontSize(10);
-    pdf.text(`Généré le ${new Date().toLocaleDateString('fr-FR')}`, 15, 35);
-    
-    let yPosition = 50;
+    // En-tête uniforme
+    let yPosition = createPdfHeader(pdf, {
+      title: 'Groupes de Jeunes',
+      subtitle: `${groupes.length} groupe${groupes.length > 1 ? 's' : ''} enregistré${groupes.length > 1 ? 's' : ''}`
+    });
     
     if (groupes.length === 0) {
       pdf.setFontSize(12);
+      pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
       pdf.text('Aucun groupe créé', 15, yPosition);
     } else {
       groupes.forEach((groupe, index) => {
+        // Vérifier si on a besoin d'une nouvelle page
+        yPosition = checkNewPage(pdf, yPosition, 40);
+        
         // Titre du groupe
-        pdf.setFontSize(14);
+        pdf.setFontSize(13);
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(PDF_COLORS.primaryDark.r, PDF_COLORS.primaryDark.g, PDF_COLORS.primaryDark.b);
         pdf.text(`${index + 1}. ${groupe.nom}`, 15, yPosition);
         yPosition += 8;
         
@@ -130,6 +124,7 @@ const GroupsManager = () => {
         if (groupe.description) {
           pdf.setFontSize(10);
           pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
           pdf.text(`Description: ${groupe.description}`, 20, yPosition);
           yPosition += 6;
         }
@@ -138,16 +133,20 @@ const GroupsManager = () => {
         const membresGroupe = getJeunesInGroup(groupe.id);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'bold');
+        pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
         pdf.text(`Membres (${membresGroupe.length}):`, 20, yPosition);
         yPosition += 6;
         
         if (membresGroupe.length === 0) {
           pdf.setFont('helvetica', 'italic');
+          pdf.setTextColor(PDF_COLORS.textLight.r, PDF_COLORS.textLight.g, PDF_COLORS.textLight.b);
           pdf.text('Aucun membre', 25, yPosition);
           yPosition += 6;
         } else {
           pdf.setFont('helvetica', 'normal');
+          pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
           membresGroupe.forEach((jeune) => {
+            yPosition = checkNewPage(pdf, yPosition, 6);
             pdf.text(`• ${jeune.prenom} ${jeune.nom} (${jeune.age} ans)`, 25, yPosition);
             yPosition += 5;
           });
@@ -155,23 +154,17 @@ const GroupsManager = () => {
         
         yPosition += 10;
         
-        // Nouvelle page si nécessaire
-        if (yPosition > 250) {
-          pdf.addPage();
-          yPosition = 20;
+        // Ligne de séparation entre groupes
+        if (index < groupes.length - 1) {
+          pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
+          pdf.setLineWidth(0.2);
+          pdf.line(20, yPosition - 5, 190, yPosition - 5);
         }
       });
     }
     
-    // Footer
-    const pageCount = pdf.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      pdf.setPage(i);
-      pdf.setFontSize(8);
-      pdf.setTextColor(128, 128, 128);
-      pdf.text(`Page ${i}/${pageCount}`, 180, 285);
-      pdf.text('Fondation MG - Gestion des Groupes', 15, 285);
-    }
+    // Pied de page uniforme
+    addPdfFooter(pdf);
     
     pdf.save(`Groupes_Jeunes_${new Date().toISOString().split('T')[0]}.pdf`);
     
