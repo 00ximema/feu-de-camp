@@ -270,11 +270,58 @@ interface DatabaseSchema {
     createdAt: string;
     updatedAt: string;
   };
+
+  // Rapports de fonctionnement
+  rapportsFonctionnement: {
+    id: string;
+    sessionId: string;
+    directeur: string;
+    session: string;
+    dateDebut: string;
+    dateFin: string;
+    enfantsEffectifGarcons: string;
+    enfantsEffectifFilles: string;
+    enfantsCapaciteAccueil: string;
+    enfantsVieQuotidienne: string;
+    enfantsActivites: string;
+    enfantsSante: string;
+    enfantsProblemesSolutions: string;
+    adultesNombreAnimateurs: string;
+    adultesQualification: string;
+    adultesParticipation: string;
+    adultesConditionsTravail: string;
+    adultesRelationsEnfants: string;
+    adultesRelationsAdultes: string;
+    adultesOrganisationEquipe: string;
+    adultesAmeliorations: string;
+    equipementsLocaux: string;
+    equipementsCommodites: string;
+    equipementsMaterielPedagogique: string;
+    equipementsMaterielAchete: string;
+    equipementsSuggestionsAchats: string;
+    equipementsVehicules: string;
+    equipementsRemarques: string;
+    gestionPrixJournee: string;
+    gestionQualiteRepas: string;
+    gestionCompteRenduFinancier: string;
+    gestionComparaisonBudget: string;
+    gestionConclusionsFinancieres: string;
+    relationsFamilles: string;
+    relationsPrestataires: string;
+    relationsPartenaires: string;
+    relationsServicesOfficiels: string;
+    relationsModifications: string;
+    relationsPersonnesRemerciees: string;
+    relationsRemerciementsSiege: string;
+    conclusion: string;
+    createdAt: string;
+    updatedAt: string;
+  };
 }
 
 class LocalDatabase {
   private dbName = 'CVJDatabase';
-  private version = 8; // Augmenter la version pour ajouter piecesComptables
+  private version = 9; // Augmenter la version pour ajouter rapportsFonctionnement
   private db: IDBDatabase | null = null;
 
   async init(): Promise<void> {
@@ -356,6 +403,11 @@ class LocalDatabase {
           const piecesComptablesStore = db.createObjectStore('piecesComptables', { keyPath: 'id' });
           piecesComptablesStore.createIndex('sessionId', 'sessionId', { unique: false });
           console.log('Table piecesComptables créée');
+        }
+        if (!db.objectStoreNames.contains('rapportsFonctionnement')) {
+          const rapportsStore = db.createObjectStore('rapportsFonctionnement', { keyPath: 'id' });
+          rapportsStore.createIndex('sessionId', 'sessionId', { unique: false });
+          console.log('Table rapportsFonctionnement créée');
         }
       };
     });
