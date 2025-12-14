@@ -424,9 +424,9 @@ const PlanningTableGenerator = () => {
           pdf.addImage(logoImg, 'PNG', 12, 6, 28, 28);
         } catch (error) {
           console.error('Erreur lors du chargement du logo:', error);
-          pdf.setFontSize(16);
+          pdf.setFontSize(12);
           pdf.setTextColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
-          pdf.text('🏕️', 15, 22);
+          pdf.text('Feu de Camp', 15, 22);
         }
         
         // Titre du planning
@@ -586,23 +586,23 @@ const PlanningTableGenerator = () => {
                   content += `<div style="font-weight: bold; color: #c45c00; margin-bottom: 3px; font-size: 9px;">${event.name}</div>`;
                   
                   if (event.startTime && event.endTime) {
-                    content += `<div style="color: #e67e22; font-size: 8px; margin-bottom: 2px;">🕐 ${event.startTime} - ${event.endTime}</div>`;
+                    content += `<div style="color: #e67e22; font-size: 8px; margin-bottom: 2px;">${event.startTime} - ${event.endTime}</div>`;
                   }
                   
                   if (event.assignedMembers && event.assignedMembers.length > 0) {
-                    content += `<div style="color: #555; font-size: 8px; margin-bottom: 2px;">👥 ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
+                    content += `<div style="color: #555; font-size: 8px; margin-bottom: 2px;">Equipe: ${event.assignedMembers.map(m => `${m.prenom} ${m.nom}`).join(', ')}</div>`;
                   }
                   
                   if (event.selectedGroups && event.selectedGroups.length > 0) {
-                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">📋 ${event.selectedGroups.join(', ')}</div>`;
+                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">Groupes: ${event.selectedGroups.join(', ')}</div>`;
                   }
                   
                   if (event.selectedJeunes && event.selectedJeunes.length > 0) {
-                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">👦 ${event.selectedJeunes.length} jeune${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
+                    content += `<div style="color: #27ae60; font-size: 8px; margin-bottom: 2px;">${event.selectedJeunes.length} jeune${event.selectedJeunes.length > 1 ? 's' : ''}</div>`;
                   }
                   
                   if (event.notes) {
-                    content += `<div style="color: #8e44ad; font-size: 7px; font-style: italic; margin-top: 2px;">📝 ${event.notes}</div>`;
+                    content += `<div style="color: #8e44ad; font-size: 7px; font-style: italic; margin-top: 2px;">Note: ${event.notes}</div>`;
                   }
                 });
                 
