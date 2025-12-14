@@ -7,10 +7,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ClipboardCheck, Download, PenTool } from "lucide-react";
+import { ClipboardCheck, Download } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import jsPDF from 'jspdf';
 import SignatureCanvas from './SignatureCanvas';
+import { createPdfHeader, addPdfFooter, PDF_COLORS } from "@/utils/pdfTemplate";
 
 interface EvaluationCriteria {
   id: string;
@@ -90,20 +91,16 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       const pdf = new jsPDF();
       const pageWidth = 210;
       
-      // Titre centré (sans logo)
-      pdf.setTextColor(0, 0, 0);
-      pdf.setFontSize(16);
-      pdf.setFont('helvetica', 'bold');
-      const titleText = "Grille d'évaluation";
-      const titleWidth = pdf.getTextWidth(titleText);
-      const titleX = (pageWidth - titleWidth) / 2;
-      pdf.text(titleText, titleX, 15);
+      // En-tête uniforme
+      let yPos = createPdfHeader(pdf, {
+        title: 'Grille d\'évaluation',
+        subtitle: evaluationData.centerSession || 'Évaluation animateur'
+      });
 
       // Informations principales
-      pdf.setTextColor(0, 0, 0);
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
       pdf.setFontSize(10);
       pdf.setFont('helvetica', 'normal');
-      let yPos = 28;
       
       pdf.text(`Nom et prénom de l'animateur : ${evaluationData.animatorName}`, 15, yPos);
       pdf.text(`Nom du directeur : ${evaluationData.directorName}`, 110, yPos);
@@ -126,15 +123,17 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       const colWidths = [95, 15, 15, 15, 45];
       let currentX = startX;
       
-      // Dessiner les bordures des en-têtes
+      // Dessiner les bordures des en-têtes avec couleur du thème
       const headerHeight = 8;
-      pdf.rect(startX, yPos - 6, colWidths[0], headerHeight);
-      pdf.rect(startX + colWidths[0], yPos - 6, colWidths[1], headerHeight);
-      pdf.rect(startX + colWidths[0] + colWidths[1], yPos - 6, colWidths[2], headerHeight);
-      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2], yPos - 6, colWidths[3], headerHeight);
-      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], yPos - 6, colWidths[4], headerHeight);
+      pdf.setFillColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
+      pdf.rect(startX, yPos - 6, colWidths[0], headerHeight, 'F');
+      pdf.rect(startX + colWidths[0], yPos - 6, colWidths[1], headerHeight, 'F');
+      pdf.rect(startX + colWidths[0] + colWidths[1], yPos - 6, colWidths[2], headerHeight, 'F');
+      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2], yPos - 6, colWidths[3], headerHeight, 'F');
+      pdf.rect(startX + colWidths[0] + colWidths[1] + colWidths[2] + colWidths[3], yPos - 6, colWidths[4], headerHeight, 'F');
       
       // Textes des en-têtes centrés
+      pdf.setTextColor(PDF_COLORS.white.r, PDF_COLORS.white.g, PDF_COLORS.white.b);
       pdf.text('Critères évalués', startX + 2, yPos);
       pdf.text('Non', startX + colWidths[0] + (colWidths[1] - pdf.getTextWidth('Non')) / 2, yPos);
       pdf.text('±', startX + colWidths[0] + colWidths[1] + (colWidths[2] - pdf.getTextWidth('±')) / 2, yPos);
@@ -146,6 +145,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       // Contenu du tableau
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(8);
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
       
       evaluationData.criteria.forEach((criteria) => {
         const rowHeight = 9;
@@ -153,6 +153,7 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
         
         // Colonne critère
         const splitText = pdf.splitTextToSize(criteria.text, colWidths[0] - 4);
+        pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
         pdf.rect(currentX, yPos - 6, colWidths[0], rowHeight);
         pdf.text(splitText.slice(0, 2), currentX + 2, yPos - 2);
         currentX += colWidths[0];
@@ -165,8 +166,10 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
           if (i === 2 && criteria.score === 'moyen') mark = 'X';
           if (i === 3 && criteria.score === 'oui') mark = 'X';
           if (mark) {
+            pdf.setTextColor(PDF_COLORS.primary.r, PDF_COLORS.primary.g, PDF_COLORS.primary.b);
             const markWidth = pdf.getTextWidth(mark);
             pdf.text(mark, currentX + (colWidths[i] - markWidth) / 2, yPos - 1);
+            pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
           }
           currentX += colWidths[i];
         }
@@ -185,18 +188,17 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       yPos += 5;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
+      pdf.setTextColor(PDF_COLORS.primaryDark.r, PDF_COLORS.primaryDark.g, PDF_COLORS.primaryDark.b);
       pdf.text('Remarques :', 15, yPos);
       yPos += 5;
       pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
       
       if (evaluationData.remarks) {
         const remarksText = pdf.splitTextToSize(evaluationData.remarks, 180);
-        pdf.text(remarksText.slice(0, 2), 15, yPos); // Max 2 lignes
-      } else {
-        // Encart vide mais visible
-        pdf.text('', 15, yPos);
+        pdf.text(remarksText.slice(0, 2), 15, yPos);
       }
-      // Ligne de démarcation pour l'encart remarques
+      pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
       pdf.line(15, yPos + 8, 195, yPos + 8);
       yPos += 15;
       
@@ -204,11 +206,13 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
       yPos += 5;
       pdf.setFont('helvetica', 'bold');
       pdf.setFontSize(10);
+      pdf.setTextColor(PDF_COLORS.primaryDark.r, PDF_COLORS.primaryDark.g, PDF_COLORS.primaryDark.b);
       pdf.text('Signatures :', 15, yPos);
       yPos += 12;
       
-      // Signature directeur (agrandie)
+      // Signature directeur
       pdf.setFont('helvetica', 'normal');
+      pdf.setTextColor(PDF_COLORS.text.r, PDF_COLORS.text.g, PDF_COLORS.text.b);
       pdf.text('Directeur :', 15, yPos);
       if (evaluationData.directorSignature) {
         try {
@@ -218,10 +222,11 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
           pdf.text(evaluationData.directorSignature, 15, yPos + 10);
         }
       } else {
+        pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
         pdf.line(15, yPos + 12, 85, yPos + 12);
       }
       
-      // Signature animateur (agrandie)
+      // Signature animateur
       pdf.text('Animateur :', 110, yPos);
       if (evaluationData.animatorSignature) {
         try {
@@ -231,8 +236,12 @@ const EvaluationForm = ({ show, onClose, memberName }: EvaluationFormProps) => {
           pdf.text(evaluationData.animatorSignature, 110, yPos + 10);
         }
       } else {
+        pdf.setDrawColor(PDF_COLORS.border.r, PDF_COLORS.border.g, PDF_COLORS.border.b);
         pdf.line(110, yPos + 12, 180, yPos + 12);
       }
+      
+      // Pied de page uniforme
+      addPdfFooter(pdf);
       
       pdf.save(`Evaluation_${evaluationData.animatorName}_${new Date().toISOString().split('T')[0]}.pdf`);
       
