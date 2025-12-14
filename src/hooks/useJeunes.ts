@@ -119,12 +119,31 @@ export const useJeunes = () => {
     }
   };
 
+  // Supprimer tous les jeunes de la session
+  const deleteAllJeunes = async () => {
+    if (!isInitialized) return false;
+    
+    try {
+      // Supprimer tous les jeunes un par un
+      for (const jeune of jeunes) {
+        await db.delete('jeunes', jeune.id);
+      }
+      setJeunes([]);
+      console.log('Tous les jeunes ont été supprimés de la base de données');
+      return true;
+    } catch (error) {
+      console.error('Erreur lors de la suppression de tous les jeunes:', error);
+      return false;
+    }
+  };
+
   return {
     jeunes,
     addJeune,
     addMultipleJeunes,
     updateJeune,
     deleteJeune,
+    deleteAllJeunes,
     isInitialized
   };
 };
