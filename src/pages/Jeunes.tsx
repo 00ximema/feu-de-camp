@@ -1,11 +1,11 @@
-
 import { useState, useRef, useMemo } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { Users, UserPlus, ArrowLeft, Home, Users2, FileText, Upload, LayoutGrid, List } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Users, UserPlus, ArrowLeft, Home, Users2, FileText, Upload, LayoutGrid, List, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useJeunes } from "@/hooks/useJeunes";
 import { useGroups } from "@/hooks/useGroups";
@@ -23,7 +23,7 @@ type ViewMode = 'cards' | 'list';
 type GenderFilter = 'all' | 'boys' | 'girls';
 
 const Jeunes = () => {
-  const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, isInitialized } = useJeunes();
+  const { jeunes, addJeune, addMultipleJeunes, updateJeune, deleteJeune, deleteAllJeunes, isInitialized } = useJeunes();
   const { groupes } = useGroups();
   const [selectedYoungster, setSelectedYoungster] = useState<Youngster | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -264,6 +264,43 @@ const Jeunes = () => {
                       accept=".xlsx,.xls"
                       className="hidden"
                     />
+                    
+                    {/* Bouton supprimer tout */}
+                    {jeunes.length > 0 && (
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="destructive" size="sm">
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Tout supprimer
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer tous les jeunes ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Cette action est irréversible. Vous êtes sur le point de supprimer {jeunes.length} jeune(s) de la session actuelle.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={async () => {
+                                const success = await deleteAllJeunes();
+                                if (success) {
+                                  toast.success("Tous les jeunes ont été supprimés");
+                                } else {
+                                  toast.error("Erreur lors de la suppression");
+                                }
+                              }}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Supprimer tout
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    )}
+                    
                     <Button 
                       variant="outline" 
                       onClick={() => fileInputRef.current?.click()}
