@@ -45,13 +45,12 @@ const Administratif = () => {
     { id: 2, label: "Pompiers", number: "18", description: "Pompiers/Secours" },
     { id: 3, label: "Police/Gendarmerie", number: "17", description: "Police nationale/Gendarmerie" },
     { id: 4, label: "Numéro d'urgence européen", number: "112", description: "Urgences" },
-    { id: 5, label: "Permanence MG", number: "06 84 79 56 08", description: "Permanence Maison de la Gendarmerie" },
-    { id: 6, label: "Hôpital le plus proche", number: "", description: "Centre Hospitalier" },
-    { id: 7, label: "Pharmacie de garde", number: "", description: "Pharmacie" },
-    { id: 8, label: "Mairie", number: "", description: "Services municipaux" },
-    { id: 9, label: "Taxi local", number: "", description: "Transport" },
-    { id: 10, label: "Centre Antipoison", number: "01 40 05 48 48", description: "Centre antipoison" },
-    { id: 11, label: "Allo enfance maltraitée", number: "119", description: "Enfance en danger" }
+    { id: 5, label: "Hôpital le plus proche", number: "", description: "Centre Hospitalier" },
+    { id: 6, label: "Pharmacie de garde", number: "", description: "Pharmacie" },
+    { id: 7, label: "Mairie", number: "", description: "Services municipaux" },
+    { id: 8, label: "Taxi local", number: "", description: "Transport" },
+    { id: 9, label: "Centre Antipoison", number: "01 40 05 48 48", description: "Centre antipoison" },
+    { id: 10, label: "Allo enfance maltraitée", number: "119", description: "Enfance en danger" }
   ]);
 
   const [selectedContactId, setSelectedContactId] = useState<string>("");
