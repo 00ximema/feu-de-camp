@@ -32,7 +32,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <BrowserRouter>
+        <BrowserRouter basename="/feu-de-camp">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/administratif" element={<Administratif />} />
